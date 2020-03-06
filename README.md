@@ -18,7 +18,7 @@ $ docker run -ti --rm \
   /data /output participant --participant_label 01
 ```
 
-For example, to run an analysis in ```group``` level mode with a user-defined pipeline, type:
+For example, to run an analysis in ```group``` level mode, type:
 
 ```
 $ docker run -ti --rm \
