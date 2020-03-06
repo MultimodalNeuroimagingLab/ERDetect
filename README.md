@@ -1,5 +1,5 @@
 # N1Detect
-A BIDS App for the detection of early responses (N1) in CCEP data
+A BIDS App for the automatic detection of early responses (N1) in CCEP data
 
 ## Usage
 This App has the following command line arguments:
