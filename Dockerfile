@@ -1,7 +1,9 @@
 FROM alpine:3.11
 
-RUN apk add --no-cache libpng freetype libstdc++ openblas libxml2 libxslt && \
-	apk add --no-cache --virtual .build-deps \
+LABEL MAINTAINER="Max van den Boom <m.a.vandenboom84@gmail.com>"
+
+RUN apk add --no-cache libpng freetype libstdc++ openblas libxml2 libxslt \
+	&& apk add --no-cache --virtual .build-deps \
 	    g++ gfortran file binutils \
 	    openblas-dev \
 	    python3-dev \
@@ -11,9 +13,13 @@ RUN apk add --no-cache libpng freetype libstdc++ openblas libxml2 libxslt && \
 	    musl-dev \
 	    freetype-dev \
 	    libxml2-dev \
-	    libxslt-dev && \
-	ln -s /usr/include/locale.h /usr/include/xlocale.h \
-	&& pip3 install numpy \
+	    libxslt-dev \
+	    libgcc libquadmath \
+	    libgfortran \
+	    lapack-dev \
+	&& ln -s /usr/include/locale.h /usr/include/xlocale.h \
+	&& pip3 install --no-cache-dir --upgrade pip \
+	&& pip3 install numpy==1.18.1 \
 	&& pip3 install scipy==1.3.3 \
 	&& pip3 install pandas \
 	&& pip3 install matplotlib \
