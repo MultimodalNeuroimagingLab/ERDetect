@@ -6,26 +6,16 @@ A BIDS App for the automatic detection of early responses (N1) in CCEP data
 To launch an instance of the container and analyse some data in BIDS format, type:
 
 ```
-$ docker run bids/N1Detect bids_dir output_dir level [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
+$ docker run bids/N1Detect bids_dir output_dir [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
-For example, to run an analysis in ```participant``` level mode, type:
+For example, to run an analysis, type:
 
 ```
 $ docker run -ti --rm \
   -v /path/to/local/bids/input/dataset/:/data \
   -v /path/to/local/output/:/output \
-  bids/N1Detect \
-  /data /output participant --participant_label 01
-```
-
-For example, to run an analysis in ```group``` level mode, type:
-
-```
-$ docker run -ti --rm \
-  -v /path/to/local/bids/input/dataset/:/data \
-  -v /path/to/local/output/:/output \
-  bids/N1Detect \
-  /data /output group
+  bids/n1detect \
+  /data /output --participant_label 01
 ```
 
 
