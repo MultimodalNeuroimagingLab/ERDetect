@@ -1,68 +1,258 @@
+#!/usr/bin/env python3
 import argparse
 import os
-import subprocess
-import numpy
+import csv
 from glob import glob
 
-__version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                'version')).read()
+from bids_validator import BIDSValidator
+from mne.io import read_raw_edf
+from pymef.mef_session import MefSession
+from pymef.mef_file import pymef3_file
 
-def run(command, env={}):
-    merged_env = os.environ
-    merged_env.update(env)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True,
-                               env=merged_env)
-    while True:
-        line = process.stdout.readline()
-        line = str(line, 'utf-8')[:-1]
-        print(line)
-        if line == '' and process.poll() != None:
-            break
-    if process.returncode != 0:
-        raise Exception("Non zero return code: %d"%process.returncode)
+# valid data format to search for (European Data Format, BrainVision and MEF3)
+VALID_FORMAT_EXTENSIONS = ('.edf', '.vhdr', '.vmrk', '.eeg', '.mefd')
 
-parser = argparse.ArgumentParser(description='Example BIDS App entrypoint script.')
-parser.add_argument('bids_dir', help='The directory with the input dataset '
-                    'formatted according to the BIDS standard.')
-parser.add_argument('output_dir', help='The directory where the output files '
-                    'should be stored. If you are running group level analysis '
-                    'this folder should be prepopulated with the results of the'
-                    'participant level analysis.')
-parser.add_argument('analysis_level', help='Level of the analysis that will be performed. '
-                    'Multiple participant level analyses can be run independently '
-                    '(in parallel) using the same output_dir.',
-                    choices=['participant', 'group'])
-parser.add_argument('--participant_label', help='The label(s) of the participant(s) that should be analyzed. The label '
-                   'corresponds to sub-<participant_label> from the BIDS spec '
-                   '(so it does not include "sub-"). If this parameter is not '
-                   'provided all subjects should be analyzed. Multiple '
-                   'participants can be specified with a space separated list.',
-                   nargs="+")
-parser.add_argument('--skip_bids_validator', help='Whether or not to perform BIDS dataset validation',
-                   action='store_true')
-parser.add_argument('-v', '--version', action='version',
-                    version='BIDS-App example version {}'.format(__version__))
+__version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'version')).read()
 
 
+#
+# define and parse the input arguments
+#
+parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of early responses (N1) in CCEP data.')
+parser.add_argument('bids_dir',
+                    help='The directory with the input dataset formatted according to the BIDS standard.')
+parser.add_argument('output_dir',
+                    help='The directory where the output files should be stored. If you are running group level '
+                         'analysis this folder should be prepopulated with the results of the participant level analysis.')
+parser.add_argument('--participant_label',
+                    help='The label(s) of the participant(s) that should be analyzed. The label corresponds '
+                         'to sub-<participant_label> from the BIDS spec (so it does not include "sub-"). If this '
+                         'parameter is not provided all subjects will be analyzed. Multiple participants can be '
+                         'specified with a space separated list.',
+                    nargs="+")
+parser.add_argument('--subset_search_pattern',
+                    help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS '
+                         'compliant folder name (e.g. "task-ccep_run-01"). If this parameter is not provided all '
+                         'the found subset(s) will be analyzed. Multiple subsets can be specified with a space '
+                         'separated list.',
+                    nargs="+")
+parser.add_argument('--format_extension',
+                    help='The data format(s) to include. The format(s) should be specified by their '
+                         'extension (e.g. ".edf"). If this parameter is not provided, then by default the European '
+                         'Data Format (''.edf''), BrainVision (''.vhdr'', ''.vmrk'', ''.eeg'') and MEF3 (''.mefd'') '
+                         'formats will be included. Multiple formats can be specified with a space separated list.',
+                    nargs="+")
+parser.add_argument('--skip_bids_validator',
+                    help='Whether or not to perform BIDS dataset validation',
+                    action='store_true')
+parser.add_argument('-v', '--version',
+                    action='version',
+                    version='N1Detection BIDS-App version {}'.format(__version__))
 args = parser.parse_args()
 
-if not args.skip_bids_validator:
-    run('bids-validator %s'%args.bids_dir)
 
+# debug, print
+print('BIDS input dataset:     ' + args.bids_dir)
+print('Output location:        ' + args.output_dir)
+
+#
+# check if the input is a valid BIDS dataset
+#
+#if not args.skip_bids_validator:
+#    if not BIDSValidator().is_bids(args.bids_dir):
+#        print('Error: BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+#                          'using the BIDS Validator (http://incf.github.io/bids-validator/')
+#        exit()
+
+
+#
+# list the subject to analyze (either based on the input parameter or list all in the BIDS_dir)
+#
 subjects_to_analyze = []
-# only for a subset of subjects
 if args.participant_label:
+
+    # user-specified subjects
     subjects_to_analyze = args.participant_label
-# for all subjects
+
 else:
-    subject_dirs = glob(os.path.join(args.bids_dir, "sub-*"))
+
+    # all subjects
+    subject_dirs = glob(os.path.join(args.bids_dir, 'sub-*'))
     subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
 
-# running participant level
-if args.analysis_level == "participant":
-    pass
 
-# running group level
-elif args.analysis_level == "group":
-    pass
+#
+# loop through the participants and list the subsets
+#
+for subject_label in subjects_to_analyze:
+
+    # see if the subject is exists (in case the user specified the labels)
+    if os.path.isdir(os.path.join(args.bids_dir, subject_label)):
+
+        # retrieve the subset search patterns
+        subset_patterns = args.subset_search_pattern if args.subset_search_pattern else ('',)
+
+        # retrieve the data formats to include
+        if args.format_extension:
+            extensions = args.format_extension
+            for extension in extensions:
+                if not any(extension in x for x in VALID_FORMAT_EXTENSIONS):
+                    print('Error: invalid data format extension \'' + extension + '\'')
+                    exit()
+        else:
+            extensions = VALID_FORMAT_EXTENSIONS
+
+        # build path patterns for the search of subsets
+        subsets = []
+        modalities = ('*eeg',)                    # ieeg and eeg
+        for extension in extensions:
+            for modality in modalities:
+                for subset_pattern in subset_patterns:
+                    subsets += glob(os.path.join(args.bids_dir, subject_label, modality, '*' + subset_pattern + '*' + extension)) + \
+                               glob(os.path.join(args.bids_dir, subject_label, '*', modality, '*' + subset_pattern + '*' + extension))
+
+        # bring subsets with multiple formats down to one format (prioritized to occurrence in the extension var)
+        for subset in subsets:
+            subset_name = subset[:subset.rindex(".")]
+            for subset_other in reversed(subsets):
+                if not subset == subset_other:
+                    subset_other_name = subset_other[:subset_other.rindex(".")]
+                    if subset_name == subset_other_name:
+                        subsets.remove(subset_other)
+
+        # loop through the subsets for analysis
+        for subset in subsets:
+
+            # print subset start
+            print("------")
+            print("Subset:                                          " + subset)
+
+
+            #
+            # gather metadata information
+            #
+
+            # derive the bids roots (subject/session and subset) from the full path
+            bids_subjsess_root = os.path.commonprefix(glob(os.path.join(os.path.dirname(subset), '*.*')))[:-1];
+            bids_subset_root = subset[:subset.rindex('_')]
+
+            # retrieve the good IEEG (ECOG/SEEG) channels from the channels.tsv file
+            with open(bids_subjsess_root + '_channels.tsv') as csv_file:
+                reader = csv.DictReader(csv_file, delimiter='\t')
+
+                # make sure the required columns exist
+                channels_include = [];
+                channels_bad = [];
+                channels_non_ieeg = [];
+                if not 'name' in reader.fieldnames:
+                    print('Error: could not find the \'name\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
+                    exit()
+                if not 'type' in reader.fieldnames:
+                    print('Error: could not find the \'type\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
+                    exit()
+                if not 'status' in reader.fieldnames:
+                    print('Error: could not find the \'status\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
+                    exit()
+
+                # sort out the good, the bad and the... non-ieeg
+                for row in reader:
+                    excluded = False
+                    if row['status'].lower() == 'bad':
+                        channels_bad.append(row['name'])
+                        excluded = True
+                    if not row['type'].upper() in ('ECOG', 'SEEG'):
+                        channels_non_ieeg.append(row['name'])
+                        excluded = True
+                    if not excluded:
+                        channels_include.append(row['name'])
+
+            # print channel information
+            print('Bad channels:                                    ' + ' '.join(channels_bad))
+            print('Non-IEEG channels:                               ' + ' '.join(channels_non_ieeg))
+            print('Included channels:                               ' + ' '.join(channels_include))
+
+            # retrieve the electrical stimulation trials (onsets and pairs) from the events.tsv file
+            with open(bids_subset_root + '_events.tsv') as csv_file:
+                reader = csv.DictReader(csv_file, delimiter='\t')
+
+                # make sure the required columns exist
+                if not 'onset' in reader.fieldnames:
+                    print('Error: could not find the \'onset\' column in \'' + bids_subset_root + '_events.tsv\'')
+                    exit()
+                if not 'trial_type' in reader.fieldnames:
+                    print('Error: could not find the \'trial_type\' column in \'' + bids_subset_root + '_events.tsv\'')
+                    exit()
+                if not 'electrical_stimulation_site' in reader.fieldnames:
+                    print('Error: could not find the \'electrical_stimulation_site\' column in \'' + bids_subset_root + '_events.tsv\'')
+                    exit()
+
+                # acquire the onset and electrode-pair for each stimulation
+                trial_onsets = [];
+                trial_stim_pairs = [];
+                for row in reader:
+                    if row['trial_type'].lower() == 'electrical_stimulation':
+                        pair = row['electrical_stimulation_site'].split('-')
+                        if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
+                            print('Error: electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02)')
+                            exit()
+                        trial_onsets.append(row['onset'])
+                        trial_stim_pairs.append(pair)
+
+            # remove stimulus trials which involve non-included (bad or non-ieeg) channels
+            num_trials_excluded = 0
+            for iPair in range(len(trial_stim_pairs) - 1, -1, -1):
+                if not trial_stim_pairs[iPair][0] in channels_include or not trial_stim_pairs[iPair][1] in channels_include:
+                    del trial_onsets[iPair]
+                    del trial_stim_pairs[iPair]
+                    num_trials_excluded += 1
+
+            # print trial information
+            print('Trials removed (due to non-included channels):   ' + str(num_trials_excluded))
+            print('Number of trials remaining:                      ' + str(len(trial_onsets)))
+
+
+            #
+            # read the data
+            #
+
+            # read the dataset
+            extension = subset[subset.rindex("."):]
+            if extension == '.edf':
+
+
+                raw = read_raw_edf(subset, eog=None, misc=None, stim_channel='auto', exclude=(), preload=False, verbose=None)
+
+                pass
+            elif extension == '.vhdr' or extension == '.vmrk' or extension == '.eeg':
+
+                #
+                #bv_header = subset[:subset.rindex(".")] + '.vhdr'
+                #mne.io.read_raw_brainvision(bv_header)
+
+                pass
+            elif extension == '.mefd':
+
+                # read the session metadata
+                session = MefSession(subset, '', read_metadata=True)
+
+                #data_epoch
+
+
+                # loop through the channels
+                #data = dict()
+                #for channel_key in session.session_md['time_series_channels']:
+                    #print(channel_key)
+                    #read_data = session.read_ts_channels_sample(channel_key, [None, None])
+                    #read_data = session.read_ts_channels_uutc(channel_key, [None, None])
+                    #data.update({channel_key: session.read_ts_channels_uutc(channel_key, [None, None])})
+
+                pass
+
+            # perform the detection
+
+
+    else:
+        #
+        print('Warning: participant \'' + subject_label + '\' could not be found, skipping')
+
+
