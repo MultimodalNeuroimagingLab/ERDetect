@@ -2,18 +2,33 @@
 import argparse
 import os
 import csv
+from math import isnan, ceil
 from glob import glob
 
 from bids_validator import BIDSValidator
-from mne.io import read_raw_edf
+from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
-from pymef.mef_file import pymef3_file
+import numpy as np
 
-# valid data format to search for (European Data Format, BrainVision and MEF3)
-VALID_FORMAT_EXTENSIONS = ('.edf', '.vhdr', '.vmrk', '.eeg', '.mefd')
+#
+# constants
+#
+VALID_FORMAT_EXTENSIONS         = ('.edf', '.vhdr', '.vmrk', '.eeg', '.mefd')   # valid data format to search for (European Data Format, BrainVision and MEF3)
+PRESTIM_EPOCH                   = 2.5                                           # the amount of time (in seconds) before the stimulus that will be considered as start of the epoch (for each trial)
+POSTSTIM_EPOCH                  = 2.5                                           # the amount of time (in seconds) before the stimulus that will be considered as end of the epoch (for each trial)
 
+
+#
+# version and helper functions
+#
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'version')).read()
 
+def isNumber(value):
+    try:
+        float(value)
+        return True
+    except:
+        return False
 
 #
 # define and parse the input arguments
@@ -123,10 +138,10 @@ for subject_label in subjects_to_analyze:
         # loop through the subsets for analysis
         for subset in subsets:
 
-            # print subset start
-            print("------")
-            print("Subset:                                          " + subset)
-
+            # message subset start
+            print('------')
+            print('Subset:                                          ' + subset)
+            print('Epoch window:                                    -' + str(PRESTIM_EPOCH) + 's < stim onset < ' + str(POSTSTIM_EPOCH) + 's  (window size ' + str(POSTSTIM_EPOCH + PRESTIM_EPOCH) + 's)')
 
             #
             # gather metadata information
@@ -136,7 +151,7 @@ for subject_label in subjects_to_analyze:
             bids_subjsess_root = os.path.commonprefix(glob(os.path.join(os.path.dirname(subset), '*.*')))[:-1];
             bids_subset_root = subset[:subset.rindex('_')]
 
-            # retrieve the good IEEG (ECOG/SEEG) channels from the channels.tsv file
+            # retrieve the channel metadata from the channels.tsv file
             with open(bids_subjsess_root + '_channels.tsv') as csv_file:
                 reader = csv.DictReader(csv_file, delimiter='\t')
 
@@ -159,7 +174,7 @@ for subject_label in subjects_to_analyze:
                     excluded = False
                     if row['status'].lower() == 'bad':
                         channels_bad.append(row['name'])
-                        excluded = True
+                        #excluded = True
                     if not row['type'].upper() in ('ECOG', 'SEEG'):
                         channels_non_ieeg.append(row['name'])
                         excluded = True
@@ -191,28 +206,45 @@ for subject_label in subjects_to_analyze:
                 trial_stim_pairs = [];
                 for row in reader:
                     if row['trial_type'].lower() == 'electrical_stimulation':
+                        if not isNumber(row['onset']) or isnan(float(row['onset'])):
+                            print('Error: invalid onset \'' + row['onset'] + '\' in events, should be a numeric value')
+                            #exit()
+                            continue
+
                         pair = row['electrical_stimulation_site'].split('-')
                         if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
                             print('Error: electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02)')
                             exit()
-                        trial_onsets.append(row['onset'])
+                        trial_onsets.append(float(row['onset']))
                         trial_stim_pairs.append(pair)
 
             # remove stimulus trials which involve non-included (bad or non-ieeg) channels
-            num_trials_excluded = 0
-            for iPair in range(len(trial_stim_pairs) - 1, -1, -1):
-                if not trial_stim_pairs[iPair][0] in channels_include or not trial_stim_pairs[iPair][1] in channels_include:
-                    del trial_onsets[iPair]
-                    del trial_stim_pairs[iPair]
-                    num_trials_excluded += 1
+            #num_trials_excluded = 0
+            #for iPair in range(len(trial_stim_pairs) - 1, -1, -1):
+            #    if not trial_stim_pairs[iPair][0] in channels_include or not trial_stim_pairs[iPair][1] in channels_include:
+            #        del trial_onsets[iPair]
+            #        del trial_stim_pairs[iPair]
+            #        num_trials_excluded += 1
+
+            # retrieve unique stimulation pairs and their onsets
+            #stim_pairs = dict()
+            #for iPair in range(len(trial_stim_pairs)):
+            #    key = trial_stim_pairs[iPair][0] + "-" + trial_stim_pairs[iPair][1]
+            #    if not key in stim_pairs:
+            #        stim_pairs[key] = []
+            #    stim_pairs[key].append(trial_onsets[iPair])
 
             # print trial information
-            print('Trials removed (due to non-included channels):   ' + str(num_trials_excluded))
-            print('Number of trials remaining:                      ' + str(len(trial_onsets)))
+            #print('Trial(s) removed (due to non-included channels): ' + str(num_trials_excluded))
+            #print('Number of trials remaining:                      ' + str(len(trial_onsets)))
+            #print('Number of unique stimulus pairs:                 ' + str(len(stim_pairs)) + '   (' + '   '.join(stim_pairs) + ')')
+
+            # debug, limit channels
+            channels_include = channels_include[0:4]
 
 
             #
-            # read the data
+            # read the data to a numpy array
             #
 
             # read the dataset
@@ -220,35 +252,141 @@ for subject_label in subjects_to_analyze:
             if extension == '.edf':
 
 
-                raw = read_raw_edf(subset, eog=None, misc=None, stim_channel='auto', exclude=(), preload=False, verbose=None)
+                # Alternative (use pyedflib), low memory usage solution since it's ability to read per channel
+                #from pyedflib import EdfReader
+                #f = EdfReader(subset)
+                #n = f.signals_in_file
+                #signal_labels = f.getSignalLabels()
+                #srate = f.getSampleFrequencies()[0]
+                #size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
+                #size_time_s = int(ceil(size_time_t * srate))
+                #data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                #data.fill(np.nan)
+                #for iChannel in range(len(channels_include)):
+                #    channel_index = signal_labels.index(channels_include[iChannel])
+                #    signal = f.readSignal(channel_index)
+                #    for iTrial in range(len(trial_onsets)):
+                #        sample_start = int(round(trial_onsets[iTrial] * srate))
+                #        data[iTrial, iChannel, :] = signal[sample_start:sample_start + size_time_s]
+                #        if iChannel == 0 and iTrial == 0:
+                #            a = signal[sample_start:sample_start + size_time_s]
+                #            b = signal[701495:701495 + 20]
 
-                pass
+
+                # read the edf data
+                edf = read_raw_edf(subset, eog=None, misc=None, stim_channel=False, exclude=channels_non_ieeg, preload=True, verbose=None)
+
+                # retrieve the sample-rate
+                srate = edf.info['sfreq']
+
+                # calculate the size of the time dimension
+                size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
+                size_time_s = int(ceil(size_time_t * srate))
+
+                # initialize a data buffer (trials x channel x time)
+                # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
+                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data.fill(np.nan)
+
+                # loop through the included channels
+                for iChannel in range(len(channels_include)):
+
+                    # retrieve the index of the channel
+                    try:
+
+                        channel_index = edf.ch_names.index(channels_include[iChannel])
+
+                        # loop through the trials
+                        for iTrial in range(len(trial_onsets)):
+                            sample_start = int(round(trial_onsets[iTrial] * srate))
+                            data[iTrial, iChannel, :] = edf[channel_index, sample_start:sample_start + size_time_s][0]
+
+                            if iChannel == 0 and iTrial == 0:
+                                a = edf[channel_index, sample_start:sample_start + size_time_s][0]
+                                b = edf[channel_index, 701495:701495 + 20][0]
+
+                    except ValueError:
+                        print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
+                        exit()
+
+                #edf.close()
+                #del edf
+
             elif extension == '.vhdr' or extension == '.vmrk' or extension == '.eeg':
 
-                #
-                #bv_header = subset[:subset.rindex(".")] + '.vhdr'
-                #mne.io.read_raw_brainvision(bv_header)
+                # read the BrainVision data
+                bv = read_raw_brainvision(subset[:subset.rindex(".")] + '.vhdr', preload=True)
 
-                pass
+                # retrieve the sample-rate
+                srate = round(bv.info['sfreq'])
+
+                # calculate the size of the time dimension
+                size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
+                size_time_s = int(ceil(size_time_t * srate))
+
+                # initialize a data buffer (trials x channel x time)
+                # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
+                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data.fill(np.nan)
+
+                # loop through the included channels
+                for iChannel in range(len(channels_include)):
+
+                    # retrieve the index of the channel
+                    try:
+
+                        channel_index = bv.info['ch_names'].index(channels_include[iChannel])
+
+                        # loop through the trials
+                        for iTrial in range(len(trial_onsets)):
+                            sample_start = int(round(trial_onsets[iTrial] * srate))
+                            data[iTrial, iChannel, :] = bv[channel_index, sample_start:sample_start + size_time_s][0]
+
+                            if iChannel == 0 and iTrial == 0:
+                                a = bv[channel_index, sample_start:sample_start + size_time_s][0]
+                                b = bv[channel_index, 701495:701495 + 200][0]
+
+                    except ValueError:
+                        print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
+                        exit()
+
             elif extension == '.mefd':
-
+                
                 # read the session metadata
-                session = MefSession(subset, '', read_metadata=True)
+                mef = MefSession(subset, '', read_metadata=True)
 
-                #data_epoch
+                # retrieve the sample-rate
+                srate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
 
+                # calculate the size of the time dimension
+                size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
+                size_time_s = int(ceil(size_time_t * srate))
 
-                # loop through the channels
-                #data = dict()
-                #for channel_key in session.session_md['time_series_channels']:
-                    #print(channel_key)
-                    #read_data = session.read_ts_channels_sample(channel_key, [None, None])
-                    #read_data = session.read_ts_channels_uutc(channel_key, [None, None])
-                    #data.update({channel_key: session.read_ts_channels_uutc(channel_key, [None, None])})
+                # initialize a data buffer (trials x channel x time)
+                # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
+                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data.fill(np.nan)
 
-                pass
+                # loop through the included channels
+                for iChannel in range(len(channels_include)):
 
+                    # load the channel data
+                    #channel_data = mef.read_ts_channels_uutc(channels_include[iChannel], [None, None])
+                    channel_data = mef.read_ts_channels_sample(channels_include[iChannel], [None, None])
+
+                    # loop through the trials
+                    for iTrial in range(len(trial_onsets)):
+                        sample_start = int(round(trial_onsets[iTrial] * srate))
+                        data[iTrial, iChannel, :] = channel_data[sample_start:sample_start + size_time_s]
+
+                        if iChannel == 0 and iTrial == 0:
+                            a = channel_data[sample_start:sample_start + size_time_s]
+                            b = channel_data[701495:701495 + 20]
+
+            #
             # perform the detection
+            #
+
 
 
     else:
