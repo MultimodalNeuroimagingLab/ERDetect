@@ -2,13 +2,15 @@
 import argparse
 import os
 import csv
-from math import isnan, ceil
+from math import isnan, ceil, floor
 from glob import glob
 
 from bids_validator import BIDSValidator
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 #
 # constants
@@ -16,7 +18,8 @@ import numpy as np
 VALID_FORMAT_EXTENSIONS         = ('.edf', '.vhdr', '.vmrk', '.eeg', '.mefd')   # valid data format to search for (European Data Format, BrainVision and MEF3)
 PRESTIM_EPOCH                   = 2.5                                           # the amount of time (in seconds) before the stimulus that will be considered as start of the epoch (for each trial)
 POSTSTIM_EPOCH                  = 2.5                                           # the amount of time (in seconds) before the stimulus that will be considered as end of the epoch (for each trial)
-
+SUBPLOT_LAYOUT_RATIO            = (4, 3)
+OUTPUT_IMAGE_RESOLUTION         = (1024, 768)                                   # ; it is advisable to koop the resolution ratio in line with the SUBPLOT_LAYOUT_RATIO
 
 #
 # version and helper functions
@@ -29,6 +32,22 @@ def isNumber(value):
         return True
     except:
         return False
+
+# determine number of rows and columns for a plot given a specific n and a desired layout ratio
+def getPlotLayout(layout, n):
+    dirHor = layout[0] >= layout[1]
+    ratio = (layout[1] / layout[0]) if dirHor else (layout[0] / layout[1])
+    for ncols in range(1, n):
+        nrows = ncols * ratio
+        if not int(ncols * ratio) == nrows:
+            nrows = floor(nrows) if n <= ncols * floor(nrows) else ceil(nrows)
+        else:
+            nrows = int(nrows)
+        if n <= ncols * nrows:
+            break
+    return (ncols, nrows) if dirHor else (nrows, ncols)
+
+
 
 #
 # define and parse the input arguments
@@ -57,6 +76,9 @@ parser.add_argument('--format_extension',
                          'Data Format (''.edf''), BrainVision (''.vhdr'', ''.vmrk'', ''.eeg'') and MEF3 (''.mefd'') '
                          'formats will be included. Multiple formats can be specified with a space separated list.',
                     nargs="+")
+parser.add_argument('--no_concat_bidirectional_pairs',
+                    help='Do not concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)',
+                    action='store_true')
 parser.add_argument('--skip_bids_validator',
                     help='Whether or not to perform BIDS dataset validation',
                     action='store_true')
@@ -142,6 +164,8 @@ for subject_label in subjects_to_analyze:
             print('------')
             print('Subset:                                          ' + subset)
             print('Epoch window:                                    -' + str(PRESTIM_EPOCH) + 's < stim onset < ' + str(POSTSTIM_EPOCH) + 's  (window size ' + str(POSTSTIM_EPOCH + PRESTIM_EPOCH) + 's)')
+            print('Concatenate bidirectional stimulated pairs:      ' + ('No' if args.no_concat_bidirectional_pairs else 'Yes'))
+
 
             #
             # gather metadata information
@@ -186,6 +210,11 @@ for subject_label in subjects_to_analyze:
             print('Non-IEEG channels:                               ' + ' '.join(channels_non_ieeg))
             print('Included channels:                               ' + ' '.join(channels_include))
 
+            # check if there are channels
+            if len(channels_include) == 0:
+                print('Error: no channels were found')
+                exit()
+
             # retrieve the electrical stimulation trials (onsets and pairs) from the events.tsv file
             with open(bids_subset_root + '_events.tsv') as csv_file:
                 reader = csv.DictReader(csv_file, delimiter='\t')
@@ -202,8 +231,8 @@ for subject_label in subjects_to_analyze:
                     exit()
 
                 # acquire the onset and electrode-pair for each stimulation
-                trial_onsets = [];
-                trial_stim_pairs = [];
+                trials_onset = [];
+                trials_pair = [];
                 for row in reader:
                     if row['trial_type'].lower() == 'electrical_stimulation':
                         if not isNumber(row['onset']) or isnan(float(row['onset'])):
@@ -215,32 +244,16 @@ for subject_label in subjects_to_analyze:
                         if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
                             print('Error: electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02)')
                             exit()
-                        trial_onsets.append(float(row['onset']))
-                        trial_stim_pairs.append(pair)
+                        trials_onset.append(float(row['onset']))
+                        trials_pair.append(pair)
 
-            # remove stimulus trials which involve non-included (bad or non-ieeg) channels
-            #num_trials_excluded = 0
-            #for iPair in range(len(trial_stim_pairs) - 1, -1, -1):
-            #    if not trial_stim_pairs[iPair][0] in channels_include or not trial_stim_pairs[iPair][1] in channels_include:
-            #        del trial_onsets[iPair]
-            #        del trial_stim_pairs[iPair]
-            #        num_trials_excluded += 1
-
-            # retrieve unique stimulation pairs and their onsets
-            #stim_pairs = dict()
-            #for iPair in range(len(trial_stim_pairs)):
-            #    key = trial_stim_pairs[iPair][0] + "-" + trial_stim_pairs[iPair][1]
-            #    if not key in stim_pairs:
-            #        stim_pairs[key] = []
-            #    stim_pairs[key].append(trial_onsets[iPair])
-
-            # print trial information
-            #print('Trial(s) removed (due to non-included channels): ' + str(num_trials_excluded))
-            #print('Number of trials remaining:                      ' + str(len(trial_onsets)))
-            #print('Number of unique stimulus pairs:                 ' + str(len(stim_pairs)) + '   (' + '   '.join(stim_pairs) + ')')
+            # check if there are trials
+            if len(trials_onset) == 0:
+                print('Error: no trials were found')
+                exit()
 
             # debug, limit channels
-            channels_include = channels_include[0:4]
+            #channels_include = channels_include[0:4]
 
 
             #
@@ -252,7 +265,7 @@ for subject_label in subjects_to_analyze:
             if extension == '.edf':
 
 
-                # Alternative (use pyedflib), low memory usage solution since it's ability to read per channel
+                # Alternative (use pyedflib), low memory usage solution since it has the ability to read per channel
                 #from pyedflib import EdfReader
                 #f = EdfReader(subset)
                 #n = f.signals_in_file
@@ -260,21 +273,18 @@ for subject_label in subjects_to_analyze:
                 #srate = f.getSampleFrequencies()[0]
                 #size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
                 #size_time_s = int(ceil(size_time_t * srate))
-                #data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                #data = np.empty((len(trials_onset), len(channels_include), size_time_s))
                 #data.fill(np.nan)
                 #for iChannel in range(len(channels_include)):
                 #    channel_index = signal_labels.index(channels_include[iChannel])
                 #    signal = f.readSignal(channel_index)
-                #    for iTrial in range(len(trial_onsets)):
-                #        sample_start = int(round(trial_onsets[iTrial] * srate))
+                #    for iTrial in range(len(trials_onset)):
+                #        sample_start = int(round(trials_onset[iTrial] * srate))
                 #        data[iTrial, iChannel, :] = signal[sample_start:sample_start + size_time_s]
-                #        if iChannel == 0 and iTrial == 0:
-                #            a = signal[sample_start:sample_start + size_time_s]
-                #            b = signal[701495:701495 + 20]
 
 
                 # read the edf data
-                edf = read_raw_edf(subset, eog=None, misc=None, stim_channel=False, exclude=channels_non_ieeg, preload=True, verbose=None)
+                edf = read_raw_edf(subset, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
 
                 # retrieve the sample-rate
                 srate = edf.info['sfreq']
@@ -283,34 +293,29 @@ for subject_label in subjects_to_analyze:
                 size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials x channel x time)
+                # initialize a data buffer (trials/epochs x channel x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the included channels
                 for iChannel in range(len(channels_include)):
 
-                    # retrieve the index of the channel
+                    # (try to) retrieve the index of the channel
                     try:
-
                         channel_index = edf.ch_names.index(channels_include[iChannel])
 
                         # loop through the trials
-                        for iTrial in range(len(trial_onsets)):
-                            sample_start = int(round(trial_onsets[iTrial] * srate))
+                        for iTrial in range(len(trials_onset)):
+                            sample_start = int(round(trials_onset[iTrial] * srate))
                             data[iTrial, iChannel, :] = edf[channel_index, sample_start:sample_start + size_time_s][0]
-
-                            if iChannel == 0 and iTrial == 0:
-                                a = edf[channel_index, sample_start:sample_start + size_time_s][0]
-                                b = edf[channel_index, 701495:701495 + 20][0]
 
                     except ValueError:
                         print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
                         exit()
 
-                #edf.close()
-                #del edf
+                edf.close()
+                del edf
 
             elif extension == '.vhdr' or extension == '.vmrk' or extension == '.eeg':
 
@@ -324,34 +329,29 @@ for subject_label in subjects_to_analyze:
                 size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials x channel x time)
+                # initialize a data buffer (trials/epochs x channel x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the included channels
                 for iChannel in range(len(channels_include)):
 
-                    # retrieve the index of the channel
+                    # (try to) retrieve the index of the channel
                     try:
-
                         channel_index = bv.info['ch_names'].index(channels_include[iChannel])
 
                         # loop through the trials
-                        for iTrial in range(len(trial_onsets)):
-                            sample_start = int(round(trial_onsets[iTrial] * srate))
+                        for iTrial in range(len(trials_onset)):
+                            sample_start = int(round(trials_onset[iTrial] * srate))
                             data[iTrial, iChannel, :] = bv[channel_index, sample_start:sample_start + size_time_s][0]
-
-                            if iChannel == 0 and iTrial == 0:
-                                a = bv[channel_index, sample_start:sample_start + size_time_s][0]
-                                b = bv[channel_index, 701495:701495 + 200][0]
 
                     except ValueError:
                         print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
                         exit()
 
             elif extension == '.mefd':
-                
+
                 # read the session metadata
                 mef = MefSession(subset, '', read_metadata=True)
 
@@ -362,9 +362,9 @@ for subject_label in subjects_to_analyze:
                 size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials x channel x time)
+                # initialize a data buffer (trials/epochs x channel x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trial_onsets), len(channels_include), size_time_s))
+                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the included channels
@@ -375,19 +375,120 @@ for subject_label in subjects_to_analyze:
                     channel_data = mef.read_ts_channels_sample(channels_include[iChannel], [None, None])
 
                     # loop through the trials
-                    for iTrial in range(len(trial_onsets)):
-                        sample_start = int(round(trial_onsets[iTrial] * srate))
+                    for iTrial in range(len(trials_onset)):
+                        sample_start = int(round(trials_onset[iTrial] * srate))
                         data[iTrial, iChannel, :] = channel_data[sample_start:sample_start + size_time_s]
 
-                        if iChannel == 0 and iTrial == 0:
-                            a = channel_data[sample_start:sample_start + size_time_s]
-                            b = channel_data[701495:701495 + 20]
+
+            #
+            #TODO: check for invalid data (could happen when onset is wrong etc.)
+
+            #
+            # retrieve the stimulation-pairs and for each pair take the average over trials
+            # (note that the 'no_concat_bidirectional_pairs' argument is taken into account here)
+            #
+
+            # variable to store the stimulation pairs in
+            pairs_label = []
+            pairs_trials = []
+
+            # loop through al possible channel/electrode combinations
+            for iChannel0 in range(len(channels_include)):
+                for iChannel1 in range(len(channels_include)):
+
+                    # retrieve the indices of all the trials that concern this stim-pair
+                    indices = []
+                    if args.no_concat_bidirectional_pairs:
+                        # do not concatenate bidirectional pairs, pair order matters
+                        indices = [i for i, x in enumerate(trials_pair) if
+                                   x[0] == channels_include[iChannel0] and x[1] == channels_include[iChannel1]]
+
+                    else:
+                        # allow concatenation of bidirectional pairs, pair order does not matter
+                        if not iChannel1 < iChannel0:
+                            # unique pairs while ignoring pair order
+                            indices = [i for i, x in enumerate(trials_pair) if
+                                       (x[0] == channels_include[iChannel0] and x[1] == channels_include[iChannel1]) or (x[0] == channels_include[iChannel1] and x[1] == channels_include[iChannel0])]
+
+                    # add the pair if there are trials for it
+                    if len(indices) > 0:
+                        pairs_label.append(channels_include[iChannel0] + '-' + channels_include[iChannel1])
+                        pairs_trials.append(indices)
+
+            # display Pair/Trial information
+            print('Stimulation pairs:                               ' + str(len(pairs_label)))
+            for iPair in range(len(pairs_label)):
+                if iPair % 10 == 0:
+                    print('                                                 ', end='');
+                print(str(pairs_label[iPair]) + ' (' + str(len(pairs_trials[iPair])) + ' trials)   ', end='')
+                if iPair > 0 and ((iPair + 1) % 10 == 0):
+                    print('')
+
+            # create a variable to store each stimulation-pair average in (stim-pair x channel x time)
+            pairs_average = np.empty((len(pairs_label), len(channels_include), size_time_s))
+            pairs_average.fill(np.nan)
+
+            # for each stimulation-pair, calculate the average over trials
+            for iPair in range(len(pairs_label)):
+                pairs_average[iPair, :, :] = np.nanmean(data[pairs_trials[iPair], :, :], axis=0)
+
 
             #
             # perform the detection
             #
 
+            #TODO:
 
+
+
+            #
+            # generate the electrodes plot
+            #
+
+            # determine the electrode subplot layout
+            ncols, nrows = getPlotLayout(SUBPLOT_LAYOUT_RATIO, len(channels_include))
+
+            # create a figure, a subplot and resize the figure to the image output resolution
+            #from matplotlib.figure import Figure
+            #fig = Figure()
+            fig = plt.figure()
+            #axs = fig.subplots(nrows=nrows, ncols=ncols)
+            #fig, axs = plt.subplots(nrows=nrows, ncols=ncols)
+            DPI = fig.get_dpi()
+            fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
+
+            # loop through the electrode plots
+            for iElec in range(len(channels_include)):
+
+                # determine the x and y of the plot
+                y = floor(iElec / ncols)
+                x = iElec - y * ncols
+
+                # add the subplot
+                ax = fig.add_subplot(nrows, ncols, iElec + 1)
+
+                #
+                ax.set_title(channels_include[iElec])
+
+                #axs[0, 0].plot(x, y)
+                #ax.plot(range(1, 6), data[i])
+
+                # x axis
+                if y == nrows - 1:
+                    ax.set_xlabel('Time')
+                else:
+                    ax.get_xaxis().set_ticks([])
+
+                # y axis
+                if x == 0:
+                    ax.set_ylabel('Signal')
+                else:
+                    ax.get_yaxis().set_ticks([])
+
+
+            #fig.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
+            #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight', pad_inches = 0)
+            #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
 
     else:
         #
