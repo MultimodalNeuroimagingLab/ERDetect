@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+
+# Early response detection - docker entry-point
+# =====================================================
+# Entry point script for the automatic detection of early responses (N1) in CCEP data.
+#
+#
+# Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+#
+# This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import argparse
 import os
 import csv
@@ -260,6 +273,8 @@ for subject_label in subjects_to_analyze:
             # read the data to a numpy array
             #
 
+            #TODO: handle different units in types
+
             # read the dataset
             extension = subset[subset.rindex("."):]
             if extension == '.edf':
@@ -432,12 +447,18 @@ for subject_label in subjects_to_analyze:
             for iPair in range(len(pairs_label)):
                 pairs_average[iPair, :, :] = np.nanmean(data[pairs_trials[iPair], :, :], axis=0)
 
+            # calculate average signal per electrode over all pairs
+            pairs_electrode_average = np.nanmean(pairs_average, axis=0)
+
+            # calculate average signal per pair over all electrodes
+            pairs_pairs_average = np.nanmean(pairs_average, axis=1)
+
 
             #
             # perform the detection
             #
 
-            #TODO:
+            #TODO: N1 detection
 
 
 
@@ -448,44 +469,108 @@ for subject_label in subjects_to_analyze:
             # determine the electrode subplot layout
             ncols, nrows = getPlotLayout(SUBPLOT_LAYOUT_RATIO, len(channels_include))
 
-            # create a figure, a subplot and resize the figure to the image output resolution
+            # create a figure and resize the figure to the image output resolution
             #from matplotlib.figure import Figure
             #fig = Figure()
             fig = plt.figure()
-            #axs = fig.subplots(nrows=nrows, ncols=ncols)
-            #fig, axs = plt.subplots(nrows=nrows, ncols=ncols)
             DPI = fig.get_dpi()
             fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
 
-            # loop through the electrode plots
+            # generate the x-axis values
+            x = np.arange(size_time_s)
+            x = x / srate - PRESTIM_EPOCH
+
+            # loop through the electrodes
             for iElec in range(len(channels_include)):
 
                 # determine the x and y of the plot
-                y = floor(iElec / ncols)
-                x = iElec - y * ncols
+                y_plot = floor(iElec / ncols)
+                x_plot = iElec - y_plot * ncols
 
                 # add the subplot
                 ax = fig.add_subplot(nrows, ncols, iElec + 1)
 
                 #
-                ax.set_title(channels_include[iElec])
+                ax.set_title(channels_include[iElec], fontsize=10)
 
-                #axs[0, 0].plot(x, y)
-                #ax.plot(range(1, 6), data[i])
+                # plot each pair
+                for iPair in range(len(pairs_label)):
+                    ax.plot(x, pairs_average[iPair, iElec, :], linewidth=0.50)
+
+                # plot the average over pairs
+                ax.plot(x, pairs_electrode_average[iElec, :], linewidth=0.60, color='black')
 
                 # x axis
-                if y == nrows - 1:
-                    ax.set_xlabel('Time')
+                if iElec > len(channels_include) - ncols - 1:
+                    ax.set_xlabel('Time (in secs)')
                 else:
                     ax.get_xaxis().set_ticks([])
 
                 # y axis
-                if x == 0:
+                if x_plot == 0:
                     ax.set_ylabel('Signal')
                 else:
                     ax.get_yaxis().set_ticks([])
 
+            # display/save figure
+            fig.show()
+            #fig.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
+            #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight', pad_inches = 0)
+            #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
 
+
+            #
+            # generate the pairs plot
+            #
+
+            # determine the pairs subplot layout
+            ncols, nrows = getPlotLayout(SUBPLOT_LAYOUT_RATIO, len(pairs_label))
+
+            # create a figure and resize the figure to the image output resolution
+            #from matplotlib.figure import Figure
+            #fig = Figure()
+            fig = plt.figure()
+            DPI = fig.get_dpi()
+            fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
+
+            # generate the x-axis values
+            x = np.arange(size_time_s)
+            x = x / srate - PRESTIM_EPOCH
+
+            # loop through the stimulation-pairs
+            for iPair in range(len(pairs_label)):
+
+                # determine the x and y of the plot
+                y_plot = floor(iPair / ncols)
+                x_plot = iPair - y_plot * ncols
+
+                # add the subplot
+                ax = fig.add_subplot(nrows, ncols, iPair + 1)
+
+                #
+                ax.set_title(pairs_label[iPair], fontsize=10)
+
+                # plot each electrode
+                for iElec in range(len(channels_include)):
+                    ax.plot(x, pairs_average[iPair, iElec, :], linewidth=0.50)
+
+                # plot the average over pairs
+                ax.plot(x, pairs_pairs_average[iPair, :], linewidth=0.60, color='black')
+
+                # x axis
+                if iPair > len(pairs_label) - ncols - 1:
+                    ax.set_xlabel('Time (in secs)')
+                else:
+                    ax.get_xaxis().set_ticks([])
+
+                # y axis
+                if x_plot == 0:
+                    ax.set_ylabel('Signal')
+                else:
+                    ax.get_yaxis().set_ticks([])
+
+            # display/save figure
+            fig.show()
             #fig.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
             #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight', pad_inches = 0)
             #plt.savefig(os.path.join(args.output_dir, 'electrodes.png'), bbox_inches='tight')
