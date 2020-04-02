@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
+"""
+Early response detection - docker entry-point
+=====================================================
+Entry-point python script for the automatic detection of early responses (N1) in CCEP data.
 
-# Early response detection - docker entry-point
-# =====================================================
-# Entry point script for the automatic detection of early responses (N1) in CCEP data.
-#
-#
-# Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
-#
-# This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
-# as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
-# You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
 import argparse
 import os
 import csv
@@ -25,8 +26,6 @@ import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
 
-
-# D:\BIDS_test D:\output --participant_label sub-MSEL01877 --subset_search_pattern task-ccep_run-01 --format_extension .mefd
 
 #
 # constants
@@ -44,9 +43,11 @@ OUTPUT_IMAGE_RESOLUTION         = (2000, 2000)                                  
 #
 # version and helper functions
 #
+
 __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'version')).read()
 
-def isNumber(value):
+
+def is_number(value):
     try:
         float(value)
         return True
@@ -241,7 +242,7 @@ for subject_label in subjects_to_analyze:
                 trials_pair = []
                 for row in reader:
                     if row['trial_type'].lower() == 'electrical_stimulation':
-                        if not isNumber(row['onset']) or isnan(float(row['onset'])):
+                        if not is_number(row['onset']) or isnan(float(row['onset'])):
                             print('Error: invalid onset \'' + row['onset'] + '\' in events, should be a numeric value')
                             #exit()
                             continue
@@ -266,7 +267,7 @@ for subject_label in subjects_to_analyze:
             # read the data to a numpy array
             #
 
-            #TODO: handle different units in types
+            # TODO: handle different units in types
 
             # read the dataset
             extension = subset[subset.rindex("."):]
@@ -281,14 +282,14 @@ for subject_label in subjects_to_analyze:
                 #srate = f.getSampleFrequencies()[0]
                 #size_time_t = POSTSTIM_EPOCH + PRESTIM_EPOCH
                 #size_time_s = int(ceil(size_time_t * srate))
-                #data = np.empty((len(trials_onset), len(channels_include), size_time_s))
+                #data = np.empty((len(channels_include), len(trials_onset), size_time_s))
                 #data.fill(np.nan)
                 #for iChannel in range(len(channels_include)):
                 #    channel_index = signal_labels.index(channels_include[iChannel])
                 #    signal = f.readSignal(channel_index)
                 #    for iTrial in range(len(trials_onset)):
                 #        sample_start = int(round(trials_onset[iTrial] * srate))
-                #        data[iTrial, iChannel, :] = signal[sample_start:sample_start + size_time_s]
+                #        data[iChannel, iTrial, :] = signal[sample_start:sample_start + size_time_s]
 
 
                 # read the edf data
@@ -301,9 +302,9 @@ for subject_label in subjects_to_analyze:
                 size_time_t = abs(TRIAL_EPOCH_END - TRIAL_EPOCH_START)
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials/epochs x channel x time)
+                # initialize a data buffer (channel x trials/epochs x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
+                data = np.empty((len(channels_include), len(trials_onset), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the included channels
@@ -316,7 +317,7 @@ for subject_label in subjects_to_analyze:
                         # loop through the trials
                         for iTrial in range(len(trials_onset)):
                             sample_start = int(round((trials_onset[iTrial] + TRIAL_EPOCH_START) * srate))
-                            data[iTrial, iChannel, :] = edf[channel_index, sample_start:sample_start + size_time_s][0]
+                            data[iChannel, iTrial, :] = edf[channel_index, sample_start:sample_start + size_time_s][0]
 
                     except ValueError:
                         print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
@@ -337,9 +338,9 @@ for subject_label in subjects_to_analyze:
                 size_time_t = abs(TRIAL_EPOCH_END - TRIAL_EPOCH_START)
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials/epochs x channel x time)
+                # initialize a data buffer (channel x trials/epochs x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
+                data = np.empty((len(channels_include), len(trials_onset), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the included channels
@@ -352,7 +353,7 @@ for subject_label in subjects_to_analyze:
                         # loop through the trials
                         for iTrial in range(len(trials_onset)):
                             sample_start = int(round((trials_onset[iTrial] + TRIAL_EPOCH_START) * srate))
-                            data[iTrial, iChannel, :] = bv[channel_index, sample_start:sample_start + size_time_s][0]
+                            data[iChannel, iTrial, :] = bv[channel_index, sample_start:sample_start + size_time_s][0]
 
                     except ValueError:
                         print('Error: could not find channel \'' + channels_include[iChannel] + '\' in dataset')
@@ -370,9 +371,9 @@ for subject_label in subjects_to_analyze:
                 size_time_t = abs(TRIAL_EPOCH_END - TRIAL_EPOCH_START)
                 size_time_s = int(ceil(size_time_t * srate))
 
-                # initialize a data buffer (trials/epochs x channel x time)
+                # initialize a data buffer (channel x trials/epochs x time)
                 # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-                data = np.empty((len(trials_onset), len(channels_include), size_time_s))
+                data = np.empty((len(channels_include), len(trials_onset), size_time_s))
                 data.fill(np.nan)
 
                 # loop through the trials
@@ -380,24 +381,24 @@ for subject_label in subjects_to_analyze:
                     sample_start = int(round((trials_onset[iTrial] + TRIAL_EPOCH_START) * srate))
                     sample_end = sample_start + size_time_s
 
-                    #TODO: check if sample_start and sample_end are within range
+                    # TODO: check if sample_start and sample_end are within range
 
                     # load the trial data
                     trial_data = mef.read_ts_channels_sample(channels_include, [sample_start, sample_end])
 
                     # loop through the channels
                     for iChannel in range(len(channels_include)):
-                        data[iTrial, iChannel, :] = trial_data[iChannel]
+                        data[iChannel, iTrial, :] = trial_data[iChannel]
 
             #
-            #TODO: check for invalid data (trial, channel etc; could happen when onset is wrong etc.)
+            # TODO: check for invalid data (trial, channel etc; could happen when onset is wrong etc.)
 
 
             #
             # baseline substract
             #
 
-            #TODO: check if the baseline (epoch) window is within the trial epoch
+            # TODO: check if the baseline (epoch) window is within the trial epoch
 
             # determine the start and end sample of the baseline epoch
             baseline_start = int(round(abs(TRIAL_EPOCH_START - BASELINE_EPOCH_START) * srate))
@@ -406,8 +407,8 @@ for subject_label in subjects_to_analyze:
             # subtract the baseline median per trial
             for iTrial in range(len(trials_onset)):
                 for iChannel in range(len(channels_include)):
-                    data[iTrial, iChannel, :] = data[iTrial, iChannel, :] - np.nanmedian(data[iTrial, iChannel, baseline_start:baseline_end])
-                    #data[iTrial, iChannel, :] = data[iTrial, iChannel, :] - np.nanmean(data[iTrial, iChannel, baseline_start:baseline_end])
+                    data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmedian(data[iChannel, iTrial, baseline_start:baseline_end])
+                    #data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmean(data[iChannel, iTrial, baseline_start:baseline_end])
 
 
             #
@@ -454,27 +455,19 @@ for subject_label in subjects_to_analyze:
                 if iPair > 0 and ((iPair + 1) % 10 == 0):
                     print('')
 
-            # create a variable to store each stimulation-pair average in (stim-pair x channel x time)
-            pairs_average = np.empty((len(pairs_label), len(channels_include), size_time_s))
+            # create a variable to store each stimulation-pair average in (channel x stim-pair x time)
+            pairs_average = np.empty((len(channels_include), len(pairs_label), size_time_s))
             pairs_average.fill(np.nan)
 
             # for each stimulation-pair, calculate the average over trials
             for iPair in range(len(pairs_label)):
-                pairs_average[iPair, :, :] = np.nanmean(data[pairs_trialsIdx[iPair], :, :], axis=0)
-
-
+                pairs_average[:, iPair, :] = np.nanmean(data[:, pairs_trialsIdx[iPair], :], axis=1)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
             for iPair in range(len(pairs_label)):
-                pairs_average[iPair, pairs_stim_electrodesIdx[iPair][0], :] = np.nan
-                pairs_average[iPair, pairs_stim_electrodesIdx[iPair][1], :] = np.nan
+                pairs_average[pairs_stim_electrodesIdx[iPair][0], iPair, :] = np.nan
+                pairs_average[pairs_stim_electrodesIdx[iPair][1], iPair, :] = np.nan
 
-
-            # calculate average signal per electrode over all pairs
-            #pairs_electrode_average = np.nanmean(pairs_average, axis=0)
-
-            # calculate average signal per pair over all electrodes
-            #pairs_pairs_average = np.nanmean(pairs_average, axis=1)
 
             #
             # intermediate saving of the data as .mat
@@ -486,8 +479,8 @@ for subject_label in subjects_to_analyze:
             # perform the detection
             #
 
-            #TODO: N1 detection
-
+            # TODO: N1 detection
+            #ieeg_detect_n1peak()
 
             #
             # prepare some settings for plotting
@@ -543,7 +536,7 @@ for subject_label in subjects_to_analyze:
                     ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                     # retrieve the signal
-                    y = pairs_average[iPair, iElec, :]
+                    y = pairs_average[iElec, iPair, :]
                     y = y / 500
                     y = y + iPair + 1
 
@@ -607,7 +600,7 @@ for subject_label in subjects_to_analyze:
                     ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                     # retrieve the signal
-                    y = pairs_average[iPair, iElec, :]
+                    y = pairs_average[iElec, iPair, :]
                     y = y / 500
                     y = y + iElec + 1
 
