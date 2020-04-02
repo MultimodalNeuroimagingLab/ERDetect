@@ -16,8 +16,9 @@ You should have received a copy of the GNU General Public License along with thi
 import argparse
 import os
 import csv
-from math import isnan, ceil, floor
+from math import isnan, ceil
 from glob import glob
+from functions.ieeg_detect_n1peak import ieeg_detect_n1peaks
 
 from bids_validator import BIDSValidator
 from mne.io import read_raw_edf, read_raw_brainvision
@@ -39,6 +40,8 @@ DISPLAY_X_RANGE                 = (-0.2, 1)                                     
 DISPLAY_STIM_RANGE              = (-0.015, 0.0025)                               # the range
 SUBPLOT_LAYOUT_RATIO            = (4, 3)
 OUTPUT_IMAGE_RESOLUTION         = (2000, 2000)                                   # ; it is advisable to koop the resolution ratio in line with the SUBPLOT_LAYOUT_RATIO
+GENERATE_ELECTRODE_IMAGES       = True
+GENERATE_STIMPAIR_IMAGES        = True
 
 #
 # version and helper functions
@@ -456,23 +459,23 @@ for subject_label in subjects_to_analyze:
                     print('')
 
             # create a variable to store each stimulation-pair average in (channel x stim-pair x time)
-            pairs_average = np.empty((len(channels_include), len(pairs_label), size_time_s))
-            pairs_average.fill(np.nan)
+            ccep_averages = np.empty((len(channels_include), len(pairs_label), size_time_s))
+            ccep_averages.fill(np.nan)
 
             # for each stimulation-pair, calculate the average over trials
             for iPair in range(len(pairs_label)):
-                pairs_average[:, iPair, :] = np.nanmean(data[:, pairs_trialsIdx[iPair], :], axis=1)
+                ccep_averages[:, iPair, :] = np.nanmean(data[:, pairs_trialsIdx[iPair], :], axis=1)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
             for iPair in range(len(pairs_label)):
-                pairs_average[pairs_stim_electrodesIdx[iPair][0], iPair, :] = np.nan
-                pairs_average[pairs_stim_electrodesIdx[iPair][1], iPair, :] = np.nan
+                ccep_averages[pairs_stim_electrodesIdx[iPair][0], iPair, :] = np.nan
+                ccep_averages[pairs_stim_electrodesIdx[iPair][1], iPair, :] = np.nan
 
 
             #
             # intermediate saving of the data as .mat
             #
-            sio.savemat(os.path.join(args.output_dir, 'average_ccep.mat'), {'average_ccep': pairs_average})
+            sio.savemat(os.path.join(args.output_dir, 'average_ccep.mat'), {'average_ccep': ccep_averages})
 
 
             #
@@ -481,158 +484,180 @@ for subject_label in subjects_to_analyze:
 
             # TODO: N1 detection
             #ieeg_detect_n1peak()
+            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1peaks(ccep_averages, int(round(abs(TRIAL_EPOCH_START * srate))), int(srate))
 
             #
-            # prepare some settings for plotting
+            if GENERATE_ELECTRODE_IMAGES or GENERATE_STIMPAIR_IMAGES:
+
+                #
+                # prepare some settings for plotting
+                #
+
+                # generate the x-axis values
+                x = np.arange(size_time_s)
+                x = x / srate + TRIAL_EPOCH_START
+
+                # determine the range on the x axis where the stimulus was in samples
+                x_stim_start = int(round(abs(TRIAL_EPOCH_START - DISPLAY_STIM_RANGE[0]) * srate)) - 1
+                x_stim_end = x_stim_start + int(ceil(abs(DISPLAY_STIM_RANGE[1] - DISPLAY_STIM_RANGE[0]) * srate)) - 1
+
+                # calculate the legend x position
+                x_legend = DISPLAY_X_RANGE[1] - .13
+
+                # adjust line and font sizes to resolution
+                zero_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 2000
+                signal_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 2000
+                legend_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 500
+                title_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 80)
+                axis_label_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 85)
+                axis_texts_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 100)
+                legend_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 90)
+
+
             #
+            if GENERATE_ELECTRODE_IMAGES:
 
-            # generate the x-axis values
-            x = np.arange(size_time_s) + 1
-            x = x / srate + TRIAL_EPOCH_START
+                #
+                # generate the electrodes plot
+                #
 
-            # determine the range on the x axis where the stimulus was in samples
-            x_stim_start = int(round(abs(TRIAL_EPOCH_START - DISPLAY_STIM_RANGE[0]) * srate)) - 1
-            x_stim_end = x_stim_start + int(ceil(abs(DISPLAY_STIM_RANGE[1] - DISPLAY_STIM_RANGE[0]) * srate)) - 1
+                # loop through electrodes
+                for iElec in range(len(channels_include)):
 
-            # calculate the legend x position
-            x_legend = DISPLAY_X_RANGE[1] - .13
+                    # create a figure and resize the figure to the image output resolution
+                    from matplotlib.figure import Figure
+                    fig = Figure()
+                    #fig = plt.figure()
+                    DPI = fig.get_dpi()
+                    fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
 
-            # adjust line and font sizes to resolution
-            zero_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 2000
-            signal_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 2000
-            legend_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 500
-            title_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 80)
-            axis_label_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 85)
-            axis_texts_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 100)
-            legend_font_size = round(OUTPUT_IMAGE_RESOLUTION[0] / 90)
+                    # retrieve the figure it's axis
+                    ax = fig.gca()
+
+                    # set the title
+                    ax.set_title(channels_include[iElec], fontSize=title_font_size, fontweight='bold')
+
+                    # loop through the stimulation-pairs
+                    for iPair in range(len(pairs_label)):
+
+                        # draw 0 line
+                        y = np.empty((size_time_s, 1))
+                        y.fill(iPair + 1)
+                        ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
+
+                        # retrieve the signal
+                        y = ccep_averages[iElec, iPair, :] / 500
+                        y += iPair + 1
+
+                        # nan out the stimulation
+                        y[x_stim_start:x_stim_end] = np.nan
+
+                        # plot the signal
+                        ax.plot(x, y, linewidth=signal_line_thickness)
+
+                        # if N1 is detected, plot it
+                        if not isnan(n1_peak_indices[iElec, iPair]):
+                            xN1 = n1_peak_indices[iElec, iPair] / srate + TRIAL_EPOCH_START
+                            yN1 = n1_peak_amplitudes[iElec, iPair] / 500
+                            yN1 += iPair + 1
+                            ax.plot(xN1, yN1, 'bo')
+
+                    ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
+                    ax.set_xlim(DISPLAY_X_RANGE)
+                    for label in ax.get_xticklabels():
+                        label.set_fontsize(axis_texts_font_size)
+
+                    # set the y axis
+                    ax.set_ylabel('Stimulated electrode', fontSize=axis_label_font_size)
+                    ax.set_ylim((0, len(pairs_label) + 2))
+                    ax.set_yticks(np.arange(1, len(pairs_label) + 1, 1))
+                    ax.set_yticklabels(pairs_label, fontSize=axis_texts_font_size)
+
+                    # draw legend
+                    ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                    ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
+
+                    # Hide the right and top spines
+                    ax.spines['right'].set_visible(False)
+                    ax.spines['top'].set_visible(False)
+
+                    # display/save figure
+                    # fig.show()
+                    #fig.savefig(os.path.join(args.output_dir, 'electrode_' + str(channels_include[iElec]) + '.png'))
+                    fig.savefig(os.path.join(args.output_dir, 'electrode_' + str(channels_include[iElec]) + '.png'), bbox_inches='tight')
 
 
             #
-            # generate the electrodes plot
-            #
+            if GENERATE_STIMPAIR_IMAGES:
 
-            # loop through electrodes
-            for iElec in range(len(channels_include)):
-
-                # create a figure and resize the figure to the image output resolution
-                from matplotlib.figure import Figure
-                fig = Figure()
-                #fig = plt.figure()
-                DPI = fig.get_dpi()
-                fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
-
-                # retrieve the figure it's axis
-                ax = fig.gca()
-
-                # set the title
-                ax.set_title(channels_include[iElec], fontSize=title_font_size, fontweight='bold')
+                #
+                # generate the pairs plot
+                #
 
                 # loop through the stimulation-pairs
                 for iPair in range(len(pairs_label)):
 
-                    # draw 0 line
-                    y = np.empty((size_time_s, 1))
-                    y.fill(iPair + 1)
-                    ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
+                    # create a figure and resize the figure to the image output resolution
+                    from matplotlib.figure import Figure
+                    fig = Figure()
+                    #fig = plt.figure()
+                    DPI = fig.get_dpi()
+                    fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
 
-                    # retrieve the signal
-                    y = pairs_average[iElec, iPair, :]
-                    y = y / 500
-                    y = y + iPair + 1
+                    # retrieve the figure it's axis
+                    ax = fig.gca()
 
-                    # nan out the stimulation
-                    y[x_stim_start:x_stim_end] = np.nan
+                    # set the title
+                    ax.set_title(pairs_label[iPair], fontSize=title_font_size, fontweight='bold')
 
-                    # plot the signal
-                    ax.plot(x, y, linewidth=signal_line_thickness)
+                    # loop through the electrodes
+                    for iElec in range(len(channels_include)):
 
-                ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
-                ax.set_xlim(DISPLAY_X_RANGE)
-                for label in ax.get_xticklabels():
-                    label.set_fontsize(axis_texts_font_size)
+                        # draw 0 line
+                        y = np.empty((size_time_s, 1))
+                        y.fill(iElec + 1)
+                        ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
-                # set the y axis
-                ax.set_ylabel('Stimulated electrode', fontSize=axis_label_font_size)
-                ax.set_ylim((0, len(pairs_label) + 2))
-                ax.set_yticks(np.arange(1, len(pairs_label) + 1, 1))
-                ax.set_yticklabels(pairs_label, fontSize=axis_texts_font_size)
+                        # retrieve the signal
+                        y = ccep_averages[iElec, iPair, :] / 500
+                        y += iElec + 1
 
-                # draw legend
-                ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
-                ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
+                        # nan out the stimulation
+                        y[x_stim_start:x_stim_end] = np.nan
 
-                # Hide the right and top spines
-                ax.spines['right'].set_visible(False)
-                ax.spines['top'].set_visible(False)
+                        # plot the signal
+                        ax.plot(x, y, linewidth=signal_line_thickness)
 
-                # display/save figure
-                # fig.show()
-                #fig.savefig(os.path.join(args.output_dir, 'electrode_' + str(channels_include[iElec]) + '.png'))
-                fig.savefig(os.path.join(args.output_dir, 'electrode_' + str(channels_include[iElec]) + '.png'), bbox_inches='tight')
+                        # if N1 is detected, plot it
+                        if not isnan(n1_peak_indices[iElec, iPair]):
+                            xN1 = n1_peak_indices[iElec, iPair] / srate + TRIAL_EPOCH_START
+                            yN1 = n1_peak_amplitudes[iElec, iPair] / 500
+                            yN1 += iElec + 1
+                            ax.plot(xN1, yN1, 'bo')
 
+                    ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
+                    ax.set_xlim(DISPLAY_X_RANGE)
+                    for label in ax.get_xticklabels():
+                        label.set_fontsize(axis_texts_font_size)
 
-            #
-            # generate the pairs plot
-            #
+                    # set the y axis
+                    ax.set_ylabel('Measured electrodes', fontSize=axis_label_font_size)
+                    ax.set_ylim((0, len(channels_include) + 2))
+                    ax.set_yticks(np.arange(1, len(channels_include) + 1, 1))
+                    ax.set_yticklabels(channels_include, fontSize=axis_texts_font_size)
 
-            # loop through the stimulation-pairs
-            for iPair in range(len(pairs_label)):
+                    # draw legend
+                    ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                    ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
 
-                # create a figure and resize the figure to the image output resolution
-                from matplotlib.figure import Figure
-                fig = Figure()
-                #fig = plt.figure()
-                DPI = fig.get_dpi()
-                fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
+                    # Hide the right and top spines
+                    ax.spines['right'].set_visible(False)
+                    ax.spines['top'].set_visible(False)
 
-                # retrieve the figure it's axis
-                ax = fig.gca()
-
-                # set the title
-                ax.set_title(pairs_label[iPair], fontSize=title_font_size, fontweight='bold')
-
-                # loop through the electrodes
-                for iElec in range(len(channels_include)):
-
-                    # draw 0 line
-                    y = np.empty((size_time_s, 1))
-                    y.fill(iElec + 1)
-                    ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
-
-                    # retrieve the signal
-                    y = pairs_average[iElec, iPair, :]
-                    y = y / 500
-                    y = y + iElec + 1
-
-                    # nan out the stimulation
-                    y[x_stim_start:x_stim_end] = np.nan
-
-                    # plot the signal
-                    ax.plot(x, y, linewidth=signal_line_thickness)
-
-                ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
-                ax.set_xlim(DISPLAY_X_RANGE)
-                for label in ax.get_xticklabels():
-                    label.set_fontsize(axis_texts_font_size)
-
-                # set the y axis
-                ax.set_ylabel('Measured electrodes', fontSize=axis_label_font_size)
-                ax.set_ylim((0, len(channels_include) + 2))
-                ax.set_yticks(np.arange(1, len(channels_include) + 1, 1))
-                ax.set_yticklabels(channels_include, fontSize=axis_texts_font_size)
-
-                # draw legend
-                ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
-                ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
-
-                # Hide the right and top spines
-                ax.spines['right'].set_visible(False)
-                ax.spines['top'].set_visible(False)
-
-                # display/save figure
-                # fig.show()
-                #fig.savefig(os.path.join(args.output_dir, 'condition_' + str(pairs_label[iPair]) + '.png'))
-                fig.savefig(os.path.join(args.output_dir, 'condition_' + str(pairs_label[iPair]) + '.png'), bbox_inches='tight')
+                    # display/save figure
+                    # fig.show()
+                    #fig.savefig(os.path.join(args.output_dir, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
+                    fig.savefig(os.path.join(args.output_dir, 'stimpair_' + str(pairs_label[iPair]) + '.png'), bbox_inches='tight')
 
     else:
         #

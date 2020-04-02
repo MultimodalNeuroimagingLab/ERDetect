@@ -233,4 +233,4 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         peak_mags = -peak_mags
 
     # return the peak indices and magnitudes
-    return (peak_inds, peak_mags)
+    return peak_inds, peak_mags
