@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License along with thi
 import os
 import sys
 import numpy as np
-import scipy.io as sio
+
 
 def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, interpolate=False):
 
@@ -29,7 +29,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         data = np.array(data)
     if not isinstance(data, np.ndarray) or not data.ndim == 1 or len(data) < 2:
         print("Error: " + os.path.basename(__file__) + " - The data must be a one-dimensional array (list, tuple, ndarray) of at least 2 values", file=sys.stderr)
-        return
+        return None, None
     if np.any(~np.isreal(data)):
         print("Warning: " + os.path.basename(__file__) + " - Absolute values of data will be used", file=sys.stdout)
         data = np.abs(data)
@@ -45,7 +45,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
             sel = (np.nanmax(data) - np.nanmin(data)) / 4
 
     # threshold parameter
-    if not thresh is None:
+    if thresh is not None:
         try:
             float(thresh)
         except:
@@ -55,16 +55,16 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
     # extrema parameter
     if not extrema == -1 and not extrema == 1:
         print("Error: " + os.path.basename(__file__) + " - Either 1 (for maxima) or -1 (for minima) must be input for extrema", file=sys.stderr)
-        exit()  # return
+        return None, None
 
     # include endpoints parameter
     if not isinstance(include_endpoints, bool):
         print("Error: " + os.path.basename(__file__) + " - Either True or False must be input for include_endpoints", file=sys.stderr)
-        exit()  # return
+        return None, None
 
     if not isinstance(interpolate, bool):
         print("Error: " + os.path.basename(__file__) + " - Either True or False must be input for interpolate", file=sys.stderr)
-        exit()  # return
+        return None, None
 
     #
     #
@@ -75,7 +75,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         data = data * extrema
 
         # adjust threshold according to extrema
-        if not thresh is None:
+        if thresh is not None:
             thresh = thresh * extrema
 
     # retrieve the number of data points
@@ -93,17 +93,17 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
     if include_endpoints:
         x = np.concatenate(([data[0]], data[ind], [data[-1]]))
         ind = np.concatenate(([0], ind, [len0 - 1]))
-        minMag = x.min()
-        leftMin = minMag
+        min_mag = x.min()
+        left_min = min_mag
     else:
         x = data[ind]
-        minMag = x.min()
-        leftMin = np.min((x[0], data[0]))
+        min_mag = x.min()
+        left_min = np.min((x[0], data[0]))
 
     # x only has the peaks, valleys, and possibly endpoints
-    lenx = len(x)
+    len_x = len(x)
 
-    if lenx > 2:
+    if len_x > 2:
         # Function with peaks and valleys
 
         if include_endpoints:
@@ -119,7 +119,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
                     # Want alternating signs
                     x = np.delete(x, 1)
                     ind = np.delete(ind, 1)
-                    lenx -= 1
+                    len_x -= 1
 
             else:
                 # First point is smaller than the second
@@ -128,109 +128,109 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
                     # want alternating signs
                     x = np.delete(x, 0)
                     ind = np.delete(ind, 0)
-                    lenx -= 1
+                    len_x -= 1
 
 
         # set initial parameters for loop
-        tempMag = minMag
-        foundPeak = False
-        peakLoc = list()
-        peakMag = list()
+        temp_mag = min_mag
+        found_peak = False
+        peak_loc = list()
+        peak_mag = list()
 
         # Skip the first point if it is smaller so we always start on a maxima
         ii = -1 if x[0] >= x[1] else 0
 
         # Loop through extrema which should be peaks and then valleys
-        while ii < lenx - 1:
+        while ii < len_x - 1:
             ii += 1     # This is a peak
 
             # reset peak finding if we had a peak and the next peak is bigger
             # than the last or the left min was small enough to reset.
-            if foundPeak:
-                tempMag = minMag
-                foundPeak = False
+            if found_peak:
+                temp_mag = min_mag
+                found_peak = False
 
 
             # Found new peak that was lower than temp mag and selectivity larger than the minimum to its left.
-            if x[ii] > tempMag and x[ii] > leftMin + sel:
-                tempLoc = ii
-                tempMag = x[ii]
+            if x[ii] > temp_mag and x[ii] > left_min + sel:
+                temp_loc = ii
+                temp_mag = x[ii]
 
             # Make sure we don't iterate past the length of our vector
-            if ii == lenx - 1:
+            if ii == len_x - 1:
                 break       # We assign the last point differently out of the loop
 
             ii += 1         # Move onto the valley
             # Come down at least sel from peak
-            if not foundPeak and tempMag > sel + x[ii]:
-                foundPeak = True    # We have found a peak
-                leftMin = x[ii]
-                peakLoc.append(tempLoc)     # Add peak to index
-                peakMag.append(tempMag)
-            elif x[ii] < leftMin:
+            if not found_peak and temp_mag > sel + x[ii]:
+                found_peak = True    # We have found a peak
+                left_min = x[ii]
+                peak_loc.append(temp_loc)     # Add peak to index
+                peak_mag.append(temp_mag)
+            elif x[ii] < left_min:
                 # New left minima
-                leftMin = x[ii]
+                left_min = x[ii]
 
 
         # Check end point
         if include_endpoints:
-            if x[-1] > tempMag and x[-1] > leftMin + sel:
-                peakLoc.append(lenx - 1)
-                peakMag.append(x[-1])
-            elif not foundPeak and tempMag > minMag:  # Check if we still need to add the last point
-                peakLoc.append(tempLoc)
-                peakMag.append(tempMag)
-        elif not foundPeak:
-            if x[-1] > tempMag and x[-1] > leftMin + sel:
-                peakLoc.append(lenx - 1)
-                peakMag.append(x[-1])
-            elif tempMag > np.min((data[-1], x[-1])) + sel:
-                peakLoc.append(tempLoc)
-                peakMag.append(tempMag)
+            if x[-1] > temp_mag and x[-1] > left_min + sel:
+                peak_loc.append(len_x - 1)
+                peak_mag.append(x[-1])
+            elif not found_peak and temp_mag > min_mag:  # Check if we still need to add the last point
+                peak_loc.append(temp_loc)
+                peak_mag.append(temp_mag)
+        elif not found_peak:
+            if x[-1] > temp_mag and x[-1] > left_min + sel:
+                peak_loc.append(len_x - 1)
+                peak_mag.append(x[-1])
+            elif temp_mag > np.min((data[-1], x[-1])) + sel:
+                peak_loc.append(temp_loc)
+                peak_mag.append(temp_mag)
 
         # Create output
-        if len(peakLoc) > 0:
-            peakInds = np.array(ind[peakLoc])
-            peakMags = np.array(peakMag)
+        if len(peak_loc) > 0:
+            peak_inds = np.array(ind[peak_loc])
+            peak_mags = np.array(peak_mag)
         else:
-            peakInds = None
-            peakMags = None
+            peak_inds = None
+            peak_mags = None
 
     else:
         # This is a monotone function where an endpoint is the only peak
-        peakMag = x.max()
-        xInd = np.where(x == peakMag)[0]
-        if include_endpoints and peakMag > minMag + sel:
-            peakInds = np.array(ind[xInd])
-            peakMags = np.array(x[xInd])
+        peak_mag = x.max()
+        xInd = np.where(x == peak_mag)[0]
+        if include_endpoints and peak_mag > min_mag + sel:
+            peak_inds = np.array(ind[xInd])
+            peak_mags = np.array(x[xInd])
         else:
-            peakInds = None
-            peakMags = None
+            peak_inds = None
+            peak_mags = None
 
 
     # apply threshold value
     # since always finding maxima it will always be larger than the thresh
     if not thresh is None:
-        m = np.where(peakMags > thresh)[0]
-        peakInds = np.array(peakInds[m])
-        peakMags = np.array(peakMags[m])
+        m = np.where(peak_mags > thresh)[0]
+        peak_inds = np.array(peak_inds[m])
+        peak_mags = np.array(peak_mags[m])
 
     # interpolate
-    if interpolate and not peakMags is None:
-        middleMask = (peakInds > 0) & (peakInds < len0 - 1)
-        noEnds = peakInds[middleMask]
+    if interpolate and not peak_mags is None:
+        middle_mask = (peak_inds > 0) & (peak_inds < len0 - 1)
+        no_ends = peak_inds[middle_mask]
 
-        magDiff = data[noEnds + 1] - data[noEnds - 1]
-        magSum = data[noEnds - 1] + data[noEnds + 1]  - 2 * data[noEnds]
-        magRatio = magDiff / magSum
+        mag_diff = data[no_ends + 1] - data[no_ends - 1]
+        mag_sum = data[no_ends - 1] + data[no_ends + 1]  - 2 * data[no_ends]
+        mag_ratio = mag_diff / mag_sum
 
-        peakInds = peakInds.astype(float)
-        peakInds[middleMask] = peakInds[middleMask] - magRatio / 2
-        peakMags[middleMask] = peakMags[middleMask] - magRatio * magDiff / 8
+        peak_inds = peak_inds.astype(float)
+        peak_inds[middle_mask] = peak_inds[middle_mask] - mag_ratio / 2
+        peak_mags[middle_mask] = peak_mags[middle_mask] - mag_ratio * mag_diff / 8
 
     # Change sign of data if was finding minima
     if extrema < 0:
-        peakMags = -peakMags
+        peak_mags = -peak_mags
 
     # return the peak indices and magnitudes
-    return (peakInds, peakMags)
+    return (peak_inds, peak_mags)

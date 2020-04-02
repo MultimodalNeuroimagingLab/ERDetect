@@ -112,11 +112,11 @@ for iElec in range(data.shape[0]):
                                            interpolate=False)
 
         # if a peak is found on the first sample, then that is not an actual peak, remove
-        if len(neg_inds) > 0 and neg_inds[0] == 0:
+        if neg_inds is not None and len(neg_inds) > 0 and neg_inds[0] == 0:
             neg_inds = np.delete(neg_inds, 0)
             neg_mags = np.delete(neg_mags, 0)
 
-        if len(neg_inds) > 0:
+        if neg_inds is not None and len(neg_inds) > 0:
             pass
 
 
