@@ -186,7 +186,7 @@ for subject_label in subjects_to_analyze:
             bids_subset_root = subset[:subset.rindex('_')]
 
             # retrieve the channel metadata from the channels.tsv file
-            with open(bids_subset_root + '_channels.tsv') as csv_file:
+            with open(bids_subset_root + '_channels.tsv', 'rb') as csv_file:
                 reader = csv.DictReader(csv_file, delimiter='\t')
 
                 # make sure the required columns exist
@@ -226,7 +226,7 @@ for subject_label in subjects_to_analyze:
                 exit()
 
             # retrieve the electrical stimulation trials (onsets and pairs) from the events.tsv file
-            with open(bids_subset_root + '_events.tsv') as csv_file:
+            with open(bids_subset_root + '_events.tsv', 'rb') as csv_file:
                 reader = csv.DictReader(csv_file, delimiter='\t')
 
                 # make sure the required columns exist
@@ -261,9 +261,6 @@ for subject_label in subjects_to_analyze:
             if len(trials_onset) == 0:
                 print('Error: no trials were found')
                 exit()
-
-            # debug, limit channels
-            #channels_include = channels_include[0:6]
 
 
             #
