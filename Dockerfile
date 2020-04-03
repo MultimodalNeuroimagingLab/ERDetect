@@ -49,6 +49,7 @@ RUN apk add --no-cache libpng freetype libstdc++ openblas lapack libxml2 libxslt
 	&& ln -s /usr/include/locale.h /usr/include/xlocale.h \
 	&& pip3 install numpy==1.18.1 \
 	&& pip3 install scipy==1.3.3 \
+	&& pip3 install pandas \
 	&& pip3 install kiwisolver==1.1.0 \
 	&& pip3 install matplotlib \
 	&& pip3 install mne \
