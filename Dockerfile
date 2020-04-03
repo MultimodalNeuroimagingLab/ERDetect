@@ -49,8 +49,8 @@ RUN apk add --no-cache libpng freetype libstdc++ openblas lapack libxml2 libxslt
 	&& ln -s /usr/include/locale.h /usr/include/xlocale.h \
 	&& pip3 install numpy==1.18.1 \
 	&& pip3 install scipy==1.3.3 \
+	&& pip3 install kiwisolver==1.1.0 \
 	&& pip3 install matplotlib \
-	&& pip3 install joblib \
 	&& pip3 install mne \
 	&& pip3 install bids_validator \
 	&& /pymef/setup.py install \
@@ -69,8 +69,9 @@ RUN mkdir -p /scripts
 COPY run.py /scripts/run.py
 RUN chmod +x /scripts/run.py
 
-# 
+#
 COPY version /scripts/version
+COPY ./functions /scripts/functions
 
 # 
-#ENTRYPOINT ["/scripts/run.py"]
+ENTRYPOINT ["/scripts/run.py"]
