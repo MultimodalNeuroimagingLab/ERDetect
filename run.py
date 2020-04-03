@@ -15,6 +15,7 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import argparse
 import os
+import sys
 import csv
 from math import isnan, ceil
 from glob import glob
@@ -23,6 +24,7 @@ from functions.ieeg_detect_n1peak import ieeg_detect_n1peaks
 from bids_validator import BIDSValidator
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
+import pandas as pd
 import numpy as np
 import scipy.io as sio
 import matplotlib.pyplot as plt
@@ -186,34 +188,31 @@ for subject_label in subjects_to_analyze:
             bids_subset_root = subset[:subset.rindex('_')]
 
             # retrieve the channel metadata from the channels.tsv file
-            with open(bids_subset_root + '_channels.tsv', 'rb') as csv_file:
-                reader = csv.DictReader(csv_file, delimiter='\t')
+            csv = pd.read_csv(bids_subset_root + '_channels.tsv', sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+            if not 'name' in csv.columns:
+                print('Error: could not find the \'name\' column in \'' + bids_subset_root + '_channels.tsv\'', file=sys.stderr)
+                exit()
+            if not 'type' in csv.columns:
+                print('Error: could not find the \'type\' column in \'' + bids_subset_root + '_channels.tsv\'', file=sys.stderr)
+                exit()
+            if not 'status' in csv.columns:
+                print('Error: could not find the \'status\' column in \'' + bids_subset_root + '_channels.tsv\'', file=sys.stderr)
+                exit()
 
-                # make sure the required columns exist
-                channels_include = []
-                channels_bad = []
-                channels_non_ieeg = []
-                if not 'name' in reader.fieldnames:
-                    print('Error: could not find the \'name\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
-                    exit()
-                if not 'type' in reader.fieldnames:
-                    print('Error: could not find the \'type\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
-                    exit()
-                if not 'status' in reader.fieldnames:
-                    print('Error: could not find the \'status\' column in \'' + bids_subjsess_root + '_channels.tsv\'')
-                    exit()
-
-                # sort out the good, the bad and the... non-ieeg
-                for row in reader:
-                    excluded = False
-                    if row['status'].lower() == 'bad':
-                        channels_bad.append(row['name'])
-                        #excluded = True
-                    if not row['type'].upper() in ('ECOG', 'SEEG'):
-                        channels_non_ieeg.append(row['name'])
-                        excluded = True
-                    if not excluded:
-                        channels_include.append(row['name'])
+            # sort out the good, the bad and the... non-ieeg
+            channels_include = []
+            channels_bad = []
+            channels_non_ieeg = []
+            for index, row in csv.iterrows():
+                excluded = False
+                if row['status'].lower() == 'bad':
+                    channels_bad.append(row['name'])
+                    #excluded = True
+                if not row['type'].upper() in ('ECOG', 'SEEG'):
+                    channels_non_ieeg.append(row['name'])
+                    excluded = True
+                if not excluded:
+                    channels_include.append(row['name'])
 
             # print channel information
             print('Bad channels:                                    ' + ' '.join(channels_bad))
@@ -225,37 +224,35 @@ for subject_label in subjects_to_analyze:
                 print('Error: no channels were found')
                 exit()
 
+
             # retrieve the electrical stimulation trials (onsets and pairs) from the events.tsv file
-            with open(bids_subset_root + '_events.tsv', 'rb') as csv_file:
-                reader = csv.DictReader(csv_file, delimiter='\t')
+            csv = pd.read_csv(bids_subset_root + '_events.tsv', sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+            if not 'onset' in csv.columns:
+                print('Error: could not find the \'onset\' column in \'' + bids_subset_root + '_events.tsv\'', file=sys.stderr)
+                exit()
+            if not 'trial_type' in csv.columns:
+                print('Error: could not find the \'trial_type\' column in \'' + bids_subset_root + '_events.tsv\'', file=sys.stderr)
+                exit()
+            if not 'electrical_stimulation_site' in csv.columns:
+                print('Error: could not find the \'electrical_stimulation_site\' column in \'' + bids_subset_root + '_events.tsv\'', file=sys.stderr)
+                exit()
 
-                # make sure the required columns exist
-                if not 'onset' in reader.fieldnames:
-                    print('Error: could not find the \'onset\' column in \'' + bids_subset_root + '_events.tsv\'')
-                    exit()
-                if not 'trial_type' in reader.fieldnames:
-                    print('Error: could not find the \'trial_type\' column in \'' + bids_subset_root + '_events.tsv\'')
-                    exit()
-                if not 'electrical_stimulation_site' in reader.fieldnames:
-                    print('Error: could not find the \'electrical_stimulation_site\' column in \'' + bids_subset_root + '_events.tsv\'')
-                    exit()
+            # acquire the onset and electrode-pair for each stimulation
+            trials_onset = []
+            trials_pair = []
+            for index, row in csv.iterrows():
+                if row['trial_type'].lower() == 'electrical_stimulation':
+                    if not is_number(row['onset']) or isnan(float(row['onset'])):
+                        print('Error: invalid onset \'' + row['onset'] + '\' in events, should be a numeric value')
+                        #exit()
+                        continue
 
-                # acquire the onset and electrode-pair for each stimulation
-                trials_onset = []
-                trials_pair = []
-                for row in reader:
-                    if row['trial_type'].lower() == 'electrical_stimulation':
-                        if not is_number(row['onset']) or isnan(float(row['onset'])):
-                            print('Error: invalid onset \'' + row['onset'] + '\' in events, should be a numeric value')
-                            #exit()
-                            continue
-
-                        pair = row['electrical_stimulation_site'].split('-')
-                        if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
-                            print('Error: electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02)')
-                            exit()
-                        trials_onset.append(float(row['onset']))
-                        trials_pair.append(pair)
+                    pair = row['electrical_stimulation_site'].split('-')
+                    if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
+                        print('Error: electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02)')
+                        exit()
+                    trials_onset.append(float(row['onset']))
+                    trials_pair.append(pair)
 
             # check if there are trials
             if len(trials_onset) == 0:
@@ -268,6 +265,9 @@ for subject_label in subjects_to_analyze:
             #
 
             # TODO: handle different units in types
+
+            # message
+            print('- Reading data...')
 
             # read the dataset
             extension = subset[subset.rindex("."):]
@@ -476,8 +476,11 @@ for subject_label in subjects_to_analyze:
 
 
             #
-            # perform the detection
+            # perform the N1 detection
             #
+
+            # message
+            print('- Detecting N1s...')
 
             # TODO: N1 detection
             #ieeg_detect_n1peak()
@@ -517,6 +520,9 @@ for subject_label in subjects_to_analyze:
                 #
                 # generate the electrodes plot
                 #
+
+                # message
+                print('- Generating electrode plots...')
 
                 # loop through electrodes
                 for iElec in range(len(channels_include)):
@@ -591,6 +597,9 @@ for subject_label in subjects_to_analyze:
                 # generate the pairs plot
                 #
 
+                # message
+                print('- Generating stimulation-pair plots...')
+
                 # loop through the stimulation-pairs
                 for iPair in range(len(pairs_label)):
 
@@ -656,8 +665,12 @@ for subject_label in subjects_to_analyze:
                     #fig.savefig(os.path.join(args.output_dir, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
                     fig.savefig(os.path.join(args.output_dir, 'stimpair_' + str(pairs_label[iPair]) + '.png'), bbox_inches='tight')
 
+            # message
+            print('- Finished subset')
+
     else:
         #
         print('Warning: participant \'' + subject_label + '\' could not be found, skipping')
 
 
+print('- Finished running')
