@@ -36,7 +36,7 @@ def ieeg_detect_n1peaks(data, stim_onset_index, sampling_rate, n1_search_end=0.0
     ieeg_detect_n1peaks
 
     Parameters:
-        data (ndarray):                 multidimensional array with the average signal per electrode and stimulus-pair.
+        data (ndarray):                 A three-dimensional array with the average signal per electrode and stimulus-pair.
                                         (matrix format: electrodes x stimulation-pairs x time)
         stim_onset_index (int):         the time-point on the input data's time-dimension of stimulation onset
                                         (as a 0-based sample-index, all indices before this value are considered pre-stim)
