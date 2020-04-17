@@ -22,24 +22,25 @@ from bids_validator import BIDSValidator
 import numpy as np
 from bids.load_bids import load_channel_info, load_event_info, load_data_epochs
 import scipy.io as sio
-import matplotlib.pyplot as plt
-from functions.ieeg_detect_n1peak import ieeg_detect_n1peaks
+from functions.ieeg_detect_n1 import ieeg_detect_n1
+from functions.visualization import create_figure
 
 
 #
 # constants
 #
-VALID_FORMAT_EXTENSIONS         = ('.edf', '.vhdr', '.vmrk', '.eeg', '.mefd')   # valid data format to search for (European Data Format, BrainVision and MEF3)
+VALID_FORMAT_EXTENSIONS         = ('.mefd', '.edf', '.vhdr', '.vmrk', '.eeg')   # valid data format to search for (European Data Format, BrainVision and MEF3)
 TRIAL_EPOCH_START               = -1.0                                          # the timepoint (in seconds) relative to the stimulus onset that will be considered as the start of the trial epoch
 TRIAL_EPOCH_END                 = 3.0                                           # the timepoint (in seconds) relative to the stimulus onset that will be considered as the end of the trial epoch
 BASELINE_EPOCH_START            = -1.0                                          # the timepoint (in seconds) relative to the stimulus onset that will be considered as the start of the baseline epoch within each trial
 BASELINE_EPOCH_END              = -0.1                                          # the timepoint (in seconds) relative to the stimulus onset that will be considered as the end of the baseline epoch within each trial
-DISPLAY_X_RANGE                 = (-0.2, 1)                                     # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+DISPLAY_EPOCH_RANGE             = (-0.2, 1)                                     # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
 DISPLAY_STIM_RANGE              = (-0.015, 0.0025)                               # the range
 SUBPLOT_LAYOUT_RATIO            = (4, 3)
 OUTPUT_IMAGE_RESOLUTION         = (2000, 2000)                                   # ; it is advisable to koop the resolution ratio in line with the SUBPLOT_LAYOUT_RATIO
 GENERATE_ELECTRODE_IMAGES       = True
 GENERATE_STIMPAIR_IMAGES        = True
+GENERATE_MATRIX_IMAGES          = True
 
 #
 # version and helper functions
@@ -96,6 +97,7 @@ args = parser.parse_args()
 
 
 # debug, print
+print('BIDS app:               Detect N1 - ' + __version__)
 print('BIDS input dataset:     ' + args.bids_dir)
 print('Output location:        ' + args.output_dir)
 
@@ -117,9 +119,7 @@ if not os.path.exists(args.output_dir):
         print("Error: could not create output directory (\'" + args.output_dir + "\')", file=sys.stderr)
         exit()
 
-#
 # list the subject to analyze (either based on the input parameter or list all in the BIDS_dir)
-#
 subjects_to_analyze = []
 if args.participant_label:
 
@@ -134,15 +134,10 @@ else:
 
 
 #
-# loop through the participants and list the subsets
-#
-for subject_label in subjects_to_analyze:
+for subject in subjects_to_analyze:
 
     # see if the subject is exists (in case the user specified the labels)
-    if os.path.isdir(os.path.join(args.bids_dir, subject_label)):
-
-        # retrieve the subset search patterns
-        subset_patterns = args.subset_search_pattern if args.subset_search_pattern else ('',)
+    if os.path.isdir(os.path.join(args.bids_dir, subject)):
 
         # retrieve the data formats to include
         if args.format_extension:
@@ -155,13 +150,14 @@ for subject_label in subjects_to_analyze:
             extensions = VALID_FORMAT_EXTENSIONS
 
         # build path patterns for the search of subsets
+        subset_patterns = args.subset_search_pattern if args.subset_search_pattern else ('',)
         subsets = []
         modalities = ('*eeg',)                    # ieeg and eeg
         for extension in extensions:
             for modality in modalities:
                 for subset_pattern in subset_patterns:
-                    subsets += glob(os.path.join(args.bids_dir, subject_label, modality, '*' + subset_pattern + '*' + extension)) + \
-                               glob(os.path.join(args.bids_dir, subject_label, '*', modality, '*' + subset_pattern + '*' + extension))
+                    subsets += glob(os.path.join(args.bids_dir, subject, modality, '*' + subset_pattern + '*' + extension)) + \
+                               glob(os.path.join(args.bids_dir, subject, '*', modality, '*' + subset_pattern + '*' + extension))
 
         # bring subsets with multiple formats down to one format (prioritized to occurrence in the extension var)
         for subset in subsets:
@@ -172,7 +168,7 @@ for subject_label in subjects_to_analyze:
                     if subset_name == subset_other_name:
                         subsets.remove(subset_other)
 
-        # loop through the subsets for analysis
+        # loop through the participant's subsets for analysis
         for subset in subsets:
 
             # message subset start
@@ -181,7 +177,7 @@ for subject_label in subjects_to_analyze:
             print('Trial epoch window:                              ' + str(TRIAL_EPOCH_START) + 's < stim onset < ' + str(TRIAL_EPOCH_END) + 's  (window size ' + str(abs(TRIAL_EPOCH_END - TRIAL_EPOCH_START)) + 's)')
             print('Baseline window with each trial:                 ' + str(BASELINE_EPOCH_START) + 's : ' + str(BASELINE_EPOCH_END) + 's  (window size ' + str(abs(BASELINE_EPOCH_END - BASELINE_EPOCH_START)) + 's)')
             print('Concatenate bidirectional stimulated pairs:      ' + ('No' if args.no_concat_bidirectional_pairs else 'Yes'))
-
+            # TODO: display detection settings
 
             #
             # gather metadata information
@@ -197,7 +193,7 @@ for subject_label in subjects_to_analyze:
                 exit()
 
             # sort out the good, the bad and the... non-ieeg
-            channels_include = []
+            electrode_labels = []
             channels_bad = []
             channels_non_ieeg = []
             for index, row in csv.iterrows():
@@ -209,16 +205,16 @@ for subject_label in subjects_to_analyze:
                     channels_non_ieeg.append(row['name'])
                     excluded = True
                 if not excluded:
-                    channels_include.append(row['name'])
+                    electrode_labels.append(row['name'])
 
             # print channel information
-            print('Bad channels:                                    ' + ' '.join(channels_bad))
             print('Non-IEEG channels:                               ' + ' '.join(channels_non_ieeg))
-            print('Included channels:                               ' + ' '.join(channels_include))
+            print('IEEG electrodes:                                 ' + ' '.join(electrode_labels))
+            print('Bad channels:                                    ' + ' '.join(channels_bad))
 
             # check if there are channels
-            if len(channels_include) == 0:
-                print('Error: no channels were found')
+            if len(electrode_labels) == 0:
+                print('Error: no channels were found', file=sys.stderr)
                 exit()
 
 
@@ -246,7 +242,7 @@ for subject_label in subjects_to_analyze:
 
             # check if there are trials
             if len(trial_onsets) == 0:
-                print('Error: no trials were found')
+                print('Error: no trials were found', file=sys.stderr)
                 exit()
 
 
@@ -260,8 +256,8 @@ for subject_label in subjects_to_analyze:
             print('- Reading data...')
 
             # Read and epoch the data
-            srate, data = load_data_epochs(subset, channels_include, trial_onsets, TRIAL_EPOCH_START, TRIAL_EPOCH_END)
-            if srate is None or data is None:
+            sampling_rate, data = load_data_epochs(subset, electrode_labels, trial_onsets, TRIAL_EPOCH_START, TRIAL_EPOCH_END)
+            if sampling_rate is None or data is None:
                 exit()
 
             #
@@ -275,12 +271,12 @@ for subject_label in subjects_to_analyze:
             # TODO: check if the baseline (epoch) window is within the trial epoch
 
             # determine the start and end sample of the baseline epoch
-            baseline_start = int(round(abs(TRIAL_EPOCH_START - BASELINE_EPOCH_START) * srate))
-            baseline_end = baseline_start + int(ceil(abs(BASELINE_EPOCH_END - BASELINE_EPOCH_START) * srate)) - 1
+            baseline_start = int(round(abs(TRIAL_EPOCH_START - BASELINE_EPOCH_START) * sampling_rate))
+            baseline_end = baseline_start + int(ceil(abs(BASELINE_EPOCH_END - BASELINE_EPOCH_START) * sampling_rate)) - 1
 
             # subtract the baseline median per trial
             for iTrial in range(len(trial_onsets)):
-                for iChannel in range(len(channels_include)):
+                for iChannel in range(len(electrode_labels)):
                     data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmedian(data[iChannel, iTrial, baseline_start:baseline_end])
                     #data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmean(data[iChannel, iTrial, baseline_start:baseline_end])
 
@@ -291,57 +287,60 @@ for subject_label in subjects_to_analyze:
             #
 
             # variable to store the stimulation pair information in
-            pair_labels = []                # for each pair, the labels of trhe electrodes thatt were stimulated
-            pair_trialsIdx = []             # for each pair, the indices of the trials that were involved
-            pair_stim_electrodesIdx = []    # for each pair, the indices of the electrodes that were stimulated
+            stimpair_labels = []                # for each pair, the labels of trhe electrodes thatt were stimulated
+            stimpair_trial_indices = []         # for each pair, the indices of the trials that were involved
+            stimpair_electrode_indices = []     # for each pair, the indices of the electrodes that were stimulated
 
             # loop through al possible channel/electrode combinations
-            for iChannel0 in range(len(channels_include)):
-                for iChannel1 in range(len(channels_include)):
+            for iChannel0 in range(len(electrode_labels)):
+                for iChannel1 in range(len(electrode_labels)):
 
                     # retrieve the indices of all the trials that concern this stim-pair
                     indices = []
                     if args.no_concat_bidirectional_pairs:
                         # do not concatenate bidirectional pairs, pair order matters
                         indices = [i for i, x in enumerate(trial_pairs) if
-                                   x[0] == channels_include[iChannel0] and x[1] == channels_include[iChannel1]]
+                                   x[0] == electrode_labels[iChannel0] and x[1] == electrode_labels[iChannel1]]
 
                     else:
                         # allow concatenation of bidirectional pairs, pair order does not matter
                         if not iChannel1 < iChannel0:
                             # unique pairs while ignoring pair order
                             indices = [i for i, x in enumerate(trial_pairs) if
-                                       (x[0] == channels_include[iChannel0] and x[1] == channels_include[iChannel1]) or (x[0] == channels_include[iChannel1] and x[1] == channels_include[iChannel0])]
+                                       (x[0] == electrode_labels[iChannel0] and x[1] == electrode_labels[iChannel1]) or (x[0] == electrode_labels[iChannel1] and x[1] == electrode_labels[iChannel0])]
 
                     # add the pair if there are trials for it
                     if len(indices) > 0:
-                        pair_labels.append(channels_include[iChannel0] + '-' + channels_include[iChannel1])
-                        pair_stim_electrodesIdx.append((iChannel0, iChannel1))
-                        pair_trialsIdx.append(indices)
+                        stimpair_labels.append(electrode_labels[iChannel0] + '-' + electrode_labels[iChannel1])
+                        stimpair_electrode_indices.append((iChannel0, iChannel1))
+                        stimpair_trial_indices.append(indices)
 
 
             # display Pair/Trial information
-            print('Stimulation pairs:                               ' + str(len(pair_labels)))
-            for iPair in range(len(pair_labels)):
+            print('Stimulation pairs:                               ' + str(len(stimpair_labels)))
+            for iPair in range(len(stimpair_labels)):
                 if iPair % 5 == 0:
                     print('                                                 ', end='')
-                print(str(pair_labels[iPair]) + ' (' + str(len(pair_trialsIdx[iPair])) + ' trials)   ', end='')
+                print(str(stimpair_labels[iPair]) + ' (' + str(len(stimpair_trial_indices[iPair])) + ' trials)   ', end='')
                 if iPair > 0 and ((iPair + 1) % 5 == 0):
                     print('')
 
             # create a variable to store each stimulation-pair average in (channel x stim-pair x time)
-            ccep_average = np.empty((len(channels_include), len(pair_labels), data.shape[2]))
+            ccep_average = np.empty((len(electrode_labels), len(stimpair_labels), data.shape[2]))
             ccep_average.fill(np.nan)
 
             # for each stimulation-pair, calculate the average over trials
-            for iPair in range(len(pair_labels)):
-                ccep_average[:, iPair, :] = np.nanmean(data[:, pair_trialsIdx[iPair], :], axis=1)
+            for iPair in range(len(stimpair_labels)):
+                ccep_average[:, iPair, :] = np.nanmean(data[:, stimpair_trial_indices[iPair], :], axis=1)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
-            for iPair in range(len(pair_labels)):
-                ccep_average[pair_stim_electrodesIdx[iPair][0], iPair, :] = np.nan
-                ccep_average[pair_stim_electrodesIdx[iPair][1], iPair, :] = np.nan
+            for iPair in range(len(stimpair_labels)):
+                ccep_average[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
+                ccep_average[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
 
+
+            # todo: handle trial epochs which start after the trial onset
+            onset_sample = int(round(abs(TRIAL_EPOCH_START * sampling_rate)))
 
             #
             # prepare an output directory
@@ -355,8 +354,6 @@ for subject_label in subjects_to_analyze:
             #    except OSError as e:
             #        print("Error: could not create subject output directory (\'" + bids_subject_root + "\')", file=sys.stderr)
             #        exit()
-
-
             output_root = os.path.join(args.output_dir, os.path.basename(os.path.normpath(bids_subset_root)))
             if not os.path.exists(output_root):
                 try:
@@ -367,9 +364,11 @@ for subject_label in subjects_to_analyze:
 
             # intermediate saving of the ccep data as .mat
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'),
-                        {'ccep_average': ccep_average,
-                         'stim_pair_labels': pair_labels,
-                         'electrode_labels': channels_include})
+                        {'sampling_rate': sampling_rate,
+                         'onset_sample': onset_sample,
+                         'ccep_average': ccep_average,
+                         'stimpair_labels': stimpair_labels,
+                         'electrode_labels': electrode_labels})
 
 
             #
@@ -381,35 +380,37 @@ for subject_label in subjects_to_analyze:
 
             # TODO: N1 detection
             #ieeg_detect_n1peak()
-            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1peaks(ccep_average, int(round(abs(TRIAL_EPOCH_START * srate))), int(srate))
+            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate))
 
-#
             # intermediate saving of the data and N1 detection as .mat
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'),
-                        {'ccep_average': ccep_average,
-                         'stim_pair_labels': pair_labels,
-                         'electrode_labels': channels_include,
+                        {'sampling_rate': sampling_rate,
+                         'onset_sample': onset_sample,
+                         'ccep_average': ccep_average,
+                         'stimpair_labels': stimpair_labels,
+                         'electrode_labels': electrode_labels,
                          'n1_peak_indices': n1_peak_indices,
                          'n1_peak_amplitudes': n1_peak_amplitudes})
 
-
             #
-            if GENERATE_ELECTRODE_IMAGES or GENERATE_STIMPAIR_IMAGES:
+            if GENERATE_ELECTRODE_IMAGES or GENERATE_STIMPAIR_IMAGES or GENERATE_MATRIX_IMAGES:
 
                 #
                 # prepare some settings for plotting
                 #
 
                 # generate the x-axis values
+                # TODO: what if TRIAL_EPOCH_START is after the stimulus onset
                 x = np.arange(ccep_average.shape[2])
-                x = x / srate + TRIAL_EPOCH_START
+                x = x / sampling_rate + TRIAL_EPOCH_START
 
                 # determine the range on the x axis where the stimulus was in samples
-                x_stim_start = int(round(abs(TRIAL_EPOCH_START - DISPLAY_STIM_RANGE[0]) * srate)) - 1
-                x_stim_end = x_stim_start + int(ceil(abs(DISPLAY_STIM_RANGE[1] - DISPLAY_STIM_RANGE[0]) * srate)) - 1
+                # TODO: what if TRIAL_EPOCH_START is after the stimulus onset
+                x_stim_start = int(round(abs(TRIAL_EPOCH_START - DISPLAY_STIM_RANGE[0]) * sampling_rate)) - 1
+                x_stim_end = x_stim_start + int(ceil(abs(DISPLAY_STIM_RANGE[1] - DISPLAY_STIM_RANGE[0]) * sampling_rate)) - 1
 
                 # calculate the legend x position
-                x_legend = DISPLAY_X_RANGE[1] - .13
+                x_legend = DISPLAY_EPOCH_RANGE[1] - .13
 
                 # adjust line and font sizes to resolution
                 zero_line_thickness = OUTPUT_IMAGE_RESOLUTION[0] / 2000
@@ -432,34 +433,28 @@ for subject_label in subjects_to_analyze:
                     print('- Generating electrode plots...')
 
                     # loop through electrodes
-                    for iElec in range(len(channels_include)):
+                    for iElec in range(len(electrode_labels)):
 
-                        # create a figure and resize the figure to the image output resolution
-                        from matplotlib.figure import Figure
-                        fig = Figure()
-                        #fig = plt.figure()
-                        DPI = fig.get_dpi()
-                        fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
-
-                        # retrieve the figure it's axis
+                        # create a figure and retrieve the axis
+                        fig = create_figure(OUTPUT_IMAGE_RESOLUTION[0], OUTPUT_IMAGE_RESOLUTION[1], False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(channels_include[iElec], fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(electrode_labels[iElec], fontSize=title_font_size, fontweight='bold')
 
                         # loop through the stimulation-pairs
-                        for iPair in range(len(pair_labels)):
+                        for iPair in range(len(stimpair_labels)):
 
                             # draw 0 line
                             y = np.empty((ccep_average.shape[2], 1))
                             #y.fill(iPair + 1)
-                            y.fill(len(pair_labels) - iPair)
+                            y.fill(len(stimpair_labels) - iPair)
                             ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = ccep_average[iElec, iPair, :] / 500
                             #y += iPair + 1
-                            y += len(pair_labels) - iPair
+                            y += len(stimpair_labels) - iPair
 
                             # nan out the stimulation
                             y[x_stim_start:x_stim_end] = np.nan
@@ -469,23 +464,23 @@ for subject_label in subjects_to_analyze:
 
                             # if N1 is detected, plot it
                             if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / srate + TRIAL_EPOCH_START
+                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + TRIAL_EPOCH_START
                                 yN1 = n1_peak_amplitudes[iElec, iPair] / 500
                                 #yN1 += iPair + 1
-                                yN1 += len(pair_labels) - iPair
+                                yN1 += len(stimpair_labels) - iPair
                                 ax.plot(xN1, yN1, 'bo')
 
-                        ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
-                        ax.set_xlim(DISPLAY_X_RANGE)
+                        ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
+                        ax.set_xlim(DISPLAY_EPOCH_RANGE)
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_texts_font_size)
 
                         # set the y axis
-                        ax.set_ylabel('Stimulated electrode', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(pair_labels) + 2))
-                        ax.set_yticks(np.arange(1, len(pair_labels) + 1, 1))
+                        ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+                        ax.set_ylim((0, len(stimpair_labels) + 2))
+                        ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
                         #ax.set_yticklabels(pair_labels, fontSize=axis_texts_font_size)
-                        ax.set_yticklabels(np.flip(pair_labels), fontSize=axis_texts_font_size)
+                        ax.set_yticklabels(np.flip(stimpair_labels), fontSize=axis_texts_font_size)
 
                         # draw legend
                         ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
@@ -498,7 +493,7 @@ for subject_label in subjects_to_analyze:
                         # display/save figure
                         # fig.show()
                         #fig.savefig(os.path.join(output_root, 'electrode_' + str(channels_include[iElec]) + '.png'))
-                        fig.savefig(os.path.join(output_root, 'electrode_' + str(channels_include[iElec]) + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(output_root, 'electrode_' + str(electrode_labels[iElec]) + '.png'), bbox_inches='tight')
 
 
                 #
@@ -512,34 +507,28 @@ for subject_label in subjects_to_analyze:
                     print('- Generating stimulation-pair plots...')
 
                     # loop through the stimulation-pairs
-                    for iPair in range(len(pair_labels)):
+                    for iPair in range(len(stimpair_labels)):
 
-                        # create a figure and resize the figure to the image output resolution
-                        from matplotlib.figure import Figure
-                        fig = Figure()
-                        #fig = plt.figure()
-                        DPI = fig.get_dpi()
-                        fig.set_size_inches(float(OUTPUT_IMAGE_RESOLUTION[0]) / float(DPI), float(OUTPUT_IMAGE_RESOLUTION[1]) / float(DPI))
-
-                        # retrieve the figure it's axis
+                        # create a figure and retrieve the axis
+                        fig = create_figure(OUTPUT_IMAGE_RESOLUTION[0], OUTPUT_IMAGE_RESOLUTION[1], False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(pair_labels[iPair], fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(stimpair_labels[iPair], fontSize=title_font_size, fontweight='bold')
 
                         # loop through the electrodes
-                        for iElec in range(len(channels_include)):
+                        for iElec in range(len(electrode_labels)):
 
                             # draw 0 line
                             y = np.empty((ccep_average.shape[2], 1))
                             #y.fill(iElec + 1)
-                            y.fill(len(channels_include) - iElec)
+                            y.fill(len(electrode_labels) - iElec)
                             ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = ccep_average[iElec, iPair, :] / 500
                             #y += iElec + 1
-                            y += len(channels_include) - iElec
+                            y += len(electrode_labels) - iElec
 
                             # nan out the stimulation
                             y[x_stim_start:x_stim_end] = np.nan
@@ -549,23 +538,23 @@ for subject_label in subjects_to_analyze:
 
                             # if N1 is detected, plot it
                             if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / srate + TRIAL_EPOCH_START
+                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + TRIAL_EPOCH_START
                                 yN1 = n1_peak_amplitudes[iElec, iPair] / 500
                                 #yN1 += iElec + 1
-                                yN1 += len(channels_include) - iElec
+                                yN1 += len(electrode_labels) - iElec
                                 ax.plot(xN1, yN1, 'bo')
 
-                        ax.set_xlabel('time (s)', fontSize=axis_label_font_size)
-                        ax.set_xlim(DISPLAY_X_RANGE)
+                        ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
+                        ax.set_xlim(DISPLAY_EPOCH_RANGE)
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_texts_font_size)
 
                         # set the y axis
-                        ax.set_ylabel('Measured electrodes', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(channels_include) + 2))
-                        ax.set_yticks(np.arange(1, len(channels_include) + 1, 1))
+                        ax.set_ylabel('Measured electrodes\n', fontSize=axis_label_font_size)
+                        ax.set_ylim((0, len(electrode_labels) + 2))
+                        ax.set_yticks(np.arange(1, len(electrode_labels) + 1, 1))
                         #ax.set_yticklabels(channels_include, fontSize=axis_texts_font_size)
-                        ax.set_yticklabels(np.flip(channels_include), fontSize=axis_texts_font_size)
+                        ax.set_yticklabels(np.flip(electrode_labels), fontSize=axis_texts_font_size)
 
                         # draw legend
                         ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
@@ -578,14 +567,108 @@ for subject_label in subjects_to_analyze:
                         # display/save figure
                         # fig.show()
                         #fig.savefig(os.path.join(output_root, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
-                        fig.savefig(os.path.join(output_root, 'stimpair_' + str(pair_labels[iPair]) + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(output_root, 'stimpair_' + str(stimpair_labels[iPair]) + '.png'), bbox_inches='tight')
 
-                # message
-                print('- Finished subset')
+                #
+                if GENERATE_MATRIX_IMAGES:
+
+                    #
+                    # Amplitude matrix
+                    #
+
+                    # create a figure and retrieve the axis
+                    fig = create_figure(OUTPUT_IMAGE_RESOLUTION[0], OUTPUT_IMAGE_RESOLUTION[1], False)
+                    ax = fig.gca()
+
+                    #
+                    matrix_amplitudes = n1_peak_amplitudes
+                    matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
+                    matrix_amplitudes *= -1
+
+                    # nan out the stimulated electrodes
+
+
+                    # draw the matrix
+                    im = ax.imshow(np.transpose(matrix_amplitudes), origin='upper', vmax=500)
+
+                    # set labels and ticks
+                    ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
+                    ax.set_yticklabels(stimpair_labels, fontSize=axis_texts_font_size)
+                    ax.set_xticks(np.arange(0, len(electrode_labels), 1))
+                    ax.set_xticklabels(electrode_labels, rotation=90, fontSize=axis_texts_font_size)
+                    ax.set_xlabel('\nMeasured electrode', fontSize=axis_label_font_size)
+                    ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+
+                    # set a colorbar
+                    cbar = fig.colorbar(im)
+                    cbar.set_ticks([0, 100, 200, 300, 400, 500])
+                    cbar.ax.set_yticklabels(['0', '-100 \u03bcV', '-200 \u03bcV', '-300 \u03bcV', '-400 \u03bcV', '-500 \u03bcV'])
+
+                    # display/save figure
+                    # fig.show()
+                    #fig.savefig(os.path.join(output_root, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
+                    fig.savefig(os.path.join(output_root, 'matrix_amplitude.png'), bbox_inches='tight')
+
+                    #
+                    # Latency matrix
+                    #
+
+
+                    #
+                    # Amplitude matrix
+                    #
+
+                    # create a figure and retrieve the axis
+                    fig = create_figure(OUTPUT_IMAGE_RESOLUTION[0], OUTPUT_IMAGE_RESOLUTION[1], False)
+                    ax = fig.gca()
+
+                    # retrieve the latencies and convert the indices (in samples) to time units (ms)
+                    matrix_latencies = n1_peak_indices
+                    matrix_latencies -= onset_sample
+                    matrix_latencies /= sampling_rate
+                    matrix_latencies *= 1000
+                    matrix_latencies[np.isnan(matrix_latencies)] = 0
+
+                    # nan out the stimulated electrodes
+
+
+                    # draw the matrix
+                    im = ax.imshow(np.transpose(matrix_latencies), origin='upper')
+
+                    # set labels and ticks
+                    ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
+                    ax.set_yticklabels(stimpair_labels, fontSize=axis_texts_font_size)
+                    ax.set_xticks(np.arange(0, len(electrode_labels), 1))
+                    ax.set_xticklabels(electrode_labels, rotation=90, fontSize=axis_texts_font_size)
+                    ax.set_xlabel('\nMeasured electrode', fontSize=axis_label_font_size)
+                    ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+
+                    # generate the legend tick values
+                    latest_N1 = np.nanmax(n1_peak_indices)
+                    latest_N1 = int(ceil(latest_N1 / 10)) * 10
+                    legend_tick_values = []
+                    legend_tick_labels = []
+                    for latency in range(0, latest_N1 + 10, 10):
+                        legend_tick_values.append(latency)
+                        legend_tick_labels.append(str(latency) + ' ms')
+
+                    # set a colorbar
+                    cbar = fig.colorbar(im)
+                    cbar.set_ticks(legend_tick_values)
+                    cbar.ax.set_yticklabels(legend_tick_labels)
+
+                    # display/save figure
+                    # fig.show()
+                    #fig.savefig(os.path.join(output_root, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
+                    fig.savefig(os.path.join(output_root, 'matrix_latency.png'), bbox_inches='tight')
+
+
+            # message
+            print('- Finished subset')
 
     else:
         #
-        print('Warning: participant \'' + subject_label + '\' could not be found, skipping')
+        print('Warning: participant \'' + subject + '\' could not be found, skipping')
 
 
 print('- Finished running')
