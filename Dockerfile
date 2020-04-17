@@ -72,7 +72,6 @@ RUN chmod +x /scripts/run.py
 
 #
 COPY version /scripts/version
-COPY ./bids /scripts/bids
 COPY ./functions /scripts/functions
 
 # 
