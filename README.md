@@ -23,21 +23,21 @@ To adjust the N1 detection and visualization settings, a JSON file can be passed
 An example JSON of the standard settings has the following content:
 ```
 {
-    "signal_extract": {
-        "trial_epoch_range":    [-1,       3.0],
-        "baseline_range":       [-1,      -0.1],
+    "trials": {
+        "trial_epoch":               [-1,       3.0],
+        "baseline_epoch":            [-1,      -0.1],
     },
     
     "n1_detect": {
-        "peak_search_range":    [ 0,       0.5],
-        "n1_search_range":      [ 0.009,   0.09],
-        "baseline_std_range":   [-1,      -0.1],
-        "baseline_std_fact":    3.4,
+        "peak_search_epoch":         [ 0,       0.5],
+        "n1_search_epoch":           [ 0.009,   0.09],
+        "baseline_epoch":            [-1,      -0.1],
+        "baseline_theshold_factor":  3.4,
     },
 
     "visualization": {
-        "x_axis_range":         [-0.2,    1],
-        "x_stim_range":         [-0.015,  0.0025],
+        "x_axis_epoch":         	 [-0.2,    1],
+        "stim_blank_epoch":          [-0.015,  0.0025],
     }    
 }
 ```
