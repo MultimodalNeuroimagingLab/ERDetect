@@ -193,8 +193,11 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
         # loop through the trials
         for iTrial in range(len(onsets)):
+
             sample_start = int(round((onsets[iTrial] + epoch_start) * srate))
             sample_end = sample_start + size_time_s
+
+            print('- Loading trial ' + str(iTrial) + '  (' + str(sample_start) + ' - ' + str(sample_end))
 
             # TODO: check if sample_start and sample_end are within range
 
@@ -203,6 +206,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
             # loop through the channels
             for iChannel in range(len(channels)):
+                print('Ch ' + str(iChannel))
                 data[iChannel, iTrial, :] = trial_data[iChannel]
 
 

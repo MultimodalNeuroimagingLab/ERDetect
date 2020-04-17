@@ -18,6 +18,7 @@ import argparse
 import os
 from math import isnan, ceil
 from glob import glob
+from bids_validator import BIDSValidator
 import numpy as np
 from functions.load_bids import load_channel_info, load_event_info, load_data_epochs
 import scipy.io as sio
@@ -182,7 +183,7 @@ for subject in subjects_to_analyze:
             # gather metadata information
             #
 
-            # derive the bids_tst roots (subject/session and subset) from the full path
+            # derive the bids roots (subject/session and subset) from the full path
             bids_subjsess_root = os.path.commonprefix(glob(os.path.join(os.path.dirname(subset), '*.*')))[:-1]
             bids_subset_root = subset[:subset.rindex('_')]
 
@@ -257,6 +258,7 @@ for subject in subjects_to_analyze:
             # Read and epoch the data
             sampling_rate, data = load_data_epochs(subset, electrode_labels, trial_onsets, TRIAL_EPOCH_START, TRIAL_EPOCH_END)
             if sampling_rate is None or data is None:
+                print('Error: Could not load data', file=sys.stderr)
                 exit()
 
             #
