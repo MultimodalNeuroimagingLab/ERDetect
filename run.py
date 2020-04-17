@@ -18,9 +18,8 @@ import argparse
 import os
 from math import isnan, ceil
 from glob import glob
-from bids_validator import BIDSValidator
 import numpy as np
-from bids.load_bids import load_channel_info, load_event_info, load_data_epochs
+from functions.load_bids import load_channel_info, load_event_info, load_data_epochs
 import scipy.io as sio
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
@@ -183,7 +182,7 @@ for subject in subjects_to_analyze:
             # gather metadata information
             #
 
-            # derive the bids roots (subject/session and subset) from the full path
+            # derive the bids_tst roots (subject/session and subset) from the full path
             bids_subjsess_root = os.path.commonprefix(glob(os.path.join(os.path.dirname(subset), '*.*')))[:-1]
             bids_subset_root = subset[:subset.rindex('_')]
 
