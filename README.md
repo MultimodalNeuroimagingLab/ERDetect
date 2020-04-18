@@ -36,7 +36,7 @@ An example JSON of the standard settings has the following content:
     },
 
     "visualization": {
-        "x_axis_epoch":         	 [-0.2,    1],
+        "x_axis_epoch":              [-0.2,    1],
         "stim_blank_epoch":          [-0.015,  0.0025],
     }    
 }
