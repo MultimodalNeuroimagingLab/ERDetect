@@ -198,7 +198,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         print('test2')
         data[len(channels) - 1, len(onsets) - 1, 0] = np.nan
         data[65, 397, :] = np.nan
-
+        data.fill(1)
         #data.fill(np.nan)
         print('test3')
 
