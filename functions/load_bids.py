@@ -193,8 +193,11 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
         # initialize a data buffer (channel x trials/epochs x time)
         # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
+        print('test')
         data = np.empty((len(channels), len(onsets), size_time_s))
+        print('test2')
         data.fill(np.nan)
+        print('test3')
 
         # create a progress bar
         print_progressbar(0, len(onsets), prefix='Progress:', suffix='Complete', length=50)
