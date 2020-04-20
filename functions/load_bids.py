@@ -18,6 +18,7 @@ import numpy as np
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
 import pandas as pd
+from functions.misc import print_progressbar
 
 
 def load_channel_info(tsv_filepath):
@@ -57,7 +58,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
     """
     load and epoch the data into a matrix based on channels, stimulus onsets and the epoch range (relative to the onsets)
 
-    Parameters:
+    Args:
         data_path (str):                Path to the data file or folder
         channels (list or tuple):       The channels that should read from the data, the output will be sorted
                                         according to this input argument.
@@ -71,7 +72,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
                                         stimulus to each epoch)
 
     Returns:
-        sampling rate (int or double):  the sampling rate at which the data was acquired
+        sampling_rate (int or double):  the sampling rate at which the data was acquired
         data (ndarray):                 A three-dimensional array with data epochs per channel
                                         (matrix format: channel x trials/epochs x time))
 
@@ -91,16 +92,16 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         #f = EdfReader(data_path)
         #n = f.signals_in_file
         #signal_labels = f.getSignalLabels()
-        #srate = f.getSampleFrequencies()[0]
+        #sampling_rate = f.getSampleFrequencies()[0]
         #size_time_t = epoch_end + epoch_start
-        #size_time_s = int(ceil(size_time_t * srate))
+        #size_time_s = int(ceil(size_time_t * sampling_rate))
         #data = np.empty((len(channels_include), len(onsets), size_time_s))
         #data.fill(np.nan)
         #for iChannel in range(len(channels)):
         #    channel_index = signal_labels.index(channels[iChannel])
         #    signal = f.readSignal(channel_index)
         #    for iTrial in range(len(onsets)):
-        #        sample_start = int(round(onsets[iTrial] * srate))
+        #        sample_start = int(round(onsets[iTrial] * sampling_rate))
         #        data[iChannel, iTrial, :] = signal[sample_start:sample_start + size_time_s]
 
 
@@ -109,11 +110,11 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         #edf = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
 
         # retrieve the sample-rate
-        srate = edf.info['sfreq']
+        sampling_rate = edf.info['sfreq']
 
         # calculate the size of the time dimension
         size_time_t = abs(epoch_end - epoch_start)
-        size_time_s = int(ceil(size_time_t * srate))
+        size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
         # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
@@ -129,7 +130,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
                 # loop through the trials
                 for iTrial in range(len(onsets)):
-                    sample_start = int(round((onsets[iTrial] + epoch_start) * srate))
+                    sample_start = int(round((onsets[iTrial] + epoch_start) * sampling_rate))
                     # TODO: check if sample_start and sample_end are within range
                     data[iChannel, iTrial, :] = edf[channel_index, sample_start:sample_start + size_time_s][0]
 
@@ -146,11 +147,11 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         bv = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
 
         # retrieve the sample-rate
-        srate = round(bv.info['sfreq'])
+        sampling_rate = round(bv.info['sfreq'])
 
         # calculate the size of the time dimension
         size_time_t = abs(epoch_end - epoch_start)
-        size_time_s = int(ceil(size_time_t * srate))
+        size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
         # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
@@ -166,7 +167,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
                 # loop through the trials
                 for iTrial in range(len(onsets)):
-                    sample_start = int(round((onsets[iTrial] + epoch_start) * srate))
+                    sample_start = int(round((onsets[iTrial] + epoch_start) * sampling_rate))
                     # TODO: check if sample_start and sample_end are within range
                     data[iChannel, iTrial, :] = bv[channel_index, sample_start:sample_start + size_time_s][0]
 
@@ -176,25 +177,32 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
     elif extension == '.mefd':
 
+        print('read metadata')
+
         # read the session metadata
         mef = MefSession(data_path, '', read_metadata=True)
 
+        print('read metadata2')
         # retrieve the sample-rate
-        srate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
+        sampling_rate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
 
+        print('sampling_rate' + str(sampling_rate))
         # calculate the size of the time dimension
         size_time_t = abs(epoch_end - epoch_start)
-        size_time_s = int(ceil(size_time_t * srate))
+        size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
         # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
         data = np.empty((len(channels), len(onsets), size_time_s))
         data.fill(np.nan)
 
+        # create a progress bar
+        print_progressbar(0, len(onsets), prefix='Progress:', suffix='Complete', length=50)
+
         # loop through the trials
         for iTrial in range(len(onsets)):
 
-            sample_start = int(round((onsets[iTrial] + epoch_start) * srate))
+            sample_start = int(round((onsets[iTrial] + epoch_start) * sampling_rate))
             sample_end = sample_start + size_time_s
 
             print('- Loading trial ' + str(iTrial) + '  (' + str(sample_start) + ' - ' + str(sample_end))
@@ -203,11 +211,16 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
             # load the trial data
             trial_data = mef.read_ts_channels_sample(channels, [sample_start, sample_end])
+            if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
+                return None, None
 
             # loop through the channels
             for iChannel in range(len(channels)):
-                print('Ch ' + str(iChannel))
                 data[iChannel, iTrial, :] = trial_data[iChannel]
 
+            # update progress bar
+            print_progressbar(iTrial + 1, len(onsets), prefix='Progress:', suffix='Complete', length=50)
 
-    return srate, data
+    #
+    return sampling_rate, data
+

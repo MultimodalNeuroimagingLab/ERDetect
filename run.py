@@ -24,6 +24,7 @@ from functions.load_bids import load_channel_info, load_event_info, load_data_ep
 import scipy.io as sio
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
+from functions.misc import print_progressbar
 
 
 #
@@ -433,6 +434,9 @@ for subject in subjects_to_analyze:
                     # message
                     print('- Generating electrode plots...')
 
+                    # create a progress bar
+                    print_progressbar(0, len(electrode_labels), prefix='Progress:', suffix='Complete', length=50)
+
                     # loop through electrodes
                     for iElec in range(len(electrode_labels)):
 
@@ -496,6 +500,8 @@ for subject in subjects_to_analyze:
                         #fig.savefig(os.path.join(output_root, 'electrode_' + str(channels_include[iElec]) + '.png'))
                         fig.savefig(os.path.join(output_root, 'electrode_' + str(electrode_labels[iElec]) + '.png'), bbox_inches='tight')
 
+                        # update progress bar
+                        print_progressbar(iElec + 1, len(electrode_labels), prefix='Progress:', suffix='Complete', length=50)
 
                 #
                 if GENERATE_STIMPAIR_IMAGES:
@@ -506,6 +512,9 @@ for subject in subjects_to_analyze:
 
                     # message
                     print('- Generating stimulation-pair plots...')
+
+                    # create a progress bar
+                    print_progressbar(0, len(stimpair_labels), prefix='Progress:', suffix='Complete', length=50)
 
                     # loop through the stimulation-pairs
                     for iPair in range(len(stimpair_labels)):
@@ -569,6 +578,9 @@ for subject in subjects_to_analyze:
                         # fig.show()
                         #fig.savefig(os.path.join(output_root, 'stimpair_' + str(pairs_label[iPair]) + '.png'))
                         fig.savefig(os.path.join(output_root, 'stimpair_' + str(stimpair_labels[iPair]) + '.png'), bbox_inches='tight')
+
+                        # update progress bar
+                        print_progressbar(iPair + 1, len(stimpair_labels), prefix='Progress:', suffix='Complete', length=50)
 
                 #
                 if GENERATE_MATRIX_IMAGES:
