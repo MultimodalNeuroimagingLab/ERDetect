@@ -220,6 +220,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
             # loop through the channels
             for iChannel in range(len(channels)):
+                print('- set ' + str(iChannel) + '  ' + str(iTrial))
                 data[iChannel, iTrial, :] = trial_data[iChannel]
 
             # update progress bar
