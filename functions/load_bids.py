@@ -18,7 +18,7 @@ import numpy as np
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
 import pandas as pd
-from functions.misc import print_progressbar
+from functions.misc import print_progressbar, allocate_array
 
 
 def load_channel_info(tsv_filepath):
@@ -117,9 +117,9 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
-        # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-        data = np.empty((len(channels), len(onsets), size_time_s))
-        data.fill(np.nan)
+        data = allocate_array((len(channels), len(onsets), size_time_s))
+        if data is None:
+            return None, None
 
         # loop through the included channels
         for iChannel in range(len(channels)):
@@ -138,6 +138,7 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
                 print('Error: could not find channel \'' + channels[iChannel] + '\' in dataset')
                 return None, None
 
+        # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels
         edf.close()
         del edf
 
@@ -154,9 +155,9 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
         size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
-        # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-        data = np.empty((len(channels), len(onsets), size_time_s))
-        data.fill(np.nan)
+        data = allocate_array((len(channels), len(onsets), size_time_s))
+        if data is None:
+            return None, None
 
         # loop through the included channels
         for iChannel in range(len(channels)):
@@ -175,33 +176,24 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
                 print('Error: could not find channel \'' + channels[iChannel] + '\' in dataset')
                 return None, None
 
-    elif extension == '.mefd':
+        # TODO: clear memory in MNE
 
-        print('read metadata')
+    elif extension == '.mefd':
 
         # read the session metadata
         mef = MefSession(data_path, '', read_metadata=True)
 
-        print('read metadata2')
         # retrieve the sample-rate
         sampling_rate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
 
-        print('sampling_rate' + str(sampling_rate))
         # calculate the size of the time dimension
         size_time_t = abs(epoch_end - epoch_start)
         size_time_s = int(ceil(size_time_t * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
-        # Note: this order makes the time dimension contiguous in memory, which is handy for block copies
-        print('test')
-        data = np.empty((len(channels), len(onsets), size_time_s))
-        print('test2')
-        data[len(channels) - 1, len(onsets) - 1, 0] = np.nan
-        data[65, 397, :] = np.nan
-
-        #data.fill(np.nan)
-        data[:] = np.nan
-        print('test3')
+        data = allocate_array((len(channels), len(onsets), size_time_s))
+        if data is None:
+            return None, None
 
         # create a progress bar
         print_progressbar(0, len(onsets), prefix='Progress:', suffix='Complete', length=50)
@@ -212,10 +204,6 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
             sample_start = int(round((onsets[iTrial] + epoch_start) * sampling_rate))
             sample_end = sample_start + size_time_s
 
-            print('- Loading trial ' + str(iTrial) + '  (' + str(sample_start) + ' - ' + str(sample_end))
-
-            # TODO: check if sample_start and sample_end are within range
-
             # load the trial data
             trial_data = mef.read_ts_channels_sample(channels, [sample_start, sample_end])
             if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
@@ -223,12 +211,12 @@ def load_data_epochs(data_path, channels, onsets, epoch_start, epoch_end):
 
             # loop through the channels
             for iChannel in range(len(channels)):
-                print('- set ' + str(iChannel) + '  ' + str(iTrial))
                 data[iChannel, iTrial, :] = trial_data[iChannel]
+
+            del trial_data
 
             # update progress bar
             print_progressbar(iTrial + 1, len(onsets), prefix='Progress:', suffix='Complete', length=50)
 
     #
     return sampling_rate, data
-

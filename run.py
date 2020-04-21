@@ -24,7 +24,7 @@ from functions.load_bids import load_channel_info, load_event_info, load_data_ep
 import scipy.io as sio
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
-from functions.misc import print_progressbar
+from functions.misc import print_progressbar, allocate_array
 
 
 #
@@ -327,9 +327,10 @@ for subject in subjects_to_analyze:
                 if iPair > 0 and ((iPair + 1) % 5 == 0):
                     print('')
 
-            # create a variable to store each stimulation-pair average in (channel x stim-pair x time)
-            ccep_average = np.empty((len(electrode_labels), len(stimpair_labels), data.shape[2]))
-            ccep_average.fill(np.nan)
+            # initialize a buffer to store each stimulation-pair average in (channel x stim-pair x time)
+            ccep_average = allocate_array((len(electrode_labels), len(stimpair_labels), data.shape[2]))
+            if ccep_average is None:
+                exit()
 
             # for each stimulation-pair, calculate the average over trials
             for iPair in range(len(stimpair_labels)):
@@ -340,6 +341,8 @@ for subject in subjects_to_analyze:
                 ccep_average[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
                 ccep_average[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
 
+            # clear the memory data
+            del data
 
             # todo: handle trial epochs which start after the trial onset
             onset_sample = int(round(abs(TRIAL_EPOCH_START * sampling_rate)))
