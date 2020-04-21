@@ -46,14 +46,16 @@ RUN apk add --no-cache libpng freetype libstdc++ openblas lapack libxml2 libxslt
 	    libgcc libquadmath \
 	    libgfortran \
 	    lapack-dev \
+            linux-headers \
 	&& ln -s /usr/include/locale.h /usr/include/xlocale.h \
-	&& pip3 install numpy==1.18.1 \
+	&& pip3 install numpy==1.18.3 \
 	&& pip3 install scipy==1.3.3 \
-	&& pip3 install pandas \
+	&& pip3 install pandas==1.0.3 \
 	&& pip3 install kiwisolver==1.1.0 \
-	&& pip3 install matplotlib \
+	&& pip3 install matplotlib==3.2.1 \
 	&& pip3 install mne \
 	&& pip3 install bids_validator \
+        && pip3 install psutil==5.7.0 \
 	&& /pymef/setup.py install \
 	&& rm -rf /pymef* \
 	&& rm -r /root/.cache \
