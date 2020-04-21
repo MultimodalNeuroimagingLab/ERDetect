@@ -20,7 +20,7 @@ from math import isnan, ceil
 from glob import glob
 from bids_validator import BIDSValidator
 import numpy as np
-from functions.load_bids import load_channel_info, load_event_info, load_data_epochs
+from functions.load_bids import load_channel_info, load_event_info, load_data_epochs, load_data_epochs_averages
 import scipy.io as sio
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
@@ -211,6 +211,7 @@ for subject in subjects_to_analyze:
             # print channel information
             print('Non-IEEG channels:                               ' + ' '.join(channels_non_ieeg))
             print('IEEG electrodes:                                 ' + ' '.join(electrode_labels))
+            # TODO: print like pairs, on long lines, wrap around with indenting on top
             print('Bad channels:                                    ' + ' '.join(channels_bad))
 
             # check if there are channels
@@ -248,52 +249,14 @@ for subject in subjects_to_analyze:
 
 
             #
-            # read and epoch the data
-            #
-
-            # TODO: handle different units in types
-
-            # message
-            print('- Reading data...')
-
-            # Read and epoch the data
-            sampling_rate, data = load_data_epochs(subset, electrode_labels, trial_onsets, TRIAL_EPOCH_START, TRIAL_EPOCH_END)
-            if sampling_rate is None or data is None:
-                print('Error: Could not load data', file=sys.stderr)
-                exit()
-
-            #
-            # TODO: check for invalid data (trial, channel etc; could happen when onset is wrong etc.)
-
-
-            #
-            # baseline substract
-            #
-
-            # TODO: check if the baseline (epoch) window is within the trial epoch
-
-            # determine the start and end sample of the baseline epoch
-            baseline_start = int(round(abs(TRIAL_EPOCH_START - BASELINE_EPOCH_START) * sampling_rate))
-            baseline_end = baseline_start + int(ceil(abs(BASELINE_EPOCH_END - BASELINE_EPOCH_START) * sampling_rate)) - 1
-
-            # subtract the baseline median per trial
-            for iTrial in range(len(trial_onsets)):
-                for iChannel in range(len(electrode_labels)):
-                    data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmedian(data[iChannel, iTrial, baseline_start:baseline_end])
-                    #data[iChannel, iTrial, :] = data[iChannel, iTrial, :] - np.nanmean(data[iChannel, iTrial, baseline_start:baseline_end])
-
-
-            #
-            # retrieve the stimulation-pairs and for each pair take the average over trials
+            # determine the stimulation-pairs conditions (and the trial and electrodes that belong to them)
             # (note that the 'no_concat_bidirectional_pairs' argument is taken into account here)
             #
 
-            # variable to store the stimulation pair information in
-            stimpair_labels = []                # for each pair, the labels of trhe electrodes thatt were stimulated
+            stimpair_labels = []                # for each pair, the labels of the electrodes that were stimulated
             stimpair_trial_indices = []         # for each pair, the indices of the trials that were involved
+            stimpair_trial_onsets = []          # for each pair, the indices of the trials that were involved
             stimpair_electrode_indices = []     # for each pair, the indices of the electrodes that were stimulated
-
-            # loop through al possible channel/electrode combinations
             for iChannel0 in range(len(electrode_labels)):
                 for iChannel1 in range(len(electrode_labels)):
 
@@ -316,6 +279,7 @@ for subject in subjects_to_analyze:
                         stimpair_labels.append(electrode_labels[iChannel0] + '-' + electrode_labels[iChannel1])
                         stimpair_electrode_indices.append((iChannel0, iChannel1))
                         stimpair_trial_indices.append(indices)
+                        stimpair_trial_onsets.append([trial_onsets[i] for i in indices])
 
 
             # display Pair/Trial information
@@ -327,25 +291,30 @@ for subject in subjects_to_analyze:
                 if iPair > 0 and ((iPair + 1) % 5 == 0):
                     print('')
 
-            # initialize a buffer to store each stimulation-pair average in (channel x stim-pair x time)
-            ccep_average = allocate_array((len(electrode_labels), len(stimpair_labels), data.shape[2]))
-            if ccep_average is None:
-                exit()
+            #
+            # read and epoch the data
+            #
 
-            # for each stimulation-pair, calculate the average over trials
-            for iPair in range(len(stimpair_labels)):
-                ccep_average[:, iPair, :] = np.nanmean(data[:, stimpair_trial_indices[iPair], :], axis=1)
+            # message
+            print('- Reading data...')
+
+            # read, normalize by median and average the trials within the condition
+            # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs_averages' here because it is more
+            #       memory efficient is only the averages are needed
+            sampling_rate, ccep_average = load_data_epochs_averages(subset, electrode_labels, stimpair_trial_onsets,
+                                                                    trial_epoch=(TRIAL_EPOCH_START, TRIAL_EPOCH_END),
+                                                                    baseline_norm='median')
+            # TODO: check for invalid data (trial, channel etc; could happen when onset is wrong etc.)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
             for iPair in range(len(stimpair_labels)):
                 ccep_average[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
                 ccep_average[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
 
-            # clear the memory data
-            del data
-
-            # todo: handle trial epochs which start after the trial onset
+            # determine the sample of stimulus onset (counting from the epoch start)
             onset_sample = int(round(abs(TRIAL_EPOCH_START * sampling_rate)))
+            # todo: handle trial epochs which start after the trial onset
+
 
             #
             # prepare an output directory
