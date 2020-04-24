@@ -19,26 +19,31 @@ $ docker run -ti --rm \
 ```
 
 ----
-To adjust the N1 detection and visualization settings, a JSON file can be passed using the ```--config [JSON_FILEPATH]``` parameter.
+To adjust the N1 detection and visualization settings, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter.
 An example JSON of the standard settings has the following content:
 ```
 {
     "trials": {
-        "trial_epoch":               [-1,       3.0],
-        "baseline_epoch":            [-1,      -0.1],
+        "trial_epoch":                     [-1.0,        3.0],
+        "baseline_epoch":                  [-1.0,       -0.1],
+        "baseline_norm":                   "median",
+        "concat_bidirectional_pairs":      true
     },
-    
+
     "n1_detect": {
-        "peak_search_epoch":         [ 0,       0.5],
-        "n1_search_epoch":           [ 0.009,   0.09],
-        "baseline_epoch":            [-1,      -0.1],
-        "baseline_theshold_factor":  3.4,
+        "peak_search_epoch":               [ 0,          0.5],
+        "n1_search_epoch":                 [ 0.009,     0.09],
+        "n1_baseline_epoch":               [-1,         -0.1],
+        "n1_baseline_threshold_factor":    3.4
     },
 
     "visualization": {
-        "x_axis_epoch":              [-0.2,    1],
-        "stim_blank_epoch":          [-0.015,  0.0025],
-    }    
+        "lim_epoch":                       [-0.2,          1],
+        "stim_epoch":                      [-0.015,   0.0025],
+        "generate_electrode_images":       false,
+        "generate_stimpair_images":        false,
+        "generate_matrix_images":          true
+    }
 }
 ```
 For more information the settings...
