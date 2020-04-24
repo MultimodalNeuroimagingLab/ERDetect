@@ -69,8 +69,8 @@ ENV PYTHONPATH=""
 
 #
 RUN mkdir -p /scripts
-COPY run.py /scripts/run.py
-RUN chmod +x /scripts/run.py
+COPY n1detect_*.py /scripts/
+RUN chmod +x /scripts/n1detect_run.py
 
 #
 COPY version /scripts/version
