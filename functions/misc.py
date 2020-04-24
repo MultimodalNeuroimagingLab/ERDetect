@@ -15,31 +15,7 @@ You should have received a copy of the GNU General Public License along with thi
 import sys
 import numpy as np
 from psutil import virtual_memory
-
-
-def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r"):
-    """
-    Call in a loop to create terminal progress bar
-
-    Args:
-        iteration (int):    current iteration (Int)
-        total (int):        total iterations (Int)
-        prefix (str):       prefix string (Str)
-        suffix (str)        suffix string (Str)
-        decimals (int)      positive number of decimals in percent complete (Int)
-        length (int):       character length of bar (Int)
-        fill (str):         bar fill character (Str)
-        print_end (str):    end character (e.g. "\r", "\r\n") (Str)
-
-        From: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
-    bar = fill * filled_length + '-' * (length - filled_length)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = print_end)
-    # Print New Line on Complete
-    if iteration == total:
-        print()
+from math import ceil
 
 
 def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
@@ -79,3 +55,118 @@ def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
     except MemoryError:
         print('Error: not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)', file=sys.stderr)
         return None
+
+
+def is_number(value):
+    try:
+        float(value)
+        return True
+    except:
+        return False
+
+
+def is_valid_numeric_range(value):
+    """
+    Check if the given value is a valid range; a tuple or list with two numeric values
+
+    Args:
+        value (tuple or list):  The input value to check
+
+    Returns:
+        True is valid range, false if not
+    """
+    if not isinstance(value, (list, tuple)):
+        return False
+    if not len(value) == 2:
+        return False
+    if not is_number(value[0]):
+        return False
+    if not is_number(value[1]):
+        return False
+    return True
+
+
+def number_to_padded_string(value, width=0, pos_space=True):
+    """
+    Convert a number to a space padded string
+
+    Args:
+        value (int or float):   The value to convert to a fixed width string
+        width (int):            The total length of the return string; < 0 is pad left; > 0 is pad right
+        pos_space (bool):       Flag whether a space-character should be added before positive numbers
+
+    """
+    padded_str = ' ' if (pos_space and value >= 0) else ''
+    padded_str += str(value)
+    if width < 0:
+        padded_str = padded_str.rjust(width * -1, ' ')
+    elif width > 0:
+        padded_str = padded_str.ljust(width, ' ')
+    return padded_str
+
+
+def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
+    """
+    Convert multiple numbers to fixed width string with space padding in the middle
+
+    Args:
+        value (tuple or list):  The values that will be converted into a fixed width string
+        width (int):            The total length of the return string
+        pos_space (bool):       Flag whether a space-character should be added before positive numbers
+        separator (string):     Separator string after each value
+
+    """
+    if len(values) == 0:
+        return ''
+
+    padded_values = []
+    total_value_width = 0
+    for value in values:
+        padded_values.append(number_to_padded_string(value, 0, pos_space))
+        total_value_width += len(padded_values[-1])
+
+    padded_str = padded_values[0]
+
+    if len(values) == 1:
+        return padded_values[0].ljust(width, ' ')
+
+    sep_width = (width - total_value_width - ((len(values) - 1) * len(separator))) / (len(values) - 1)
+    if sep_width < 1:
+        sep_width = 1
+    else:
+        sep_width = ceil(sep_width)
+
+    for iValue in range(1,len(padded_values)):
+        padded_str += separator
+        if len(padded_str) + sep_width + len(padded_values[iValue]) > width:
+            padded_str += ''.ljust(width - len(padded_str) - len(padded_values[iValue]), ' ')
+        else:
+            padded_str += ''.ljust(sep_width, ' ')
+        padded_str += padded_values[iValue]
+
+    return padded_str
+
+
+def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r"):
+    """
+    Call in a loop to create terminal progress bar
+
+    Args:
+        iteration (int):    current iteration (Int)
+        total (int):        total iterations (Int)
+        prefix (str):       prefix string (Str)
+        suffix (str)        suffix string (Str)
+        decimals (int)      positive number of decimals in percent complete (Int)
+        length (int):       character length of bar (Int)
+        fill (str):         bar fill character (Str)
+        print_end (str):    end character (e.g. "\r", "\r\n") (Str)
+
+        From: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = print_end)
+    # Print New Line on Complete
+    if iteration == total:
+        print()
