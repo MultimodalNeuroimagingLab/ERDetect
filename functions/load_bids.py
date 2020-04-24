@@ -12,6 +12,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import os
 import sys
 from math import ceil
 from mne.io import read_raw_edf, read_raw_brainvision
@@ -86,24 +87,18 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
           only be known till after we read the data
     """
 
-    # TODO: input argument checks
+    # initialize the return variables to a default
+    sampling_rate = None
+    data = None
 
-    # TODO: handle different units in types
+    # TODO: handle different units in data format
 
-    # baseline normalization
-    baseline_method = 0
-    if baseline_norm is not None:
-        if baseline_norm.lower() == 'mean' or baseline_norm.lower() == 'average':
-            baseline_method = 1
-        elif baseline_norm.lower() == 'median':
-            baseline_method = 2
-        else:
-            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
-            return None, None
+    #
+    # check input
+    #
 
-    # dataset format
+    # data-set format
     data_extension = data_path[data_path.rindex("."):]
-    data_format = -1
     if data_extension == '.edf':
         data_format = 0
     elif data_extension == '.vhdr' or data_extension == '.vmrk' or data_extension == '.eeg':
@@ -114,7 +109,40 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         print('Error: unknown data format (' + data_extension + ')', file=sys.stderr)
         return None, None
 
+    #
+    if trial_epoch[1] < trial_epoch[0]:
+        print("Error: " + os.path.basename(__file__) + " - invalid 'trial_epoch' parameter, the given end-point (at " + str(trial_epoch[1]) + ") lies before the start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+        return None, None
+
+    # baseline normalization
+    baseline_method = 0
+    if baseline_norm is not None or len(baseline_norm) > 0:
+        if baseline_norm.lower() == 'mean' or baseline_norm.lower() == 'average':
+            baseline_method = 1
+        elif baseline_norm.lower() == 'median':
+            baseline_method = 2
+        elif baseline_norm.lower() == 'none':
+            baseline_method = 0
+        else:
+            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
+            return None, None
+
+        #
+        if baseline_epoch[1] < baseline_epoch[0]:
+            print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given end-point (at " + str(baseline_epoch[1]) + ") lies before the start-point (at " + str(baseline_epoch[0]) + ")", file=sys.stderr)
+            return None, None
+        if data_format == 2:
+            if baseline_epoch[0] < trial_epoch[0]:
+                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline start-point (at " + str(baseline_epoch[0]) + ") lies before the trial start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+                return None, None
+            if baseline_epoch[1] > trial_epoch[1]:
+                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline end-point (at " + str(baseline_epoch[1]) + ") lies after the trial end-point (at " + str(trial_epoch[1]) + ")", file=sys.stderr)
+                return None, None
+
+    #
     # read and process the data
+    #
+
     if data_format == 0 or data_format == 1:
         # EDF or BrainVision format, use MNE to read
 
@@ -124,8 +152,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         #n = f.signals_in_file
         #signal_labels = f.getSignalLabels()
         #sampling_rate = f.getSampleFrequencies()[0]
-        #size_time_t = epoch_end + epoch_start
-        #size_time_s = int(ceil(size_time_t * sampling_rate))
+        #size_time_s = int(ceil(abs(trial_epoch[1] - trial_epoch[0]) * sampling_rate))
         #data = np.empty((len(channels_include), len(onsets), size_time_s))
         #data.fill(np.nan)
         #for iChannel in range(len(channels)):
@@ -136,20 +163,21 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         #        data[iChannel, iTrial, :] = signal[sample_start:sample_start + size_time_s]
 
         # read the data
-        if data_format == 0:
-            mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], preload=True, verbose=None)
-            #mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
-        if data_format == 1:
-            mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
-
-        # TODO: check if read... handle errors
+        try:
+            if data_format == 0:
+                mne_raw = read_raw_edf(data_path, eog=[], misc=[], stim_channel=[], preload=True, verbose=None)
+                #mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
+            if data_format == 1:
+                mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
+        except Exception as e:
+            print('Error: MNE could not read data, message: ' + str(e), file=sys.stderr)
+            return None, None
 
         # retrieve the sample-rate
         sampling_rate = mne_raw.info['sfreq']
 
-        # calculate the size of the time dimension
-        size_time_t = abs(trial_epoch[1] - trial_epoch[0])
-        size_time_s = int(ceil(size_time_t * sampling_rate))
+        # calculate the size of the time dimension (in samples)
+        size_time_s = int(ceil(abs(trial_epoch[1] - trial_epoch[0]) * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
         data = allocate_array((len(channels), len(onsets), size_time_s))
@@ -162,33 +190,39 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             # (try to) retrieve the index of the channel
             try:
                 channel_index = mne_raw.info['ch_names'].index(channels[iChannel])
-
-                # loop through the trials
-                for iTrial in range(len(onsets)):
-
-                    #
-                    trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
-                    # TODO: check if sample_start and sample_end are within range of data
-
-                    if baseline_method > 0:
-                        baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate))
-                        baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate))
-                        # TODO: check if baseline_start and end range are within range of data
-
-                    if baseline_method == 0:
-                        data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0]
-                    elif baseline_method == 1:
-                        baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_mean
-                    elif baseline_method == 2:
-                        baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
-
             except ValueError:
-                print('Error: could not find channel \'' + channels[iChannel] + '\' in dataset')
+                print('Error: could not find channel \'' + channels[iChannel] + '\' in the dataset')
                 return None, None
 
-        # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels
+            # loop through the trials
+            for iTrial in range(len(onsets)):
+
+                #
+                trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
+                if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
+                    print('Error: cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
+                    return None, None
+
+                #
+                if baseline_method > 0:
+                    baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate))
+                    baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate))
+                    if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
+                        print('Error: cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the data')
+                        return None, None
+
+                # extract the trial data and perform baseline normalization on the trial if needed
+                if baseline_method == 0:
+                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0]
+                elif baseline_method == 1:
+                    baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
+                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_mean
+                elif baseline_method == 2:
+                    baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
+                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
+
+
+        # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels, issue MNE?
         mne_raw.close()
         del mne_raw
 
@@ -196,14 +230,18 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         # MEF3 format
 
         # read the session metadata
-        mef = MefSession(data_path, '', read_metadata=True)
+        try:
+            mef = MefSession(data_path, '', read_metadata=True)
+        except Exception:
+            print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
+            return None, None
 
-        # retrieve the sample-rate
+        # retrieve the sample-rate and total number of samples in the data-set
         sampling_rate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
+        num_samples = mef.session_md['time_series_metadata']['section_2']['number_of_samples'].item(0)
 
-        # calculate the size of the time dimension
-        size_time_t = abs(trial_epoch[1] - trial_epoch[0])
-        size_time_s = int(ceil(size_time_t * sampling_rate))
+        # calculate the size of the time dimension (in samples)
+        size_time_s = int(ceil(abs(trial_epoch[1] - trial_epoch[0]) * sampling_rate))
 
         # initialize a data buffer (channel x trials/epochs x time)
         data = allocate_array((len(channels), len(onsets), size_time_s))
@@ -218,18 +256,25 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
 
             #
             trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
-            trial_sample_end = trial_sample_start + size_time_s
-            # TODO: check if sample_start and sample_end are within range of data
+            if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
+                print('Error: cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
+                return None, None
 
             #
             if baseline_method > 0:
                 baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
                 baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
-                #TODO, check if baseline is within the trial (only the case for mefd, since only retrieves part)
+                if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
+                    print('Error: cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                    return None, None
 
             # load the trial data
-            trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_end])
-            if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
+            try:
+                trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_start + size_time_s])
+                if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
+                    return None, None
+            except Exception:
+                print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
                 return None, None
 
             # loop through the channels
@@ -291,24 +336,19 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
           only be known till after we read the data
     """
 
-    # TODO: input argument checks
+    # initialize the return variables to a default
+    sampling_rate = None
+    data = None
 
-    # TODO: handle different units in types
+    # TODO: handle different units in data format
 
-    # baseline normalization
-    baseline_method = 0
-    if baseline_norm is not None:
-        if baseline_norm.lower() == 'mean' or baseline_norm.lower() == 'average':
-            baseline_method = 1
-        elif baseline_norm.lower() == 'median':
-            baseline_method = 2
-        else:
-            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
-            return None, None
 
-    # dataset format
+    #
+    # check input
+    #
+
+    # data-set format
     data_extension = data_path[data_path.rindex("."):]
-    data_format = -1
     if data_extension == '.edf':
         data_format = 0
     elif data_extension == '.vhdr' or data_extension == '.vmrk' or data_extension == '.eeg':
@@ -319,25 +359,59 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
         print('Error: unknown data format (' + data_extension + ')', file=sys.stderr)
         return None, None
 
+    #
+    if trial_epoch[1] < trial_epoch[0]:
+        print("Error: " + os.path.basename(__file__) + " - invalid 'trial_epoch' parameter, the given end-point (at " + str(trial_epoch[1]) + ") lies before the start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+        return None, None
+
+    # baseline normalization
+    baseline_method = 0
+    if baseline_norm is not None or len(baseline_norm) > 0:
+        if baseline_norm.lower() == 'mean' or baseline_norm.lower() == 'average':
+            baseline_method = 1
+        elif baseline_norm.lower() == 'median':
+            baseline_method = 2
+        elif baseline_norm.lower() == 'none':
+            baseline_method = 0
+        else:
+            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
+            return None, None
+
+        #
+        if baseline_epoch[1] < baseline_epoch[0]:
+            print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given end-point (at " + str(baseline_epoch[1]) + ") lies before the start-point (at " + str(baseline_epoch[0]) + ")", file=sys.stderr)
+            return None, None
+        if data_format == 2:
+            if baseline_epoch[0] < trial_epoch[0]:
+                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline start-point (at " + str(baseline_epoch[0]) + ") lies before the trial start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+                return None, None
+            if baseline_epoch[1] > trial_epoch[1]:
+                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline end-point (at " + str(baseline_epoch[1]) + ") lies after the trial end-point (at " + str(trial_epoch[1]) + ")", file=sys.stderr)
+                return None, None
+
+    #
     # read and process the data
+    #
+
     if data_format == 0 or data_format == 1:
         # EDF or BrainVision format, use MNE to read
 
         # read the data
-        if data_format == 0:
-            mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], preload=True, verbose=None)
-            #mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
-        if data_format == 1:
-            mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
-
-        # TODO: check if read... handle errors
+        try:
+            if data_format == 0:
+                mne_raw = read_raw_edf(data_path, eog=[], misc=[], stim_channel=[], preload=True, verbose=None)
+                #mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
+            if data_format == 1:
+                mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
+        except Exception as e:
+            print('Error: MNE could not read data, message: ' + str(e), file=sys.stderr)
+            return None, None
 
         # retrieve the sample-rate
         sampling_rate = mne_raw.info['sfreq']
 
-        # calculate the size of the time dimension
-        size_time_t = abs(trial_epoch[1] - trial_epoch[0])
-        size_time_s = int(ceil(size_time_t * sampling_rate))
+        # calculate the size of the time dimension (in samples)
+        size_time_s = int(ceil(abs(trial_epoch[1] - trial_epoch[0]) * sampling_rate))
 
         # initialize a data buffer (channel x conditions x time)
         data = allocate_array((len(channels), len(conditions_onsets), size_time_s))
@@ -366,22 +440,28 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 for iTrial in range(len(conditions_onsets[iCondition])):
 
                     #
-                    sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
-                    # TODO: check if sample_start and sample_end are within range of data
+                    trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
+                    if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
+                        print('Error: cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
+                        return None, None
 
+                    #
                     if baseline_method > 0:
                         baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate))
                         baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate))
-                        # TODO: check if baseline_start and end range are within range of data
+                        if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
+                            print('Error: cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                            return None, None
 
+                    # extract the trial data and perform baseline normalization on the trial if needed
                     if baseline_method == 0:
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, sample_start:sample_start + size_time_s][0]
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0]
                     elif baseline_method == 1:
                         baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, sample_start:sample_start + size_time_s][0] - baseline_mean
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_mean
                     elif baseline_method == 2:
                         baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, sample_start:sample_start + size_time_s][0] - baseline_median
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
 
                 # average the trials for each channel (within this condition) and store the results
                 data[iChannel, iCondition, :] = np.nanmean(condition_channel_data, axis=0)
@@ -389,7 +469,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 # clear reference to data
                 del condition_channel_data
 
-        # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels
+        # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels, issue MNE?
         mne_raw.close()
         del mne_raw
 
@@ -397,14 +477,18 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
         # MEF3 format
 
         # read the session metadata
-        mef = MefSession(data_path, '', read_metadata=True)
+        try:
+            mef = MefSession(data_path, '', read_metadata=True)
+        except Exception:
+            print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
+            return None, None
 
-        # retrieve the sample-rate
+        # retrieve the sample-rate and total number of samples in the data-set
         sampling_rate = mef.session_md['time_series_metadata']['section_2']['sampling_frequency'].item(0)
+        num_samples = mef.session_md['time_series_metadata']['section_2']['number_of_samples'].item(0)
 
-        # calculate the size of the time dimension
-        size_time_t = abs(trial_epoch[1] - trial_epoch[0])
-        size_time_s = int(ceil(size_time_t * sampling_rate))
+        # calculate the size of the time dimension (in samples)
+        size_time_s = int(ceil(abs(trial_epoch[1] - trial_epoch[0]) * sampling_rate))
 
         # initialize a data buffer (channel x conditions x time)
         data = allocate_array((len(channels), len(conditions_onsets), size_time_s))
@@ -425,20 +509,27 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             # loop through the trials in the condition
             for iTrial in range(len(conditions_onsets[iCondition])):
 
-                # determine trial start- and end-point in samples
+                #
                 trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
-                trial_sample_end = trial_sample_start + size_time_s
-                # TODO: check if sample_start and sample_end are within range of data
+                if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
+                    print('Error: cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
+                    return None, None
 
                 #
                 if baseline_method > 0:
                     baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
                     baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
-                    #TODO, check if baseline is within the trial (only the case for mefd, since only retrieves part)
+                    if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
+                        print('Error: cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the data')
+                        return None, None
 
                 # load the trial data
-                trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_end])
-                if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
+                try:
+                    trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_start + size_time_s])
+                    if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
+                        return None, None
+                except Exception as e:
+                    print('Error: PyMef could not read data: ' + str(e), file=sys.stderr)
                     return None, None
 
                 # loop through the channels
@@ -451,7 +542,6 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                     elif baseline_method == 2:
                         baseline_median = np.nanmedian(trial_data[iChannel][baseline_start_sample:baseline_end_sample])
                         condition_data[iChannel, iTrial, :] = trial_data[iChannel] - baseline_median
-
 
             # average the trials for each channel (within this condition) and store the results
             data[:, iCondition, :] = np.nanmean(condition_data, axis=1)
