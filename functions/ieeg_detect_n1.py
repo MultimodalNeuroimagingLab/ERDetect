@@ -7,7 +7,7 @@ Detect N1 peaks
 Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 Adapted from:
     Original author: Dorien van Blooijs (2018)
-    Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro, (UMC Utrecht, 2019)
+    Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro; UMC Utrecht, 2019
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -23,8 +23,8 @@ from functions.peak_finder import peak_finder
 
 # debug/development
 #import scipy.io as sio
-#mat = sio.loadmat('D:\\output\\average_ccep.mat')
-#data = mat['average_ccep']
+#mat = sio.loadmat('D:\\output\\ccep_data.mat')
+#data = mat['ccep_average']
 #del mat
 #stim_onset_index = 2048     # 0-2047 are considered pre-stim
 #sampling_rate = 2048
@@ -48,8 +48,8 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
                                             period from stimulus onset till 500ms after stimulation onset)
         n1_search_epoch (tuple):            The time-span in which a N1 will be searched, expressed as a tuple with the
                                             start- and end-point in seconds relative to stimulation onset (e.g. the
-                                            standard tuple of '0.009, 0.09' will have the algorithm start the search for
-                                            an N1 at 9ms after stimulation onset up to 90ms after stimulation onset)
+                                            standard tuple of '0.02, 0.09' will have the algorithm start the search for
+                                            an N1 at 20ms after stimulation onset up to 90ms after stimulation onset)
         baseline_epoch (tuple):             The time-span on which the baseline is calculated, expressed as a tuple with
                                             the start- and end-point in seconds relative to stimulation onset (e.g. the
                                             standard tuple of '-1, -.1' will use the period from 1s before stimulation
@@ -141,7 +141,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
             # retrieve the part of the signal to search for peaks in
             signal = data[iElec, iPair, peak_search_start_sample + 1:peak_search_end_sample]
 
-            # continue if all are nan (often the case when the stim-electrodes are nan-ed out on the electrode dimensions)
+            # continue if all are nan (the case when the stim-electrodes are nan-ed out on the electrode dimensions)
             if np.all(np.isnan(signal)):
                 continue
 
@@ -150,7 +150,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
 
             # use peak_finder function to find the negative peak indices and their amplitude
             (neg_inds, neg_mags) = peak_finder(signal,
-                                               sel=20,  # the number of samples around a peak not considered as another peak
+                                               sel=20,  # num of samples around a peak not considered as another peak
                                                thresh=None,
                                                extrema=-1,
                                                include_endpoints=True,
@@ -197,13 +197,11 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
             try:
                 baseline_std = np.nanstd(data[iElec, iPair, baseline_start_sample:baseline_end_sample])
             except Warning:
-                # assume the warning is generated because of nans; which is often the
-                # case when the stimulated electrodes are nan-ed
-                # out on the electrode dimensions, just continue to next
+                # assume the warning is generated because of all nans; which is often the case when
+                # the stimulated electrodes are nan-ed out on the electrode dimensions, just continue to next
                 continue
 
-            # if the baseline_std is smaller that the minimally needed SD,
-            # which is validated at 50 uV, use this the minSD as baseline_std
+            # make sure the baseline_std is not smaller than 50uV (this value was validated by Jaap)
             if baseline_std < 50:
                 baseline_std = 50
 
