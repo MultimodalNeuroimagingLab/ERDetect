@@ -77,4 +77,4 @@ COPY version /scripts/version
 COPY ./functions /scripts/functions
 
 # 
-ENTRYPOINT ["/scripts/run.py"]
+ENTRYPOINT ["/scripts/n1detect_run.py"]
