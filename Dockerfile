@@ -64,6 +64,9 @@ RUN apk add --no-cache libpng freetype libstdc++ openblas lapack libxml2 libxslt
 	&& rm /usr/include/xlocale.h \
 	&& apk del .build-deps
 
+#RUN apk add --update npm
+#	&& npm install -g bids-validator
+
 # 
 ENV PYTHONPATH=""
 
