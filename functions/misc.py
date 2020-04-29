@@ -1,7 +1,7 @@
 """
-Miscellaneous functions
+Miscellaneous functions and classes
 =====================================================
-A variety of helper functions
+A variety of helper functions and classes
 
 
 Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
@@ -12,7 +12,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import sys
+import logging
 import numpy as np
 from psutil import virtual_memory
 from math import ceil
@@ -53,7 +53,7 @@ def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
         return data
 
     except MemoryError:
-        print('Error: not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)', file=sys.stderr)
+        logging.error('Not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)')
         return None
 
 
@@ -147,7 +147,7 @@ def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
     return padded_str
 
 
-def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r"):
+def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r", color="0;30m"):
     """
     Call in a loop to create terminal progress bar
 
@@ -160,13 +160,40 @@ def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length
         length (int):       character length of bar (Int)
         fill (str):         bar fill character (Str)
         print_end (str):    end character (e.g. "\r", "\r\n") (Str)
+        color (str):        text color (as ASCII code)
 
         From: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filled_length = int(length * iteration // total)
     bar = fill * filled_length + '-' * (length - filled_length)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = print_end)
-    # Print New Line on Complete
+    if len(color) == 0:
+        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end=print_end)
+    else:
+        print('\r\033[' + color + '%s |%s| %s%% %s\033[0m' % (prefix, bar, percent, suffix), end=print_end)
     if iteration == total:
         print()
+
+
+#
+class CustomLoggingFormatter(logging.Formatter):
+    black = "\033[0;30m"
+    grey = "\033[0;37m"
+    blue = "\033[0;34m"
+    green = "\033[0;32m"
+    red = "\033[0;31m"
+    yellow = "\033[0;33;21m"
+    reset = "\033[0m"
+
+    FORMATS = {
+        logging.ERROR: red + "ERROR: %(filename)s: %(message)s" + reset,
+        logging.WARNING: red + "WARNING: %(message)s" + reset,
+        logging.INFO: black + "%(message)s" + reset,
+        logging.DEBUG: "DEBUG: %(message)s",
+        "DEFAULT": "%(message)s"
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno, self.FORMATS['DEFAULT'])
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
