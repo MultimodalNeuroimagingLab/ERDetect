@@ -1,6 +1,8 @@
 # N1Detect
 A BIDS App for the automatic detection of early responses (N1) in CCEP data
 
+This BIDS app was developed with support from the National Institute of Mental Health, R01MH122258 to DH.
+
 ## Usage
 
 To launch an instance of the container and analyse some data in BIDS format, type:
