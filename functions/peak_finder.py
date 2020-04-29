@@ -13,8 +13,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import os
-import sys
+import logging
 import numpy as np
 
 
@@ -28,10 +27,10 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
     if isinstance(data, (list, tuple)):
         data = np.array(data)
     if not isinstance(data, np.ndarray) or not data.ndim == 1 or len(data) < 2:
-        print("Error: " + os.path.basename(__file__) + " - The data must be a one-dimensional array (list, tuple, ndarray) of at least 2 values", file=sys.stderr)
+        logging.error('The input data must be a one-dimensional array (list, tuple, ndarray) of at least 2 values')
         return None, None
     if np.any(~np.isreal(data)):
-        print("Warning: " + os.path.basename(__file__) + " - Absolute values of data will be used", file=sys.stdout)
+        logging.warning('Absolute values of data will be used')
         data = np.abs(data)
 
     # selection parameter
@@ -41,7 +40,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         try:
             float(sel)
         except:
-            print("Warning: " + os.path.basename(__file__) + " - The selectivity must be a real scalar. A selectivity of %.4g will be used", file=sys.stdout)
+            logging.warning('The selectivity must be a real scalar. A selectivity of %.4g will be used')
             sel = (np.nanmax(data) - np.nanmin(data)) / 4
 
     # threshold parameter
@@ -49,21 +48,21 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         try:
             float(thresh)
         except:
-            print("Warning: " + os.path.basename(__file__) + " - The threshold must be a real scalar. No threshold will be used", file=sys.stdout)
+            logging.warning('The threshold must be a real scalar. No threshold will be used')
             thresh = None
 
     # extrema parameter
     if not extrema == -1 and not extrema == 1:
-        print("Error: " + os.path.basename(__file__) + " - Either 1 (for maxima) or -1 (for minima) must be input for extrema", file=sys.stderr)
+        logging.error('The \'extrema\' argument has to be either 1 (for maxima) or -1 (for minima)')
         return None, None
 
     # include endpoints parameter
     if not isinstance(include_endpoints, bool):
-        print("Error: " + os.path.basename(__file__) + " - Either True or False must be input for include_endpoints", file=sys.stderr)
+        logging.error('The \'include_endpoints\' argument should be a boolean value')
         return None, None
 
     if not isinstance(interpolate, bool):
-        print("Error: " + os.path.basename(__file__) + " - Either True or False must be input for interpolate", file=sys.stderr)
+        logging.error('The \'interpolate\' argument should be a boolean value')
         return None, None
 
     #

@@ -15,21 +15,10 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import os
-import sys
+import logging
 import warnings
 import numpy as np
 from functions.peak_finder import peak_finder
-
-# debug/development
-#import scipy.io as sio
-#mat = sio.loadmat('D:\\output\\ccep_data.mat')
-#data = mat['ccep_average']
-#del mat
-#stim_onset_index = 2048     # 0-2047 are considered pre-stim
-#sampling_rate = 2048
-#n1_search_end = 0.09
-#baseline_threshold_factor = 3.4
 
 
 def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 0.5), n1_search_epoch=(0.009, 0.09), baseline_epoch=(-1, -.1), baseline_threshold_factor=3.4):
@@ -103,27 +92,27 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
     baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
     baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
     if baseline_end_sample < baseline_start_sample:
-        print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given end-point (at " + str(baseline_epoch[1]) + ") lies before the start-point (at t = " + str(baseline_epoch[0]) + ")", file=sys.stderr)
+        logging.error('Invalid \'baseline_epoch\' parameter, the given end-point (at ' + str(baseline_epoch[1]) + ') lies before the start-point (at t = ' + str(baseline_epoch[0]) + ')')
         return None, None
     if baseline_start_sample < 0:
-        print("Error: " + os.path.basename(__file__) + " - the data epoch is not big enough, the baseline requires at least " + str(stim_onset_index + abs(baseline_start_sample)) + " samples before stimulation onset", file=sys.stderr)
+        logging.error('The data epoch is not big enough, the baseline requires at least ' + str(stim_onset_index + abs(baseline_start_sample)) + ' samples before stimulation onset')
         return None, None
 
     # determine the peak search window in samples
     peak_search_start_sample = int(round(peak_search_epoch[0] * sampling_rate)) + stim_onset_index
     peak_search_end_sample = int(round(peak_search_epoch[1] * sampling_rate)) + stim_onset_index
     if peak_search_end_sample < peak_search_start_sample:
-        print("Error: " + os.path.basename(__file__) + " - invalid 'peak_search_epoch' parameter, the given end-point (at " + str(peak_search_epoch[1]) + ") lies before the start-point (at t = " + str(peak_search_epoch[0]) + ")", file=sys.stderr)
+        logging.error('Invalid \'peak_search_epoch\' parameter, the given end-point (at ' + str(peak_search_epoch[1]) + ') lies before the start-point (at t = ' + str(peak_search_epoch[0]) + ')')
         return None, None
     if peak_search_end_sample > num_samples:
-        print("Error: " + os.path.basename(__file__) + " - the data epoch is not big enough, the peak window requires at least " + str(stim_onset_index + abs(peak_search_start_sample)) + " samples after stimulation onset", file=sys.stderr)
+        logging.error('The data epoch is not big enough, the peak window requires at least ' + str(stim_onset_index + abs(peak_search_start_sample)) + ' samples after stimulation onset')
         return None, None
 
     # determine the start- and end-point (in samples) of the time-span in which to search for an N1
     n1_search_start_sample = int(round(n1_search_epoch[0] * sampling_rate)) + stim_onset_index
     n1_search_end_sample = int(round(n1_search_epoch[1] * sampling_rate)) + stim_onset_index
     if n1_search_end_sample < n1_search_start_sample:
-        print("Error: " + os.path.basename(__file__) + " - invalid 'n1_search_epoch' parameter, the given end-point (at " + str(n1_search_epoch[1]) + ") lies before the start-point (at t = " + str(n1_search_epoch[0]) + ")", file=sys.stderr)
+        logging.error('Invalid \'n1_search_epoch\' parameter, the given end-point (at ' + str(n1_search_epoch[1]) + ') lies before the start-point (at t = ' + str(n1_search_epoch[0]) + ')')
         return None, None
 
     # initialize an output buffer (electrode x stimulation-pair)

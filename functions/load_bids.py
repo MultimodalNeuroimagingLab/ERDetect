@@ -12,8 +12,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import os
-import sys
+import logging
 from math import ceil
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
@@ -26,14 +25,14 @@ def load_channel_info(tsv_filepath):
     # retrieve the channel metadata from the channels.tsv file
 
     csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
-    if not 'name' in csv.columns:
-        print('Error: could not find the \'name\' column in \'' + tsv_filepath + '\'', file=sys.stderr)
+    if 'name' not in csv.columns:
+        logging.error('Could not find the \'name\' column in \'' + tsv_filepath + '\'')
         return None
-    if not 'type' in csv.columns:
-        print('Error: could not find the \'type\' column in \'' + tsv_filepath + '\'', file=sys.stderr)
+    if 'type' not in csv.columns:
+        logging.error('Could not find the \'type\' column in \'' + tsv_filepath + '\'')
         return None
-    if not 'status' in csv.columns:
-        print('Error: could not find the \'status\' column in \'' + tsv_filepath + '\'', file=sys.stderr)
+    if 'status' not in csv.columns:
+        logging.error('Could not find the \'status\' column in \'' + tsv_filepath + '\'')
         return None
 
     return csv
@@ -43,13 +42,13 @@ def load_event_info(tsv_filepath, addition_required_columns=None):
     # retrieve the events from the events.tsv file
 
     csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
-    if not 'onset' in csv.columns:
-        print('Error: could not find the \'onset\' column in \'' + tsv_filepath + '\'', file=sys.stderr)
+    if 'onset' not in csv.columns:
+        logging.error('Could not find the \'onset\' column in \'' + tsv_filepath + '\'')
         return None
     if addition_required_columns is not None:
         for column in addition_required_columns:
             if column not in csv.columns:
-                print('Error: could not find the \'' + column + '\' column in \'' + tsv_filepath + '\'', file=sys.stderr)
+                logging.error('Could not find the \'' + column + '\' column in \'' + tsv_filepath + '\'')
                 return None
 
     return csv
@@ -106,12 +105,12 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
     elif data_extension == '.mefd':
         data_format = 2
     else:
-        print('Error: unknown data format (' + data_extension + ')', file=sys.stderr)
+        logging.error('Unknown data format (' + data_extension + ')')
         return None, None
 
     #
     if trial_epoch[1] < trial_epoch[0]:
-        print("Error: " + os.path.basename(__file__) + " - invalid 'trial_epoch' parameter, the given end-point (at " + str(trial_epoch[1]) + ") lies before the start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+        logging.error('Invalid \'trial_epoch\' parameter, the given end-point (at ' + str(trial_epoch[1]) + ') lies before the start-point (at ' + str(trial_epoch[0]) + ')')
         return None, None
 
     # baseline normalization
@@ -124,19 +123,19 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         elif baseline_norm.lower() == 'none':
             baseline_method = 0
         else:
-            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
+            logging.error('Unknown normalization argument (' + baseline_norm + ')')
             return None, None
 
         #
         if baseline_epoch[1] < baseline_epoch[0]:
-            print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given end-point (at " + str(baseline_epoch[1]) + ") lies before the start-point (at " + str(baseline_epoch[0]) + ")", file=sys.stderr)
+            logging.error('Invalid \'baseline_epoch\' parameter, the given end-point (at ' + str(baseline_epoch[1]) + ') lies before the start-point (at ' + str(baseline_epoch[0]) + ')')
             return None, None
         if data_format == 2:
             if baseline_epoch[0] < trial_epoch[0]:
-                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline start-point (at " + str(baseline_epoch[0]) + ") lies before the trial start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+                logging.error('Invalid \'baseline_epoch\' parameter, the given baseline start-point (at ' + str(baseline_epoch[0]) + ') lies before the trial start-point (at ' + str(trial_epoch[0]) + ')')
                 return None, None
             if baseline_epoch[1] > trial_epoch[1]:
-                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline end-point (at " + str(baseline_epoch[1]) + ") lies after the trial end-point (at " + str(trial_epoch[1]) + ")", file=sys.stderr)
+                logging.error('Invalid \'baseline_epoch\' parameter, the given baseline end-point (at ' + str(baseline_epoch[1]) + ') lies after the trial end-point (at ' + str(trial_epoch[1]) + ')')
                 return None, None
 
     #
@@ -170,7 +169,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             if data_format == 1:
                 mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
         except Exception as e:
-            print('Error: MNE could not read data, message: ' + str(e), file=sys.stderr)
+            logging.error('MNE could not read data, message: ' + str(e))
             return None, None
 
         # retrieve the sample-rate
@@ -191,7 +190,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             try:
                 channel_index = mne_raw.info['ch_names'].index(channels[iChannel])
             except ValueError:
-                print('Error: could not find channel \'' + channels[iChannel] + '\' in the dataset')
+                logging.error('Could not find channel \'' + channels[iChannel] + '\' in the dataset')
                 return None, None
 
             # loop through the trials
@@ -200,7 +199,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                 #
                 trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
                 if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
-                    print('Error: cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
+                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
                     return None, None
 
                 #
@@ -208,7 +207,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                     baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate))
                     baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate))
                     if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
-                        print('Error: cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the data')
+                        logging.error('Cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the data')
                         return None, None
 
                 # extract the trial data and perform baseline normalization on the trial if needed
@@ -233,7 +232,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         try:
             mef = MefSession(data_path, '', read_metadata=True)
         except Exception:
-            print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
+            logging.error('PyMef could not read data, either a password is needed or the data is corrupt')
             return None, None
 
         # retrieve the sample-rate and total number of samples in the data-set
@@ -257,7 +256,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             #
             trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
             if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
-                print('Error: cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
+                logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
                 return None, None
 
             #
@@ -265,7 +264,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                 baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
                 baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
                 if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
-                    print('Error: cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                    logging.error('Cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
                     return None, None
 
             # load the trial data
@@ -274,7 +273,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                 if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
                     return None, None
             except Exception:
-                print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
+                logging.error('PyMef could not read data, either a password is needed or the data is corrupt')
                 return None, None
 
             # loop through the channels
@@ -356,12 +355,12 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
     elif data_extension == '.mefd':
         data_format = 2
     else:
-        print('Error: unknown data format (' + data_extension + ')', file=sys.stderr)
+        logging.error('Unknown data format (' + data_extension + ')')
         return None, None
 
     #
     if trial_epoch[1] < trial_epoch[0]:
-        print("Error: " + os.path.basename(__file__) + " - invalid 'trial_epoch' parameter, the given end-point (at " + str(trial_epoch[1]) + ") lies before the start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+        logging.error('Invalid \'trial_epoch\' parameter, the given end-point (at ' + str(trial_epoch[1]) + ') lies before the start-point (at ' + str(trial_epoch[0]) + ')')
         return None, None
 
     # baseline normalization
@@ -374,19 +373,19 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
         elif baseline_norm.lower() == 'none':
             baseline_method = 0
         else:
-            print('Error: unknown normalization argument (' + baseline_norm + ')', file=sys.stderr)
+            logging.error('Unknown normalization argument (' + baseline_norm + ')')
             return None, None
 
         #
         if baseline_epoch[1] < baseline_epoch[0]:
-            print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given end-point (at " + str(baseline_epoch[1]) + ") lies before the start-point (at " + str(baseline_epoch[0]) + ")", file=sys.stderr)
+            logging.error('Invalid \'baseline_epoch\' parameter, the given end-point (at ' + str(baseline_epoch[1]) + ') lies before the start-point (at ' + str(baseline_epoch[0]) + ')')
             return None, None
         if data_format == 2:
             if baseline_epoch[0] < trial_epoch[0]:
-                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline start-point (at " + str(baseline_epoch[0]) + ") lies before the trial start-point (at " + str(trial_epoch[0]) + ")", file=sys.stderr)
+                logging.error('Invalid \'baseline_epoch\' parameter, the given baseline start-point (at ' + str(baseline_epoch[0]) + ') lies before the trial start-point (at ' + str(trial_epoch[0]) + ')')
                 return None, None
             if baseline_epoch[1] > trial_epoch[1]:
-                print("Error: " + os.path.basename(__file__) + " - invalid 'baseline_epoch' parameter, the given baseline end-point (at " + str(baseline_epoch[1]) + ") lies after the trial end-point (at " + str(trial_epoch[1]) + ")", file=sys.stderr)
+                logging.error('Invalid \'baseline_epoch\' parameter, the given baseline end-point (at ' + str(baseline_epoch[1]) + ') lies after the trial end-point (at ' + str(trial_epoch[1]) + ')')
                 return None, None
 
     #
@@ -404,7 +403,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             if data_format == 1:
                 mne_raw = read_raw_brainvision(data_path[:data_path.rindex(".")] + '.vhdr', preload=True)
         except Exception as e:
-            print('Error: MNE could not read data, message: ' + str(e), file=sys.stderr)
+            logging.error('MNE could not read data, message: ' + str(e))
             return None, None
 
         # retrieve the sample-rate
@@ -428,7 +427,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 try:
                     channel_index = mne_raw.info['ch_names'].index(channels[iChannel])
                 except ValueError:
-                    print('Error: could not find channel \'' + channels[iChannel] + '\' in dataset')
+                    logging.error('Could not find channel \'' + channels[iChannel] + '\' in data-set')
                     return None, None
 
                 # initialize a buffer to put all the data for this condition-channel in (trials x time)
@@ -442,7 +441,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                     #
                     trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
                     if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
-                        print('Error: cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
+                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
                         return None, None
 
                     #
@@ -450,7 +449,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                         baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate))
                         baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate))
                         if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
-                            print('Error: cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                            logging.error('Cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
                             return None, None
 
                     # extract the trial data and perform baseline normalization on the trial if needed
@@ -480,7 +479,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
         try:
             mef = MefSession(data_path, '', read_metadata=True)
         except Exception:
-            print('Error: PyMef could not read data, either a password is needed or the data is corrupt', file=sys.stderr)
+            logging.error('PyMef could not read data, either a password is needed or the data is corrupt')
             return None, None
 
         # retrieve the sample-rate and total number of samples in the data-set
@@ -512,7 +511,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 #
                 trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
                 if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
-                    print('Error: cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
+                    logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
                     return None, None
 
                 #
@@ -520,7 +519,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                     baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
                     baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
                     if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
-                        print('Error: cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the data')
+                        logging.error('Cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the data')
                         return None, None
 
                 # load the trial data
@@ -529,7 +528,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                     if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
                         return None, None
                 except Exception as e:
-                    print('Error: PyMef could not read data: ' + str(e), file=sys.stderr)
+                    logging.error('PyMef could not read data: ' + str(e))
                     return None, None
 
                 # loop through the channels
