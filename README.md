@@ -40,8 +40,8 @@ An example JSON of the standard settings has the following content:
     },
 
     "visualization": {
-        "lim_epoch":                       [-0.2,          1],
-        "stim_epoch":                      [-0.015,   0.0025],
+        "x_axis_epoch":                    [-0.2,          1],
+        "blank_stim_epoch":                [-0.015,   0.0025],
         "generate_electrode_images":       false,
         "generate_stimpair_images":        false,
         "generate_matrix_images":          true
