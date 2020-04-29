@@ -140,8 +140,8 @@ logging.info('N1 search window:                            ' + str(config['n1_de
 logging.info('N1 baseline window:                          ' + str(config['n1_detect']['n1_baseline_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_baseline_epoch'][1]) + 's')
 logging.info('N1 baseline threshold factor:                ' + str(config['n1_detect']['n1_baseline_threshold_factor']))
 logging.info('')
-logging.info('Visualization display window                 ' + str(config['visualization']['lim_epoch'][0]) + 's : ' + str(config['visualization']['lim_epoch'][1]) + 's')
-logging.info('Visualization stimulation epoch              ' + str(config['visualization']['stim_epoch'][0]) + 's : ' + str(config['visualization']['stim_epoch'][1]) + 's')
+logging.info('Visualization x-axis epoch                   ' + str(config['visualization']['x_axis_epoch'][0]) + 's : ' + str(config['visualization']['x_axis_epoch'][1]) + 's')
+logging.info('Visualization blank stimulation epoch        ' + str(config['visualization']['blank_stim_epoch'][0]) + 's : ' + str(config['visualization']['blank_stim_epoch'][1]) + 's')
 logging.info('Generate electrode images                    ' + ('Yes' if config['visualization']['generate_electrode_images'] else 'No'))
 logging.info('Generate stimulation-pair images             ' + ('Yes' if config['visualization']['generate_stimpair_images'] else 'No'))
 logging.info('Generate matrix images                       ' + ('Yes' if config['visualization']['generate_matrix_images'] else 'No'))
@@ -430,11 +430,11 @@ for subject in subjects_to_analyze:
 
                 # determine the range on the x axis where the stimulus was in samples
                 # TODO: what if TRIAL_EPOCH_START is after the stimulus onset
-                x_stim_start = int(round(abs(config['trials']['trial_epoch'][0] - config['visualization']['stim_epoch'][0]) * sampling_rate)) - 1
-                x_stim_end = x_stim_start + int(ceil(abs(config['visualization']['stim_epoch'][1] - config['visualization']['stim_epoch'][0]) * sampling_rate)) - 1
+                x_stim_start = int(round(abs(config['trials']['trial_epoch'][0] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
+                x_stim_end = x_stim_start + int(ceil(abs(config['visualization']['blank_stim_epoch'][1] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
 
                 # calculate the legend x position
-                x_legend = config['visualization']['lim_epoch'][1] - .13
+                x_legend = config['visualization']['x_axis_epoch'][1] - .13
 
                 # adjust line and font sizes to resolution
                 zero_line_thickness = OUTPUT_IMAGE_HEIGHT / 2000
@@ -506,7 +506,7 @@ for subject in subjects_to_analyze:
                                 ax.plot(xN1, yN1, 'bo')
 
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
-                        ax.set_xlim(config['visualization']['lim_epoch'])
+                        ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
@@ -580,7 +580,7 @@ for subject in subjects_to_analyze:
                                 ax.plot(xN1, yN1, 'bo')
 
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
-                        ax.set_xlim(config['visualization']['lim_epoch'])
+                        ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 

@@ -21,8 +21,8 @@ def default_config():
     config['n1_detect']['n1_baseline_threshold_factor']     = 3.4
 
     config['visualization'] = dict()
-    config['visualization']['lim_epoch']                    = (-0.2, 1)                   # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
-    config['visualization']['stim_epoch']                   = (-0.015, 0.0025)            # the range
+    config['visualization']['x_axis_epoch']                    = (-0.2, 1)                   # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+    config['visualization']['blank_stim_epoch']                   = (-0.015, 0.0025)            # the range
     config['visualization']['generate_electrode_images']    = True
     config['visualization']['generate_stimpair_images']     = True
     config['visualization']['generate_matrix_images']       = True
@@ -119,9 +119,9 @@ def read_config(filepath):
     if not retrieve_config_number(json_config, config, 'n1_detect', 'n1_baseline_threshold_factor'):
         return None
 
-    if not retrieve_config_range(json_config, config, 'visualization', 'lim_epoch'):
+    if not retrieve_config_range(json_config, config, 'visualization', 'x_axis_epoch'):
         return None
-    if not retrieve_config_range(json_config, config, 'visualization', 'stim_epoch'):
+    if not retrieve_config_range(json_config, config, 'visualization', 'blank_stim_epoch'):
         return None
     if not retrieve_config_bool(json_config, config, 'visualization', 'generate_electrode_images'):
         return None
@@ -150,8 +150,8 @@ def write_config(filepath, config):
                     '        "n1_baseline_threshold_factor":    ' + str(config['n1_detect']['n1_baseline_threshold_factor']) + '\n' \
                     '    },\n\n' \
                     '    "visualization": {\n' \
-                    '        "lim_epoch":                       [' + numbers_to_padded_string(config['visualization']['lim_epoch'], 16) + '],\n' \
-                    '        "stim_epoch":                      [' + numbers_to_padded_string(config['visualization']['stim_epoch'], 16) + '],\n' \
+                    '        "x_axis_epoch":                    [' + numbers_to_padded_string(config['visualization']['x_axis_epoch'], 16) + '],\n' \
+                    '        "blank_stim_epoch":                [' + numbers_to_padded_string(config['visualization']['blank_stim_epoch'], 16) + '],\n' \
                     '        "generate_electrode_images":       ' + ('true' if config['visualization']['generate_electrode_images'] else 'false') + ',\n' \
                     '        "generate_stimpair_images":        ' + ('true' if config['visualization']['generate_stimpair_images'] else 'false') + ',\n' \
                     '        "generate_matrix_images":          ' + ('true' if config['visualization']['generate_matrix_images'] else 'false') + '\n' \
@@ -178,7 +178,9 @@ def check_config(config):
         if ref_config[level1][level2][1] < ref_config[level1][level2][0]:
             logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][1]) + 's) lies before the start-point (at ' + str(ref_config[level1][level2][0]) + 's)')
             return False
-        # TODO: not the same
+        if ref_config[level1][level2][0] == ref_config[level1][level2][1]:
+            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given start and end-point are the same (' + str(ref_config[level1][level2][0]) + 's)')
+            return False
         return True
 
     # parameter start-end order
@@ -192,9 +194,9 @@ def check_config(config):
         return False
     if not check_range_order(config, 'n1_detect', 'n1_baseline_epoch'):
         return False
-    if not check_range_order(config, 'visualization', 'lim_epoch'):
+    if not check_range_order(config, 'visualization', 'x_axis_epoch'):
         return False
-    if not check_range_order(config, 'visualization', 'stim_epoch'):
+    if not check_range_order(config, 'visualization', 'blank_stim_epoch'):
         return False
 
     # N1 epoch parameters should be within trial epoch
@@ -204,9 +206,9 @@ def check_config(config):
         return False
     if not check_epoch_within_trial(config, 'n1_detect', 'n1_baseline_epoch'):
         return False
-    if not check_epoch_within_trial(config, 'visualization', 'lim_epoch'):
+    if not check_epoch_within_trial(config, 'visualization', 'x_axis_epoch'):
         return False
-    if not check_epoch_within_trial(config, 'visualization', 'stim_epoch'):
+    if not check_epoch_within_trial(config, 'visualization', 'blank_stim_epoch'):
         return False
 
     # trial epoch show start before the stimulus onset (routines in run rely on that)
@@ -220,6 +222,11 @@ def check_config(config):
         return False
     if config['n1_detect']['n1_search_epoch'][0] < 0:
         logging.error('Invalid [\'n1_detect\'][\'n1_search_epoch\'] parameter, the epoch should start after the stimulus onset (>= 0s)')
+        return False
+
+    # the baseline threshold factor should be a positive number
+    if config['n1_detect']['n1_baseline_threshold_factor'] <= 0:
+        logging.error('Invalid [\'n1_detect\'][\'n1_baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
         return False
 
     #
