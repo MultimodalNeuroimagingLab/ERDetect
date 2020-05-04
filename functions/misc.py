@@ -147,7 +147,48 @@ def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
     return padded_str
 
 
-def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r", color="0;30m"):
+def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, first_line_single_item=None):
+    """
+    Convert a array of strings (list or tuple) to a formatted string where the items are
+    equally spread over multiple lines, instead of one long line
+
+    Args:
+        input_array (arroy of str):    String to format as text
+        indent_length (int):           The spacing in front of the listed items
+        first_line_caption (str):      The text in the first line that precedes the listing of the items in the array.
+        items_per_line (int):          The number of items per line
+        first_line_single_item (str):  If set, will display this string on the first line, the rest of the items will
+                                       then be shown from the second line on
+
+    """
+    current_line = ''
+    return_text = ''
+
+    #
+    if first_line_single_item is not None:
+        return_text = first_line_caption.ljust(indent_length, ' ') + str(first_line_single_item)
+    else:
+        current_line = first_line_caption
+
+    # generate and print the lines
+    for i in range(len(input_array)):
+        if not len(sub_line) == 0:
+            sub_line += '   '
+        sub_line += str(input_array[i])
+        if i > 0 and (i + 1) % items_per_line == 0:
+            if not len(return_text) == 0:
+                return_text += '\n'
+            return_text += current_line.ljust(indent_length, ' ') + sub_line
+            sub_line = ''
+
+    # print the remaining items (if there are any)
+    if not len(sub_line) == 0:
+        if not len(return_text) == 0:
+            return_text += '\n'
+        return_text += current_line.ljust(indent_length, ' ') + sub_line
+
+
+def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r"):
     """
     Call in a loop to create terminal progress bar
 
@@ -162,18 +203,14 @@ def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length
         print_end (str):    end character (e.g. "\r", "\r\n") (Str)
         color (str):        text color (as ASCII code)
 
-        From: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
+        Source: https://stackoverflow.com/questions/3173320/text-progress-bar-in-the-console
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filled_length = int(length * iteration // total)
     bar = fill * filled_length + '-' * (length - filled_length)
-    if len(color) == 0:
-        print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end=print_end)
-    else:
-        print('\r\033[' + color + '%s |%s| %s%% %s\033[0m' % (prefix, bar, percent, suffix), end=print_end)
+    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end=print_end)
     if iteration == total:
         print()
-
 
 #
 class CustomLoggingFormatter(logging.Formatter):
@@ -188,7 +225,7 @@ class CustomLoggingFormatter(logging.Formatter):
     FORMATS = {
         logging.ERROR: red + "ERROR: %(filename)s: %(message)s" + reset,
         logging.WARNING: red + "WARNING: %(message)s" + reset,
-        logging.INFO: black + "%(message)s" + reset,
+        logging.INFO: "%(message)s",                     # TODO: currently no explicit color set, breaks 'print_progressbar'
         logging.DEBUG: "DEBUG: %(message)s",
         "DEFAULT": "%(message)s"
     }
