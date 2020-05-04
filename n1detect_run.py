@@ -29,7 +29,7 @@ from n1detect_config import default_config, check_config, read_config, write_con
 from functions.load_bids import load_channel_info, load_event_info, load_data_epochs_averages
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
-from functions.misc import print_progressbar, is_number, CustomLoggingFormatter
+from functions.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list
 
 
 #
@@ -49,10 +49,9 @@ __version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 've
 #
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-logger_ch = logging.StreamHandler()
+logger_ch = logging.StreamHandler(stream=sys.stdout)
 logger_ch.setFormatter(CustomLoggingFormatter())
 logger.addHandler(logger_ch)
-
 
 #
 # define and parse the input arguments
@@ -270,8 +269,7 @@ for subject in subjects_to_analyze:
             for index, row in csv.iterrows():
                 if row['trial_type'].lower() == 'electrical_stimulation':
                     if not is_number(row['onset']) or isnan(float(row['onset'])) or float(row['onset']) < 0:
-                        logging.error('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0')
-                        #exit(1)
+                        logging.warning('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0')
                         continue
 
                     pair = row['electrical_stimulation_site'].split('-')
@@ -333,6 +331,20 @@ for subject in subjects_to_analyze:
                     sub_line = ''
             if not len(sub_line) == 0:
                 logging.info('                                             ' + sub_line)
+
+            #
+            # abc = list()
+            #
+            # subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+            #
+            # henk =
+            # for iPair in range(len(stimpair_labels)):
+            #     abc.append()
+            #     sub_line += str(stimpair_labels[iPair]) + ' (' + str(len(stimpair_trial_indices[iPair])) + ' trials)'
+            # def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, first_line_single_item=None):
+            # multi_line_list(
+            #
+
 
             #
             # read and epoch the data
