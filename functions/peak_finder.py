@@ -192,8 +192,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
             peak_inds = np.array(ind[peak_loc])
             peak_mags = np.array(peak_mag)
         else:
-            peak_inds = None
-            peak_mags = None
+            return None, None
 
     else:
         # This is a monotone function where an endpoint is the only peak
@@ -203,8 +202,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
             peak_inds = np.array(ind[xInd])
             peak_mags = np.array(x[xInd])
         else:
-            peak_inds = None
-            peak_mags = None
+            return None, None
 
 
     # apply threshold value
