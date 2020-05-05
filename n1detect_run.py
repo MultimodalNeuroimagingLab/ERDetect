@@ -36,7 +36,7 @@ from functions.misc import print_progressbar, is_number, CustomLoggingFormatter,
 # constants
 #
 VALID_FORMAT_EXTENSIONS         = ('.mefd', '.edf', '.vhdr', '.vmrk', '.eeg')   # valid data format to search for (European Data Format, BrainVision and MEF3)
-OUTPUT_IMAGE_HEIGHT             = 2000                                          #
+OUTPUT_IMAGE_SIZE               = 2000                                          # the number of pixels that is used as the "initial" height or width
 
 
 #
@@ -254,7 +254,6 @@ for subject in subjects_to_analyze:
             if len(electrode_labels) == 0:
                 logging.error('No channels were found, exiting...')
                 exit(1)
-
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
             csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
             if csv is None:
@@ -423,26 +422,37 @@ for subject in subjects_to_analyze:
                 x_legend = config['visualization']['x_axis_epoch'][1] - .13
 
                 # adjust line and font sizes to resolution
-                zero_line_thickness = OUTPUT_IMAGE_HEIGHT / 2000
-                signal_line_thickness = OUTPUT_IMAGE_HEIGHT / 2000
-                legend_line_thickness = OUTPUT_IMAGE_HEIGHT / 500
-                title_font_size = round(OUTPUT_IMAGE_HEIGHT / 80)
-                axis_label_font_size = round(OUTPUT_IMAGE_HEIGHT / 85)
-                axis_ticks_font_size = round(OUTPUT_IMAGE_HEIGHT / 100)
-                legend_font_size = round(OUTPUT_IMAGE_HEIGHT / 90)
+                zero_line_thickness = OUTPUT_IMAGE_SIZE / 2000
+                signal_line_thickness = OUTPUT_IMAGE_SIZE / 2000
+                legend_line_thickness = OUTPUT_IMAGE_SIZE / 500
+                title_font_size = round(OUTPUT_IMAGE_SIZE / 80)
+                axis_label_font_size = round(OUTPUT_IMAGE_SIZE / 85)
+                axis_ticks_font_size = round(OUTPUT_IMAGE_SIZE / 100)
+                legend_font_size = round(OUTPUT_IMAGE_SIZE / 90)
 
-                #
+                # Adjust the font sizes of the tick according to the number of items (minimum font-size remains 4)
                 if len(stimpair_labels) > 36 and axis_ticks_font_size > 4:
                     stimpair_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(stimpair_labels))
                 else:
                     stimpair_axis_ticks_font_size = axis_ticks_font_size
 
-                #
+				 
                 if len(electrode_labels) > 36 and axis_ticks_font_size > 4:
                     electrode_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(electrode_labels))
                 else:
                     electrode_axis_ticks_font_size = axis_ticks_font_size
 
+                # account for the situation where there are only a small number of stimulation-pairs.
+                if len(stimpair_labels) < 10:
+                    stimpair_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(stimpair_labels) / 10)
+                else:
+                    stimpair_y_image_height = OUTPUT_IMAGE_SIZE
+
+                # account for a high number of electrodes
+                if len(electrode_labels) > 50:
+                    electrode_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(electrode_labels) / 50)
+                else:
+                    electrode_y_image_height = OUTPUT_IMAGE_SIZE
 
                 #
                 # generate the electrodes plot
@@ -459,7 +469,7 @@ for subject in subjects_to_analyze:
                     for iElec in range(len(electrode_labels)):
 
                         # create a figure and retrieve the axis
-                        fig = create_figure(OUTPUT_IMAGE_HEIGHT, OUTPUT_IMAGE_HEIGHT, False)
+                        fig = create_figure(OUTPUT_IMAGE_SIZE, stimpair_y_image_height, False)
                         ax = fig.gca()
 
                         # set the title
@@ -491,6 +501,7 @@ for subject in subjects_to_analyze:
                                 yN1 += len(stimpair_labels) - iPair
                                 ax.plot(xN1, yN1, 'bo')
 
+						# set the x axis
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
@@ -498,7 +509,7 @@ for subject in subjects_to_analyze:
 
                         # set the y axis
                         ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(stimpair_labels) + .5))
+                        ax.set_ylim((0, len(stimpair_labels) + 1))
                         ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
                         ax.set_yticklabels(np.flip(stimpair_labels), fontSize=stimpair_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
@@ -533,7 +544,7 @@ for subject in subjects_to_analyze:
                     for iPair in range(len(stimpair_labels)):
 
                         # create a figure and retrieve the axis
-                        fig = create_figure(OUTPUT_IMAGE_HEIGHT, OUTPUT_IMAGE_HEIGHT, False)
+                        fig = create_figure(OUTPUT_IMAGE_SIZE, electrode_y_image_height, False)
                         ax = fig.gca()
 
                         # set the title
@@ -565,6 +576,7 @@ for subject in subjects_to_analyze:
                                 yN1 += len(electrode_labels) - iElec
                                 ax.plot(xN1, yN1, 'bo')
 
+						# set the x axis
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
@@ -572,7 +584,7 @@ for subject in subjects_to_analyze:
 
                         # set the y axis
                         ax.set_ylabel('Measured electrodes\n', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(electrode_labels) + .5))
+                        ax.set_ylim((0, len(electrode_labels) + 1))
                         ax.set_yticks(np.arange(1, len(electrode_labels) + 1, 1))
                         ax.set_yticklabels(np.flip(electrode_labels), fontSize=electrode_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
@@ -601,29 +613,47 @@ for subject in subjects_to_analyze:
                     logging.info('- Generating matrices...')
 
                     # calculate the image width based on the number of stim-pair and electrodes
-                    image_width = OUTPUT_IMAGE_HEIGHT / len(stimpair_labels) * len(electrode_labels)
+                    image_width = stimpair_y_image_height / len(stimpair_labels) * len(electrode_labels)
                     image_width += 800
+
+                    # make sure the image width does not exceed the matplotlib limit of 2**16
+                    if image_width >= 2 ** 16:
+                        factor = (2 ** 16 - 50) / image_width
+                        image_width = int(round(image_width * factor))
+                        image_height = int(round(stimpair_y_image_height * factor))
+                    else:
+                        image_height = stimpair_y_image_height
+
+                    # adjust the padding between the matrix and the colorbar based on the image width
+                    colorbar_padding = 0.01 if image_width < 2000 else (0.01 * (2000 / image_width))
+
+                    # if there are 10 times more electrodes than stimulation-pairs, then allow
+                    # the matrix to squeeze horizontally
+                    matrix_aspect = 1
+                    element_ratio = len(electrode_labels) / len(stimpair_labels)
+                    if element_ratio > 10:
+                        matrix_aspect = element_ratio / 8
 
 
                     #
                     # Amplitude matrix
                     #
-
-                    # create a figure and retrieve the axis
-                    fig = create_figure(image_width, OUTPUT_IMAGE_HEIGHT, False)
-                    ax = fig.gca()
-
+					
                     #
                     matrix_amplitudes = n1_peak_amplitudes
                     #matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
                     matrix_amplitudes *= -1
+
+                    # create a figure and retrieve the axis
+                    fig = create_figure(image_width, image_height, False)
+                    ax = fig.gca()
 
                     # create a color map
                     cmap = cm.get_cmap('viridis')
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
-                    im = ax.imshow(np.transpose(matrix_amplitudes), origin='upper', vmin=0, vmax=500, cmap=cmap)
+                    im = ax.imshow(np.transpose(matrix_amplitudes), origin='upper', vmin=0, vmax=500, cmap=cmap, aspect=matrix_aspect)
 
                     # set labels and ticks
                     ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
@@ -638,7 +668,7 @@ for subject in subjects_to_analyze:
                         ax.spines[axis].set_linewidth(1.5)
 
                     # set a color-bar
-                    cbar = fig.colorbar(im, pad=0.01)
+                    cbar = fig.colorbar(im, pad=colorbar_padding)
                     cbar.set_ticks([0, 100, 200, 300, 400, 500])
                     cbar.ax.set_yticklabels(['0', '-100 \u03bcV', '-200 \u03bcV', '-300 \u03bcV', '-400 \u03bcV', '-500 \u03bcV'], fontSize=legend_font_size - 4)
                     cbar.outline.set_linewidth(1.5)
@@ -652,7 +682,7 @@ for subject in subjects_to_analyze:
                     #
 
                     # create a figure and retrieve the axis
-                    fig = create_figure(image_width, OUTPUT_IMAGE_HEIGHT, False)
+                    fig = create_figure(image_width, image_height, False)
                     ax = fig.gca()
 
                     # retrieve the latencies and convert the indices (in samples) to time units (ms)
@@ -671,7 +701,7 @@ for subject in subjects_to_analyze:
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
-                    im = ax.imshow(np.transpose(matrix_latencies), origin='upper', vmin=0, cmap=cmap)
+                    im = ax.imshow(np.transpose(matrix_latencies), origin='upper', vmin=0, cmap=cmap, aspect=matrix_aspect)
 
                     # set labels and ticks
                     ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
@@ -693,7 +723,7 @@ for subject in subjects_to_analyze:
                         legend_tick_labels.append(str(latency) + ' ms')
 
                     # set a color-bar
-                    cbar = fig.colorbar(im, pad=0.01)
+                    cbar = fig.colorbar(im, pad=colorbar_padding)
                     im.set_clim([legend_tick_values[0], legend_tick_values[-1]])
                     cbar.set_ticks(legend_tick_values)
                     cbar.ax.set_yticklabels(legend_tick_labels, fontSize=legend_font_size - 4)
