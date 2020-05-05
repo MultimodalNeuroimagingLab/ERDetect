@@ -517,7 +517,7 @@ for subject in subjects_to_analyze:
 
                         # draw legend
                         legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
-                        ax.plot([legend_x, legend_x], [legend_y + .1, legend_y + .9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
                         ax.text(legend_x + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
 
                         # Hide the right and top spines
@@ -593,7 +593,7 @@ for subject in subjects_to_analyze:
 
                         # draw legend
                         legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
-                        ax.plot([legend_x, legend_x], [legend_y + .1, legend_y + .9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
                         ax.text(legend_x + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
 
                         # Hide the right and top spines
