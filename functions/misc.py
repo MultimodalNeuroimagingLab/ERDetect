@@ -147,7 +147,7 @@ def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
     return padded_str
 
 
-def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, first_line_single_item=None):
+def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, item_delimiter=' ', first_line_single_item=None):
     """
     Convert a array of strings (list or tuple) to a formatted string where the items are
     equally spread over multiple lines, instead of one long line
@@ -157,6 +157,7 @@ def multi_line_list(input_array, indent_length=45, first_line_caption='', items_
         indent_length (int):           The spacing in front of the listed items
         first_line_caption (str):      The text in the first line that precedes the listing of the items in the array.
         items_per_line (int):          The number of items per line
+        item_delimiter (str):          The str that is added between the array-items in the text
         first_line_single_item (str):  If set, will display this string on the first line, the rest of the items will
                                        then be shown from the second line on
 
@@ -171,21 +172,25 @@ def multi_line_list(input_array, indent_length=45, first_line_caption='', items_
         current_line = first_line_caption
 
     # generate and print the lines
+    sub_line = ''
     for i in range(len(input_array)):
         if not len(sub_line) == 0:
-            sub_line += '   '
+            sub_line += item_delimiter
         sub_line += str(input_array[i])
         if i > 0 and (i + 1) % items_per_line == 0:
             if not len(return_text) == 0:
                 return_text += '\n'
             return_text += current_line.ljust(indent_length, ' ') + sub_line
             sub_line = ''
+            current_line = ''
 
     # print the remaining items (if there are any)
     if not len(sub_line) == 0:
         if not len(return_text) == 0:
             return_text += '\n'
         return_text += current_line.ljust(indent_length, ' ') + sub_line
+
+    return return_text
 
 
 def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', print_end="\r"):

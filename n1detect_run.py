@@ -246,16 +246,14 @@ for subject in subjects_to_analyze:
                     electrode_labels.append(row['name'])
 
             # print channel information
-            logging.info('Non-IEEG channels:                           ' + ' '.join(channels_non_ieeg))
-            logging.info('IEEG electrodes:                             ' + ' '.join(electrode_labels))
-            # TODO: print like pairs, on long lines, wrap around with indenting on top
-            logging.info('Bad channels:                                ' + ' '.join(channels_bad))
+            logging.info(multi_line_list(channels_non_ieeg, 45, 'Non-IEEG channels:', 20, ' '))
+            logging.info(multi_line_list(electrode_labels, 45, 'IEEG electrodes:', 20, ' '))
+            logging.info(multi_line_list(channels_bad, 45, 'Bad channels:', 20, ' '))
 
             # check if there are channels
             if len(electrode_labels) == 0:
                 logging.error('No channels were found, exiting...')
                 exit(1)
-
 
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
             csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
@@ -289,7 +287,6 @@ for subject in subjects_to_analyze:
             # determine the stimulation-pairs conditions (and the trial and electrodes that belong to them)
             # (note that the 'concat_bidirectional_pairs' configuration setting is taken into account here)
             #
-
             stimpair_labels = []                # for each pair, the labels of the electrodes that were stimulated
             stimpair_trial_indices = []         # for each pair, the indices of the trials that were involved
             stimpair_trial_onsets = []          # for each pair, the indices of the trials that were involved
@@ -318,33 +315,10 @@ for subject in subjects_to_analyze:
                         stimpair_trial_indices.append(indices)
                         stimpair_trial_onsets.append([trial_onsets[i] for i in indices])
 
-
-            # display Pair/Trial information
-            logging.info('Stimulation pairs:                           ' + str(len(stimpair_labels)))
-            sub_line = ''
-            for iPair in range(len(stimpair_labels)):
-                if not len(sub_line) == 0:
-                    sub_line += '   '
-                sub_line += str(stimpair_labels[iPair]) + ' (' + str(len(stimpair_trial_indices[iPair])) + ' trials)'
-                if iPair > 0 and (iPair + 1) % 4 == 0:
-                    logging.info('                                             ' + sub_line)
-                    sub_line = ''
-            if not len(sub_line) == 0:
-                logging.info('                                             ' + sub_line)
-
-            #
-            # abc = list()
-            #
-            # subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
-            #
-            # henk =
-            # for iPair in range(len(stimpair_labels)):
-            #     abc.append()
-            #     sub_line += str(stimpair_labels[iPair]) + ' (' + str(len(stimpair_trial_indices[iPair])) + ' trials)'
-            # def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, first_line_single_item=None):
-            # multi_line_list(
-            #
-
+            # display stimulation-pair/trial information
+            stimpair_print = [str(stimpair_labels[i]) + ' (' + str(len(stimpair_trial_indices[i])) + ' trials)' for i in range(len(stimpair_labels))]
+            stimpair_print = [str_print.ljust(len(max(stimpair_print, key=len)), ' ') for str_print in stimpair_print]
+            logging.info(multi_line_list(stimpair_print, 45, 'Stimulation pairs:', 4, '   ', str(len(stimpair_labels))))
 
             #
             # read and epoch the data
@@ -489,7 +463,7 @@ for subject in subjects_to_analyze:
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(electrode_labels[iElec], fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(electrode_labels[iElec] + '\n', fontSize=title_font_size, fontweight='bold')
 
                         # loop through the stimulation-pairs
                         for iPair in range(len(stimpair_labels)):
@@ -524,7 +498,7 @@ for subject in subjects_to_analyze:
 
                         # set the y axis
                         ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(stimpair_labels) + 2))
+                        ax.set_ylim((0, len(stimpair_labels) + .5))
                         ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
                         ax.set_yticklabels(np.flip(stimpair_labels), fontSize=stimpair_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
@@ -563,7 +537,7 @@ for subject in subjects_to_analyze:
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(stimpair_labels[iPair], fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(stimpair_labels[iPair] + '\n', fontSize=title_font_size, fontweight='bold')
 
                         # loop through the electrodes
                         for iElec in range(len(electrode_labels)):
@@ -598,7 +572,7 @@ for subject in subjects_to_analyze:
 
                         # set the y axis
                         ax.set_ylabel('Measured electrodes\n', fontSize=axis_label_font_size)
-                        ax.set_ylim((0, len(electrode_labels) + 2))
+                        ax.set_ylim((0, len(electrode_labels) + .5))
                         ax.set_yticks(np.arange(1, len(electrode_labels) + 1, 1))
                         ax.set_yticklabels(np.flip(electrode_labels), fontSize=electrode_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
