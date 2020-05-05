@@ -415,11 +415,11 @@ for subject in subjects_to_analyze:
 
                 # determine the range on the x axis where the stimulus was in samples
                 # TODO: what if TRIAL_EPOCH_START is after the stimulus onset
-                x_stim_start = int(round(abs(config['trials']['trial_epoch'][0] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
-                x_stim_end = x_stim_start + int(ceil(abs(config['visualization']['blank_stim_epoch'][1] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
+                stim_start_x = int(round(abs(config['trials']['trial_epoch'][0] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
+                stim_end_x = stim_start_x + int(ceil(abs(config['visualization']['blank_stim_epoch'][1] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
 
                 # calculate the legend x position
-                x_legend = config['visualization']['x_axis_epoch'][1] - .13
+                legend_x = config['visualization']['x_axis_epoch'][1] - .13
 
                 # adjust line and font sizes to resolution
                 zero_line_thickness = OUTPUT_IMAGE_SIZE / 2000
@@ -436,7 +436,7 @@ for subject in subjects_to_analyze:
                 else:
                     stimpair_axis_ticks_font_size = axis_ticks_font_size
 
-				 
+                 
                 if len(electrode_labels) > 36 and axis_ticks_font_size > 4:
                     electrode_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(electrode_labels))
                 else:
@@ -489,7 +489,7 @@ for subject in subjects_to_analyze:
 
                             # nan out the stimulation
                             #TODO, only nan if within display range
-                            y[x_stim_start:x_stim_end] = np.nan
+                            y[stim_start_x:stim_end_x] = np.nan
 
                             # plot the signal
                             ax.plot(x, y, linewidth=signal_line_thickness)
@@ -501,7 +501,7 @@ for subject in subjects_to_analyze:
                                 yN1 += len(stimpair_labels) - iPair
                                 ax.plot(xN1, yN1, 'bo')
 
-						# set the x axis
+                        # set the x axis
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
@@ -516,8 +516,9 @@ for subject in subjects_to_analyze:
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
-                        ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
+                        legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
+                        ax.plot([legend_x, legend_x], [legend_y + .1, legend_y + .9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                        ax.text(legend_x + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -564,7 +565,7 @@ for subject in subjects_to_analyze:
 
                             # nan out the stimulation
                             #TODO, only nan if within display range
-                            y[x_stim_start:x_stim_end] = np.nan
+                            y[stim_start_x:stim_end_x] = np.nan
 
                             # plot the signal
                             ax.plot(x, y, linewidth=signal_line_thickness)
@@ -576,7 +577,7 @@ for subject in subjects_to_analyze:
                                 yN1 += len(electrode_labels) - iElec
                                 ax.plot(xN1, yN1, 'bo')
 
-						# set the x axis
+                        # set the x axis
                         ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
@@ -591,8 +592,9 @@ for subject in subjects_to_analyze:
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
-                        ax.plot([x_legend, x_legend], [2.1, 2.9], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(x_legend + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
+                        legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
+                        ax.plot([legend_x, legend_x], [legend_y + .1, legend_y + .9], linewidth=legend_line_thickness, color=(0, 0, 0))
+                        ax.text(legend_x + .01, 2.3, '500 \u03bcV', fontSize=legend_font_size)
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -638,7 +640,7 @@ for subject in subjects_to_analyze:
                     #
                     # Amplitude matrix
                     #
-					
+                    
                     #
                     matrix_amplitudes = n1_peak_amplitudes
                     #matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
