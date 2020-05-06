@@ -36,8 +36,8 @@ from functions.misc import print_progressbar, is_number, CustomLoggingFormatter,
 # constants
 #
 VALID_FORMAT_EXTENSIONS         = ('.mefd', '.edf', '.vhdr', '.vmrk', '.eeg')   # valid data format to search for (European Data Format, BrainVision and MEF3)
-OUTPUT_IMAGE_SIZE               = 2000                                          # the number of pixels that is used as the "initial" height or width
-
+OUTPUT_IMAGE_SIZE               = 2000                                          # the number of pixels that is used as the "initial" height or width for the output images
+LOGGING_CAPTION_INDENT_LENGTH   = 45                                            # the indent length of the caption in a logging output string
 
 #
 # version and logging
@@ -52,6 +52,11 @@ logger.setLevel(logging.INFO)
 logger_ch = logging.StreamHandler(stream=sys.stdout)
 logger_ch.setFormatter(CustomLoggingFormatter())
 logger.addHandler(logger_ch)
+
+
+def log_indented_line(caption, text):
+    logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+
 
 #
 # define and parse the input arguments
@@ -129,21 +134,21 @@ if not check_config(config):
     exit(1)
 
 # print configuration information
-logging.info('Trial epoch window:                          ' + str(config['trials']['trial_epoch'][0]) + 's < stim onset < ' + str(config['trials']['trial_epoch'][1]) + 's  (window size ' + str(abs(config['trials']['trial_epoch'][1] - config['trials']['trial_epoch'][0])) + 's)')
-logging.info('Trial baseline window:                       ' + str(config['trials']['baseline_epoch'][0]) + 's : ' + str(config['trials']['baseline_epoch'][1]) + 's')
-logging.info('Trial baseline normalization:                ' + str(config['trials']['baseline_norm']))
-logging.info('Concatenate bidirectional stimulated pairs:  ' + ('Yes' if config['trials']['concat_bidirectional_pairs'] else 'No'))
+log_indented_line('Trial epoch window:', str(config['trials']['trial_epoch'][0]) + 's < stim onset < ' + str(config['trials']['trial_epoch'][1]) + 's  (window size ' + str(abs(config['trials']['trial_epoch'][1] - config['trials']['trial_epoch'][0])) + 's)')
+log_indented_line('Trial baseline window:', str(config['trials']['baseline_epoch'][0]) + 's : ' + str(config['trials']['baseline_epoch'][1]) + 's')
+log_indented_line('Trial baseline normalization:', str(config['trials']['baseline_norm']))
+log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if config['trials']['concat_bidirectional_pairs'] else 'No'))
 logging.info('')
-logging.info('Peak search window:                          ' + str(config['n1_detect']['peak_search_epoch'][0]) + 's : ' + str(config['n1_detect']['peak_search_epoch'][1]) + 's')
-logging.info('N1 search window:                            ' + str(config['n1_detect']['n1_search_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_search_epoch'][1]) + 's')
-logging.info('N1 baseline window:                          ' + str(config['n1_detect']['n1_baseline_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_baseline_epoch'][1]) + 's')
-logging.info('N1 baseline threshold factor:                ' + str(config['n1_detect']['n1_baseline_threshold_factor']))
+log_indented_line('Peak search window:', str(config['n1_detect']['peak_search_epoch'][0]) + 's : ' + str(config['n1_detect']['peak_search_epoch'][1]) + 's')
+log_indented_line('N1 search window:', str(config['n1_detect']['n1_search_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_search_epoch'][1]) + 's')
+log_indented_line('N1 baseline window:', str(config['n1_detect']['n1_baseline_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_baseline_epoch'][1]) + 's')
+log_indented_line('N1 baseline threshold factor:', str(config['n1_detect']['n1_baseline_threshold_factor']))
 logging.info('')
-logging.info('Visualization x-axis epoch                   ' + str(config['visualization']['x_axis_epoch'][0]) + 's : ' + str(config['visualization']['x_axis_epoch'][1]) + 's')
-logging.info('Visualization blank stimulation epoch        ' + str(config['visualization']['blank_stim_epoch'][0]) + 's : ' + str(config['visualization']['blank_stim_epoch'][1]) + 's')
-logging.info('Generate electrode images                    ' + ('Yes' if config['visualization']['generate_electrode_images'] else 'No'))
-logging.info('Generate stimulation-pair images             ' + ('Yes' if config['visualization']['generate_stimpair_images'] else 'No'))
-logging.info('Generate matrix images                       ' + ('Yes' if config['visualization']['generate_matrix_images'] else 'No'))
+log_indented_line('Visualization x-axis epoch', str(config['visualization']['x_axis_epoch'][0]) + 's : ' + str(config['visualization']['x_axis_epoch'][1]) + 's')
+log_indented_line('Visualization blank stimulation epoch', str(config['visualization']['blank_stim_epoch'][0]) + 's : ' + str(config['visualization']['blank_stim_epoch'][1]) + 's')
+log_indented_line('Generate electrode images', ('Yes' if config['visualization']['generate_electrode_images'] else 'No'))
+log_indented_line('Generate stimulation-pair images', ('Yes' if config['visualization']['generate_stimpair_images'] else 'No'))
+log_indented_line('Generate matrix images', ('Yes' if config['visualization']['generate_matrix_images'] else 'No'))
 logging.info('')
 
 
@@ -216,13 +221,14 @@ for subject in subjects_to_analyze:
             logging.info('Subset:                                      ' + subset)
             logging.info('')
 
-            #
-            # gather metadata information
-            #
-
             # derive the bids roots (subject/session and subset) from the full path
             bids_subjsess_root = os.path.commonprefix(glob(os.path.join(os.path.dirname(subset), '*.*')))[:-1]
             bids_subset_root = subset[:subset.rindex('_')]
+
+
+            #
+            # retrieve channel metadata
+            #
 
             # retrieve the channel metadata from the channels.tsv file
             csv = load_channel_info(bids_subset_root + '_channels.tsv')
@@ -246,14 +252,20 @@ for subject in subjects_to_analyze:
                     electrode_labels.append(row['name'])
 
             # print channel information
-            logging.info(multi_line_list(channels_non_ieeg, 45, 'Non-IEEG channels:', 20, ' '))
-            logging.info(multi_line_list(electrode_labels, 45, 'IEEG electrodes:', 20, ' '))
-            logging.info(multi_line_list(channels_bad, 45, 'Bad channels:', 20, ' '))
+            logging.info(multi_line_list(channels_non_ieeg, LOGGING_CAPTION_INDENT_LENGTH, 'Non-IEEG channels:', 20, ' '))
+            logging.info(multi_line_list(electrode_labels, LOGGING_CAPTION_INDENT_LENGTH, 'IEEG electrodes:', 20, ' '))
+            logging.info(multi_line_list(channels_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels:', 20, ' '))
 
-            # check if there are channels
+            # check if there are any channels
             if len(electrode_labels) == 0:
                 logging.error('No channels were found, exiting...')
                 exit(1)
+
+
+            #
+            # retrieve event metadata
+            #
+
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
             csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
             if csv is None:
@@ -263,15 +275,21 @@ for subject in subjects_to_analyze:
             # acquire the onset and electrode-pair for each stimulation
             trial_onsets = []
             trial_pairs = []
+            trials_have_status = 'status' in csv.columns
             for index, row in csv.iterrows():
                 if row['trial_type'].lower() == 'electrical_stimulation':
                     if not is_number(row['onset']) or isnan(float(row['onset'])) or float(row['onset']) < 0:
-                        logging.warning('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0')
+                        logging.warning('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0. Discarding trial...')
                         continue
+
+                    if trials_have_status:
+                        if not row['status'].lower() == 'good':
+                            logging.warning('The status of the trial with onset \'' + row['onset'] + '\' in events is not marked as \'good\'. Discarding trial...')
+                            continue
 
                     pair = row['electrical_stimulation_site'].split('-')
                     if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
-                        logging.error('Electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values seperated by a dash (e.g. CH01-CH02), exiting...')
+                        logging.error('Electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values separated by a dash (e.g. CH01-CH02), exiting...')
                         exit(1)
                     trial_onsets.append(float(row['onset']))
                     trial_pairs.append(pair)
@@ -317,7 +335,8 @@ for subject in subjects_to_analyze:
             # display stimulation-pair/trial information
             stimpair_print = [str(stimpair_labels[i]) + ' (' + str(len(stimpair_trial_indices[i])) + ' trials)' for i in range(len(stimpair_labels))]
             stimpair_print = [str_print.ljust(len(max(stimpair_print, key=len)), ' ') for str_print in stimpair_print]
-            logging.info(multi_line_list(stimpair_print, 45, 'Stimulation pairs:', 4, '   ', str(len(stimpair_labels))))
+            logging.info(multi_line_list(stimpair_print, LOGGING_CAPTION_INDENT_LENGTH, 'Stimulation pairs:', 4, '   ', str(len(stimpair_labels))))
+
 
             #
             # read and epoch the data
