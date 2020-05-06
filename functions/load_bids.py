@@ -22,9 +22,15 @@ from functions.misc import print_progressbar, allocate_array
 
 
 def load_channel_info(tsv_filepath):
-    # retrieve the channel metadata from the channels.tsv file
 
-    csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+    # retrieve the channel metadata from the channels.tsv file
+    try:
+        csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+    except FileNotFoundError:
+        logging.error('Could not find the file \'' + tsv_filepath + '\'')
+        return None
+
+    #
     if 'name' not in csv.columns:
         logging.error('Could not find the \'name\' column in \'' + tsv_filepath + '\'')
         return None
@@ -39,9 +45,15 @@ def load_channel_info(tsv_filepath):
 
 
 def load_event_info(tsv_filepath, addition_required_columns=None):
-    # retrieve the events from the events.tsv file
 
-    csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+    # retrieve the events from the events.tsv file
+    try:
+        csv = pd.read_csv(tsv_filepath, sep='\t', header=0, encoding='unicode_escape', na_filter=False, dtype=str)
+    except FileNotFoundError:
+        logging.error('Could not find the file \'' + tsv_filepath + '\'')
+        return None
+
+    #
     if 'onset' not in csv.columns:
         logging.error('Could not find the \'onset\' column in \'' + tsv_filepath + '\'')
         return None
