@@ -14,6 +14,7 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import logging
 import numpy as np
+import subprocess
 from psutil import virtual_memory
 from math import ceil
 
@@ -145,6 +146,23 @@ def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
         padded_str += padded_values[iValue]
 
     return padded_str
+
+
+def run_cmd(command, env={}):
+    merged_env = os.environ
+    merged_env.update(env)
+    #merged_env.pop('DEBUG', None)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT, shell=True,
+                               env=merged_env)
+    while True:
+        line = process.stdout.readline()
+        line = str(line, 'utf-8')[:-1]
+        print(line)
+        if line == '' and process.poll() is not None:
+            break
+    if process.returncode != 0:
+        raise Exception("Non zero return code: %d" % process.returncode)
 
 
 def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, item_delimiter=' ', first_line_single_item=None):

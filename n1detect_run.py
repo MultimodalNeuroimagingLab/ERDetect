@@ -20,7 +20,6 @@ import logging
 from math import isnan, ceil
 from glob import glob
 
-from bids_validator import BIDSValidator
 import numpy as np
 import scipy.io as sio
 from matplotlib import cm
@@ -29,7 +28,7 @@ from n1detect_config import default_config, check_config, read_config, write_con
 from functions.load_bids import load_channel_info, load_event_info, load_data_epochs_averages
 from functions.ieeg_detect_n1 import ieeg_detect_n1
 from functions.visualization import create_figure
-from functions.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list
+from functions.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, run_cmd
 
 
 #
@@ -109,11 +108,14 @@ logging.info('')
 #
 # check if the input is a valid BIDS dataset
 #
-#if not args.skip_bids_validator:
-#    if not BIDSValidator().is_bids(args.bids_dir):
-#        logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-#                          'using the BIDS Validator (http://incf.github.io/bids-validator/')
-#        exit(1)
+if not args.skip_bids_validator:
+    try:
+        run_cmd('bids-validator %s' % args.bids_dir)
+    except Exception as e:
+        logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+                          'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+        exit(1)
 
 
 #
