@@ -151,16 +151,15 @@ def numbers_to_padded_string(values, width=0, pos_space=True, separator=', '):
 def run_cmd(command, env={}):
     merged_env = os.environ
     merged_env.update(env)
-    #merged_env.pop('DEBUG', None)
-    process = subprocess.Popen(command, stdout=subprocess.PIPE,
-                               stderr=subprocess.STDOUT, shell=True,
-                               env=merged_env)
-    while True:
-        line = process.stdout.readline()
-        line = str(line, 'utf-8')[:-1]
-        print(line)
-        if line == '' and process.poll() is not None:
-            break
+    merged_env.pop('DEBUG', None)
+    process = subprocess.run(command,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             shell=True,
+                             universal_newlines=True,
+                             env=merged_env,
+                             encoding='utf-8')
+    print(process.stdout)
     if process.returncode != 0:
         raise Exception("Non zero return code: %d" % process.returncode)
 
