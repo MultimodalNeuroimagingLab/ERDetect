@@ -12,6 +12,7 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+import os
 import logging
 import numpy as np
 import subprocess
@@ -159,9 +160,7 @@ def run_cmd(command, env={}):
                              universal_newlines=True,
                              env=merged_env,
                              encoding='utf-8')
-    print(process.stdout)
-    if process.returncode != 0:
-        raise Exception("Non zero return code: %d" % process.returncode)
+    return process
 
 
 def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, item_delimiter=' ', first_line_single_item=None):

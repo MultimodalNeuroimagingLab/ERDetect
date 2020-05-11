@@ -109,9 +109,9 @@ logging.info('')
 # check if the input is a valid BIDS dataset
 #
 if not args.skip_bids_validator:
-    try:
-        run_cmd('bids-validator %s' % args.bids_dir)
-    except Exception as e:
+    process = run_cmd('bids-validator %s' % args.bids_dir)
+    logging.info(process.stdout)
+    if process.returncode != 0:
         logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
                           'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
                       '--skip_bids_validator argument to run the detection without prior BIDS validation.')
