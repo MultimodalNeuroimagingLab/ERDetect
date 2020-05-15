@@ -232,10 +232,12 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                     baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
                     data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
 
-
         # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels, issue MNE?
         mne_raw.close()
         del mne_raw
+
+        # MNE always returns data in volt, convert to micro-volt
+        data = data * 1000000
 
     elif data_format == 2:
         # MEF3 format
@@ -465,14 +467,15 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                             return None, None
 
                     # extract the trial data and perform baseline normalization on the trial if needed
+                    # MNE always returns data in volt, convert to micro-volt
                     if baseline_method == 0:
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0]
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000
                     elif baseline_method == 1:
-                        baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_mean
+                        baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0] * 1000000)
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000 - baseline_mean
                     elif baseline_method == 2:
-                        baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
+                        baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0] * 1000000)
+                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000 - baseline_median
 
                 # average the trials for each channel (within this condition) and store the results
                 data[iChannel, iCondition, :] = np.nanmean(condition_channel_data, axis=0)
