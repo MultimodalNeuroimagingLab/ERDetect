@@ -20,6 +20,7 @@ import logging
 from math import isnan, ceil
 from glob import glob
 
+from bids_validator import BIDSValidator
 import numpy as np
 import scipy.io as sio
 from matplotlib import cm
@@ -109,12 +110,17 @@ logging.info('')
 # check if the input is a valid BIDS dataset
 #
 if not args.skip_bids_validator:
-    process = run_cmd('bids-validator %s' % args.bids_dir)
-    logging.info(process.stdout)
-    if process.returncode != 0:
+    #process = run_cmd('bids-validator %s' % args.bids_dir)
+    #logging.info(process.stdout)
+    #if process.returncode != 0:
+    #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+    #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+    #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+    #    exit(1)
+    if not BIDSValidator().is_bids(args.bids_dir):
         logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-                          'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+                        'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+                        '--skip_bids_validator argument to run the detection without prior BIDS validation.')
         exit(1)
 
 
@@ -717,6 +723,8 @@ for subject in subjects_to_analyze:
 
                     # determine the latest
                     latest_N1 = np.nanmax(n1_peak_indices)
+                    if np.isnan(latest_N1):
+                        latest_N1 = 10
                     latest_N1 = int(ceil(latest_N1 / 10)) * 10
 
                     # create a color map
