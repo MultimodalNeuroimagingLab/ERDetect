@@ -117,7 +117,15 @@ if not args.skip_bids_validator:
     #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
     #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
     #    exit(1)
-    if not BIDSValidator().is_bids(args.bids_dir):
+    bids_error = False
+    for dir_, d, files in os.walk(args.bids_dir):
+        for file in files:
+            rel_file = os.path.join(os.path.relpath(dir_, args.bids_dir), file)
+            rel_file = rel_file.replace("\\", "/")
+            if not BIDSValidator().is_bids("/" + rel_file):
+                logging.error('Invalid BIDS-file: ' + rel_file)
+                bids_error = True
+    if bids_error:
         logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
                         'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
                         '--skip_bids_validator argument to run the detection without prior BIDS validation.')
@@ -248,11 +256,13 @@ for subject in subjects_to_analyze:
             electrode_labels = []
             channels_bad = []
             channels_non_ieeg = []
+            channels_have_status = 'status' in csv.columns
             for index, row in csv.iterrows():
                 excluded = False
-                if row['status'].lower() == 'bad':
-                    channels_bad.append(row['name'])
-                    #excluded = True
+                if channels_have_status:
+                    if row['status'].lower() == 'bad':
+                        channels_bad.append(row['name'])
+                        excluded = True
                 if not row['type'].upper() in ('ECOG', 'SEEG'):
                     channels_non_ieeg.append(row['name'])
                     excluded = True
@@ -261,8 +271,8 @@ for subject in subjects_to_analyze:
 
             # print channel information
             logging.info(multi_line_list(channels_non_ieeg, LOGGING_CAPTION_INDENT_LENGTH, 'Non-IEEG channels:', 20, ' '))
-            logging.info(multi_line_list(electrode_labels, LOGGING_CAPTION_INDENT_LENGTH, 'IEEG electrodes:', 20, ' '))
             logging.info(multi_line_list(channels_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels:', 20, ' '))
+            logging.info(multi_line_list(electrode_labels, LOGGING_CAPTION_INDENT_LENGTH, 'IEEG electrodes (included):', 20, ' ', str(len(electrode_labels))))
 
             # check if there are any channels
             if len(electrode_labels) == 0:
