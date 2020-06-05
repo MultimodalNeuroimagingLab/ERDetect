@@ -163,7 +163,7 @@ def run_cmd(command, env={}):
     return process
 
 
-def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, item_delimiter=' ', first_line_single_item=None):
+def multi_line_list(input_array, indent_length=45, first_line_caption='', items_per_line=4, item_delimiter=' ', first_line_single_item=None, no_item_text='-'):
     """
     Convert a array of strings (list or tuple) to a formatted string where the items are
     equally spread over multiple lines, instead of one long line
@@ -176,10 +176,14 @@ def multi_line_list(input_array, indent_length=45, first_line_caption='', items_
         item_delimiter (str):          The str that is added between the array-items in the text
         first_line_single_item (str):  If set, will display this string on the first line, the rest of the items will
                                        then be shown from the second line on
+        no_item_text (str):            Text if there are no items
 
     """
     current_line = ''
     return_text = ''
+
+    if len(input_array) == 0:
+        return first_line_caption.ljust(indent_length, ' ') + no_item_text
 
     #
     if first_line_single_item is not None:
