@@ -66,7 +66,7 @@ def load_event_info(tsv_filepath, addition_required_columns=None):
     return csv
 
 
-def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1)):
+def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1), out_of_bound_handling='error'):
     """
     Load and epoch the data into a matrix based on channels, stimulus onsets and the epoch range (relative to the onsets)
 
@@ -88,6 +88,16 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
                                         standard tuple of '-1, -.1' will use the period from 1s before stimulation onset
                                         to 100ms before stimulation onset to calculate the baseline on); this arguments
                                         is only used when baseline_norm is set to mean or median
+        out_of_bound_handling (str):    Configure the handling of out-of-bound trial epochs;
+                                            'error': (default) Throw an error and return when any epoch is out of bound;
+                                            'first_last_only': Allows only the first trial epoch to start before the
+                                                               data-set and the last trial epoch to end beyond the
+                                                               length of the data-set, the trial epochs will be padded
+                                                               with NaN values. Note that the first and last trial are
+                                                               determined by the first and last entry in the 'onsets'
+                                                               parameter, which is not sorted by this function;
+                                            'allow':           Allow trial epochs to be out-of-bound, NaNs values will
+                                                               be used for part of, or the entire, the trial epoch
 
     Returns:
         sampling_rate (int or double):  the sampling rate at which the data was acquired
@@ -135,7 +145,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
         elif baseline_norm.lower() == 'none':
             baseline_method = 0
         else:
-            logging.error('Unknown normalization argument (' + baseline_norm + ')')
+            logging.error('Unknown normalization argument (' + baseline_norm + '), this can only be one of the following options: None, \'mean\' or \'median\'')
             return None, None
 
         #
@@ -149,6 +159,18 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             if baseline_epoch[1] > trial_epoch[1]:
                 logging.error('Invalid \'baseline_epoch\' parameter, the given baseline end-point (at ' + str(baseline_epoch[1]) + ') lies after the trial end-point (at ' + str(trial_epoch[1]) + ')')
                 return None, None
+
+    # out-of-bound handling
+    if out_of_bound_handling.lower() == 'first_last_only':
+        out_of_bound_method = 1
+    elif out_of_bound_handling.lower() == 'allow':
+        out_of_bound_method = 2
+    elif out_of_bound_handling.lower() == 'error':
+        out_of_bound_method = 0
+    else:
+        logging.error('Unknown out-of-bound handling argument (' + out_of_bound_handling + '), this can only be one of the following options: \'error\', \'first_last_only\' or \'allow\'')
+        return None, None
+
 
     #
     # read and process the data
@@ -208,29 +230,65 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             # loop through the trials
             for iTrial in range(len(onsets)):
 
-                #
+                # calculate the sample indices
                 trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
-                if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
-                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
-                    return None, None
+                trial_sample_end = trial_sample_start + size_time_s
+                baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate))
+                baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate))
+                local_start = 0
+                local_end = size_time_s
 
-                #
+                # check whether the trial epoch is within bounds
+                if trial_sample_end < 0:
+                    if (out_of_bound_method == 1 and iTrial == 0) or out_of_bound_method == 2:
+                        if iChannel == 0:
+                            logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies before the start of the data-set.')
+                        continue
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_start < 0:
+                    if (out_of_bound_method == 1 and iTrial == 0) or out_of_bound_method == 2:
+                        if iChannel == 0:
+                            logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies before the start of the data-set.')
+                        local_start = trial_sample_start * -1
+                        trial_sample_start = 0
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_start > len(mne_raw):
+                    if (out_of_bound_method == 1 and iTrial == len(onsets) - 1) or out_of_bound_method == 2:
+                        if iChannel == 0:
+                            logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies after the end of the data-set.')
+                        continue
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_end > len(mne_raw):
+                    if (out_of_bound_method == 1 and iTrial == len(onsets) - 1) or out_of_bound_method == 2:
+                        if iChannel == 0:
+                            logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies after the end of the data-set.')
+                        local_end = size_time_s - (trial_sample_end - len(mne_raw))
+                        trial_sample_end = len(mne_raw)
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+
+                # check whether the baseline is within bounds
                 if baseline_method > 0:
-                    baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate))
-                    baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate))
-                    if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
+                    if baseline_start_sample < 0 or baseline_end_sample > len(mne_raw):
                         logging.error('Cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the data')
                         return None, None
 
                 # extract the trial data and perform baseline normalization on the trial if needed
                 if baseline_method == 0:
-                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0]
+                    data[iChannel, iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0]
                 elif baseline_method == 1:
                     baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_mean
+                    data[iChannel, iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0] - baseline_mean
                 elif baseline_method == 2:
                     baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0])
-                    data[iChannel, iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] - baseline_median
+                    data[iChannel, iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0] - baseline_median
 
         # TODO: clear memory in MNE, close() doesn't seem to work, neither does remove the channels, issue MNE?
         mne_raw.close()
@@ -269,21 +327,56 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
 
             #
             trial_sample_start = int(round((onsets[iTrial] + trial_epoch[0]) * sampling_rate))
-            if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
-                logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the range for extraction lies outside of the data')
-                return None, None
+            trial_sample_end = trial_sample_start + size_time_s
+            baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
+            baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
+            local_start = 0
+            local_end = size_time_s
 
-            #
+            # check whether the trial epoch is within bounds
+            if trial_sample_end < 0:
+                if (out_of_bound_method == 1 and iTrial == 0) or out_of_bound_method == 2:
+                    logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies before the start of the data-set.')
+                    continue
+                else:
+                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                    return None, None
+            if trial_sample_start < 0:
+                if (out_of_bound_method == 1 and iTrial == 0) or out_of_bound_method == 2:
+                    logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies before the start of the data-set.')
+                    local_start = trial_sample_start * -1
+                    trial_sample_start = 0
+                else:
+                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                    return None, None
+            if trial_sample_start > num_samples:
+                if (out_of_bound_method == 1 and iTrial == len(onsets) - 1) or out_of_bound_method == 2:
+                    logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies after the end of the data-set.')
+                    continue
+                else:
+                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the start of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                    return None, None
+            if trial_sample_end > num_samples:
+                if (out_of_bound_method == 1 and iTrial == len(onsets) - 1) or out_of_bound_method == 2:
+                    logging.warning('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies after the end of the data-set.')
+                    local_end = size_time_s - (trial_sample_end - num_samples)
+                    trial_sample_end = num_samples
+                else:
+                    logging.error('Cannot extract the trial with onset ' + str(onsets[iTrial]) + ', the end of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                    return None, None
+
+            # check whether the baseline is within bounds
             if baseline_method > 0:
-                baseline_start_sample = int(round((onsets[iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
-                baseline_end_sample = int(round((onsets[iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
-                if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
-                    logging.error('Cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                if baseline_start_sample < 0 or baseline_end_sample > size_time_s:
+                    logging.error('Cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the trial-epoch')
+                    return None, None
+                if baseline_start_sample < local_start or baseline_end_sample > local_end:
+                    logging.error('Cannot extract the baseline for the trial with onset ' + str(onsets[iTrial]) + ', the range for the baseline lies outside of the trial-epoch because that part of the trial-epoch was out-of-bounds')
                     return None, None
 
             # load the trial data
             try:
-                trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_start + size_time_s])
+                trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_end])
                 if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
                     return None, None
             except Exception:
@@ -292,16 +385,16 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
 
             # loop through the channels
             for iChannel in range(len(channels)):
-
                 if baseline_method == 0:
-                    data[iChannel, iTrial, :] = trial_data[iChannel]
+                    data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel]
                 elif baseline_method == 1:
                     baseline_mean = np.nanmean(trial_data[iChannel][baseline_start_sample:baseline_end_sample])
-                    data[iChannel, iTrial, :] = trial_data[iChannel] - baseline_mean
+                    data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel] - baseline_mean
                 elif baseline_method == 2:
                     baseline_median = np.nanmedian(trial_data[iChannel][baseline_start_sample:baseline_end_sample])
-                    data[iChannel, iTrial, :] = trial_data[iChannel] - baseline_median
+                    data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel] - baseline_median
 
+            # clear temp data
             del trial_data
 
             # update progress bar
@@ -311,7 +404,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
     return sampling_rate, data
 
 
-def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1)):
+def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1), out_of_bound_handling='error'):
     """
     Load, epoch and return for each channel and condition the average signal (i.e. the signal in time averaged over all
     stimuli/trials that belong to the same condition).
@@ -339,6 +432,16 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                                               standard tuple of '-1, -.1' will use the period from 1s before stimulation
                                               onset to 100ms before stimulation onset to calculate the baseline on);
                                               this arguments is only used when baseline_norm is set to mean or median
+        out_of_bound_handling (str):          Configure the handling of out-of-bound trial epochs;
+                                                'error': (default) Throw an error and return when any epoch is out of bound;
+                                                'first_last_only': Allows only the first trial epoch to start before the
+                                                                   data-set and the last trial epoch to end beyond the
+                                                                   length of the data-set, the trial epochs will be padded
+                                                                   with NaN values. Note that the first and last trial are
+                                                                   determined by the first and last entry in the 'onsets'
+                                                                   parameter, which is not sorted by this function;
+                                                'allow':           Allow trial epochs to be out-of-bound, NaNs values will
+                                                                   be used for part of, or the entire, the trial epoch
 
     Returns:
         sampling_rate (int or double):        The sampling rate at which the data was acquired
@@ -387,7 +490,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
         elif baseline_norm.lower() == 'none':
             baseline_method = 0
         else:
-            logging.error('Unknown normalization argument (' + baseline_norm + ')')
+            logging.error('Unknown normalization argument (' + baseline_norm + '), this can only be one of the following options: None, \'mean\' or \'median\'')
             return None, None
 
         #
@@ -401,6 +504,18 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             if baseline_epoch[1] > trial_epoch[1]:
                 logging.error('Invalid \'baseline_epoch\' parameter, the given baseline end-point (at ' + str(baseline_epoch[1]) + ') lies after the trial end-point (at ' + str(trial_epoch[1]) + ')')
                 return None, None
+
+    # out-of-bound handling
+    if out_of_bound_handling.lower() == 'first_last_only':
+        out_of_bound_method = 1
+    elif out_of_bound_handling.lower() == 'allow':
+        out_of_bound_method = 2
+    elif out_of_bound_handling.lower() == 'error':
+        out_of_bound_method = 0
+    else:
+        logging.error('Unknown out-of-bound handling argument (' + out_of_bound_handling + '), this can only be one of the following options: \'error\', \'first_last_only\' or \'allow\'')
+        return None, None
+
 
     #
     # read and process the data
@@ -452,30 +567,66 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 # loop through the trials in the condition
                 for iTrial in range(len(conditions_onsets[iCondition])):
 
-                    #
+                    # calculate the sample indices
                     trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
-                    if trial_sample_start < 0 or trial_sample_start + size_time_s >= len(mne_raw):
-                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
-                        return None, None
+                    trial_sample_end = trial_sample_start + size_time_s
+                    baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate))
+                    baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate))
+                    local_start = 0
+                    local_end = size_time_s
 
-                    #
+                    # check whether the trial epoch is within bounds
+                    if trial_sample_end < 0:
+                        if (out_of_bound_method == 1 and iCondition == 0 and iTrial == 0) or out_of_bound_method == 2:
+                            if iChannel == 0:
+                                logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies before the start of the data-set.')
+                            continue
+                        else:
+                            logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                            return None, None
+                    if trial_sample_start < 0:
+                        if (out_of_bound_method == 1 and iCondition == 0 and iTrial == 0) or out_of_bound_method == 2:
+                            if iChannel == 0:
+                                logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies before the start of the data-set.')
+                            local_start = trial_sample_start * -1
+                            trial_sample_start = 0
+                        else:
+                            logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                            return None, None
+                    if trial_sample_start > len(mne_raw):
+                        if (out_of_bound_method == 1 and iCondition == len(conditions_onsets) - 1 and iTrial == len(conditions_onsets[iCondition]) - 1) or out_of_bound_method == 2:
+                            if iChannel == 0:
+                                logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies after the end of the data-set.')
+                            continue
+                        else:
+                            logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                            return None, None
+                    if trial_sample_end > len(mne_raw):
+                        if (out_of_bound_method == 1 and iCondition == len(conditions_onsets) - 1 and iTrial == len(conditions_onsets[iCondition]) - 1) or out_of_bound_method == 2:
+                            if iChannel == 0:
+                                logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies after the end of the data-set.')
+                            local_end = size_time_s - (trial_sample_end - len(mne_raw))
+                            trial_sample_end = len(mne_raw)
+                        else:
+                            logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                            return None, None
+
+                    # check whether the baseline is within bounds
                     if baseline_method > 0:
-                        baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate))
-                        baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate))
-                        if baseline_start_sample < 0 or baseline_end_sample >= len(mne_raw):
-                            logging.error('Cannot extract the baseline, the range for the baseline lies outside of the trial epoch')
+                        if baseline_start_sample < 0 or baseline_end_sample > len(mne_raw):
+                            logging.error('Cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the data')
                             return None, None
 
                     # extract the trial data and perform baseline normalization on the trial if needed
                     # MNE always returns data in volt, convert to micro-volt
                     if baseline_method == 0:
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000
+                        condition_channel_data[iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0] * 1000000
                     elif baseline_method == 1:
                         baseline_mean = np.nanmean(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0] * 1000000)
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000 - baseline_mean
+                        condition_channel_data[iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0] * 1000000 - baseline_mean
                     elif baseline_method == 2:
                         baseline_median = np.nanmedian(mne_raw[channel_index, baseline_start_sample:baseline_end_sample][0] * 1000000)
-                        condition_channel_data[iTrial, :] = mne_raw[channel_index, trial_sample_start:trial_sample_start + size_time_s][0] * 1000000 - baseline_median
+                        condition_channel_data[iTrial, local_start:local_end] = mne_raw[channel_index, trial_sample_start:trial_sample_end][0] * 1000000 - baseline_median
 
                 # average the trials for each channel (within this condition) and store the results
                 data[iChannel, iCondition, :] = np.nanmean(condition_channel_data, axis=0)
@@ -523,23 +674,58 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             # loop through the trials in the condition
             for iTrial in range(len(conditions_onsets[iCondition])):
 
-                #
+                # calculate the sample indices
                 trial_sample_start = int(round((conditions_onsets[iCondition][iTrial] + trial_epoch[0]) * sampling_rate))
-                if trial_sample_start < 0 or trial_sample_start + size_time_s >= num_samples:
-                    logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for extraction lies outside of the data')
-                    return None, None
+                trial_sample_end = trial_sample_start + size_time_s
+                baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
+                baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
+                local_start = 0
+                local_end = size_time_s
 
-                #
+                # check whether the trial epoch is within bounds
+                if trial_sample_end < 0:
+                    if (out_of_bound_method == 1 and iCondition == 0 and iTrial == 0) or out_of_bound_method == 2:
+                        logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies before the start of the data-set.')
+                        continue
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_start < 0:
+                    if (out_of_bound_method == 1 and iCondition == 0 and iTrial == 0) or out_of_bound_method == 2:
+                        logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies before the start of the data-set.')
+                        local_start = trial_sample_start * -1
+                        trial_sample_start = 0
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies before the start of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_start > num_samples:
+                    if (out_of_bound_method == 1 and iCondition == len(conditions_onsets) - 1 and iTrial == len(conditions_onsets[iCondition]) - 1) or out_of_bound_method == 2:
+                        logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies after the end of the data-set.')
+                        continue
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the start of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+                if trial_sample_end > num_samples:
+                    if (out_of_bound_method == 1 and iCondition == len(conditions_onsets) - 1 and iTrial == len(conditions_onsets[iCondition]) - 1) or out_of_bound_method == 2:
+                        logging.warning('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies after the end of the data-set.')
+                        local_end = size_time_s - (trial_sample_end - num_samples)
+                        trial_sample_end = num_samples
+                    else:
+                        logging.error('Cannot extract the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the end of the trial-epoch lies after the end of the data-set. Use a different out_of_bound_handling argument to allow out-of-bound trial epochs')
+                        return None, None
+
+                # check whether the baseline is within bounds
                 if baseline_method > 0:
-                    baseline_start_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[0]) * sampling_rate)) - trial_sample_start
-                    baseline_end_sample = int(round((conditions_onsets[iCondition][iTrial] + baseline_epoch[1]) * sampling_rate)) - trial_sample_start
-                    if baseline_start_sample < 0 or baseline_end_sample >= size_time_s:
-                        logging.error('Cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the data')
+                    if baseline_start_sample < 0 or baseline_end_sample > size_time_s:
+                        logging.error('Cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the trial-epoch')
+                        return None, None
+                    if baseline_start_sample < local_start or baseline_end_sample > local_end:
+                        logging.error('Cannot extract the baseline for the trial with onset ' + str(conditions_onsets[iCondition][iTrial]) + ', the range for the baseline lies outside of the trial-epoch because that part of the trial-epoch was out-of-bounds')
                         return None, None
 
                 # load the trial data
                 try:
-                    trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_start + size_time_s])
+                    trial_data = mef.read_ts_channels_sample(channels, [trial_sample_start, trial_sample_end])
                     if trial_data is None or (len(trial_data) > 0 and trial_data[0] is None):
                         return None, None
                 except Exception as e:
@@ -549,13 +735,13 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                 # loop through the channels
                 for iChannel in range(len(channels)):
                     if baseline_method == 0:
-                        condition_data[iChannel, iTrial, :] = trial_data[iChannel]
+                        condition_data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel]
                     elif baseline_method == 1:
                         baseline_mean = np.nanmean(trial_data[iChannel][baseline_start_sample:baseline_end_sample])
-                        condition_data[iChannel, iTrial, :] = trial_data[iChannel] - baseline_mean
+                        condition_data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel] - baseline_mean
                     elif baseline_method == 2:
                         baseline_median = np.nanmedian(trial_data[iChannel][baseline_start_sample:baseline_end_sample])
-                        condition_data[iChannel, iTrial, :] = trial_data[iChannel] - baseline_median
+                        condition_data[iChannel, iTrial, local_start:local_end] = trial_data[iChannel] - baseline_median
 
             # average the trials for each channel (within this condition) and store the results
             data[:, iCondition, :] = np.nanmean(condition_data, axis=1)
