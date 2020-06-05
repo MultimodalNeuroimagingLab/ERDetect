@@ -9,10 +9,14 @@ def default_config():
 
     config = dict()
     config['trials'] = dict()
-    config['trials']['trial_epoch']                         = (-1.0, 3.0)       # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
-    config['trials']['baseline_epoch']                      = (-1.0, -0.1)      # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    config['trials']['trial_epoch']                         = (-1.0, 3.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
+    config['trials']['out_of_bounds_handling']              = 'first_last_only'     #
+    config['trials']['baseline_epoch']                      = (-1.0, -0.1)          # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                       = 'median'
-    config['trials']['concat_bidirectional_pairs']          = True              # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
+    config['trials']['concat_bidirectional_pairs']          = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
+
+    config['channels'] = dict()
+    config['channels']['types']                             = ('ECOG', 'SEEG', 'DBS')
 
     config['n1_detect'] = dict()
     config['n1_detect']['peak_search_epoch']                = (0, 0.5)
@@ -21,8 +25,8 @@ def default_config():
     config['n1_detect']['n1_baseline_threshold_factor']     = 3.4
 
     config['visualization'] = dict()
-    config['visualization']['x_axis_epoch']                    = (-0.2, 1)                   # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
-    config['visualization']['blank_stim_epoch']                   = (-0.015, 0.0025)            # the range
+    config['visualization']['x_axis_epoch']                 = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+    config['visualization']['blank_stim_epoch']             = (-0.015, 0.0025)      # the range
     config['visualization']['generate_electrode_images']    = True
     config['visualization']['generate_stimpair_images']     = True
     config['visualization']['generate_matrix_images']       = True
@@ -80,20 +84,49 @@ def read_config(filepath):
                     return False
         return True
 
-    def retrieve_config_string(json_dict, ref_config, level1, level2, options=None):
+    def retrieve_config_string(json_dict, ref_config, level1, level2, options=None, case_sensitive=False):
         if level1 in json_dict:
             if level2 in json_dict[level1]:
                 if isinstance(json_dict[level1][level2], str):
                     if options is None:
-                        ref_config[level1][level2] = json_dict[level1][level2].lower()
+                        ref_config[level1][level2] = json_dict[level1][level2]
                     else:
-                        if json_dict[level1][level2].lower() in options:
-                            ref_config[level1][level2] = json_dict[level1][level2].lower()
+                        value_cased = json_dict[level1][level2]
+                        if not case_sensitive:
+                            options = (option.lower() for option in options)
+                            value_cased = value_cased.lower()
+                        if value_cased in options:
+                            ref_config[level1][level2] = json_dict[level1][level2]
                         else:
                             logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value can only be one of the following options: ' + str(options)[1:-1])
                             return False
                 else:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be an array of two numbers')
+                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a string')
+                    return False
+        return True
+
+    def retrieve_config_tuple(json_dict, ref_config, level1, level2, options=None, case_sensitive=False):
+        if level1 in json_dict:
+            if level2 in json_dict[level1]:
+                if isinstance(json_dict[level1][level2], list):
+                    if options is None:
+                        ref_config[level1][level2] = tuple(json_dict[level1][level2])
+                    else:
+                        options_cased = options;
+                        values_cased = json_dict[level1][level2]
+                        if not case_sensitive:
+                            options_cased = [option.lower() for option in options]
+                            values_cased = [value.lower() for value in values_cased]
+                        ref_config[level1][level2] = list()
+                        for value in values_cased:
+                            if value in options_cased:
+                                ref_config[level1][level2].append(value)
+                            else:
+                                logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the following values are allowed: ' + str(options)[1:-1])
+                                return False
+                        ref_config[level1][level2] = tuple(ref_config[level1][level2])
+                else:
+                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should an array of strings')
                     return False
         return True
 
@@ -103,12 +136,24 @@ def read_config(filepath):
 
     if not retrieve_config_range(json_config, config, 'trials', 'trial_epoch'):
         return None
+    if not retrieve_config_string(json_config, config, 'trials', 'out_of_bounds_handling', ('error', 'first_last_only', 'allow')):
+        return None
+    config['trials']['out_of_bounds_handling'] = str(config['trials']['out_of_bounds_handling']).lower()
     if not retrieve_config_range(json_config, config, 'trials', 'baseline_epoch'):
         return None
     if not retrieve_config_string(json_config, config, 'trials', 'baseline_norm', ('median', 'mean', 'none')):
         return None
+    config['trials']['baseline_norm'] = str(config['trials']['baseline_norm']).lower()
     if not retrieve_config_bool(json_config, config, 'trials', 'concat_bidirectional_pairs'):
         return None
+
+    VALID_CHANNEL_TYPES = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')
+    if not retrieve_config_tuple(json_config, config, 'channels', 'types', VALID_CHANNEL_TYPES):
+        return None
+    if len(config['channels']['types']) == 0:
+        logging.error('Invalid value in the configuration file for channels->types, at least one channel type should be given')
+        return None
+    config['channels']['types'] = [value.upper() for value in config['channels']['types']]
 
     if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
         return None
@@ -139,9 +184,13 @@ def write_config(filepath, config):
     # save the configuration that was used
     config_str = '{\n    "trials": {\n' \
                     '        "trial_epoch":                     [' + numbers_to_padded_string(config['trials']['trial_epoch'], 16) + '],\n' \
+                    '        "out_of_bounds_handling":          "' + config['trials']['out_of_bounds_handling'] + '",\n' \
                     '        "baseline_epoch":                  [' + numbers_to_padded_string(config['trials']['baseline_epoch'], 16) + '],\n' \
                     '        "baseline_norm":                   "' + config['trials']['baseline_norm'] + '",\n' \
                     '        "concat_bidirectional_pairs":      ' + ('true' if config['trials']['concat_bidirectional_pairs'] else 'false') + '\n' \
+                    '    },\n\n' \
+                    '    "channels": {\n' \
+                    '        "types":                           ' + json.dumps(config['channels']['types']) + '\n' \
                     '    },\n\n' \
                     '    "n1_detect": {\n' \
                     '        "peak_search_epoch":               [' + numbers_to_padded_string(config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
