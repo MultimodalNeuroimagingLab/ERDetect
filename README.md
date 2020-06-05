@@ -27,9 +27,14 @@ An example JSON of the standard settings has the following content:
 {
     "trials": {
         "trial_epoch":                     [-1.0,        3.0],
+        "out_of_bounds_handling":          "first_last_only",
         "baseline_epoch":                  [-1.0,       -0.1],
         "baseline_norm":                   "median",
         "concat_bidirectional_pairs":      true
+    },
+
+    "channels": {
+        "types":                           ["ECOG", "SEEG", "DBS"]
     },
 
     "n1_detect": {
