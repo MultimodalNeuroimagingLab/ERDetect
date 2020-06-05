@@ -120,9 +120,11 @@ if not args.skip_bids_validator:
     bids_error = False
     for dir_, d, files in os.walk(args.bids_dir):
         for file in files:
-            rel_file = os.path.join(os.path.relpath(dir_, args.bids_dir), file)
-            rel_file = rel_file.replace("\\", "/")
-            if not BIDSValidator().is_bids("/" + rel_file):
+            rel_file = os.path.relpath(dir_, args.bids_dir)
+            if rel_file[0] == '.':
+                rel_file = rel_file[1:]
+            rel_file = os.path.join(rel_file, file)
+            if not BIDSValidator().is_bids('/' + rel_file):
                 logging.error('Invalid BIDS-file: ' + rel_file)
                 bids_error = True
     if bids_error:
@@ -263,7 +265,7 @@ for subject in subjects_to_analyze:
                     if row['status'].lower() == 'bad':
                         channels_bad.append(row['name'])
                         excluded = True
-                if not row['type'].upper() in ('ECOG', 'SEEG'):
+                if not row['type'].upper() in config['channels']['types']:
                     channels_non_ieeg.append(row['name'])
                     excluded = True
                 if not excluded:
@@ -367,7 +369,8 @@ for subject in subjects_to_analyze:
             sampling_rate, ccep_average = load_data_epochs_averages(subset, electrode_labels, stimpair_trial_onsets,
                                                                     trial_epoch=config['trials']['trial_epoch'],
                                                                     baseline_norm=config['trials']['baseline_norm'],
-                                                                    baseline_epoch=config['trials']['baseline_epoch'])
+                                                                    baseline_epoch=config['trials']['baseline_epoch'],
+                                                                    out_of_bound_handling=config['trials']['out_of_bounds_handling'])
             if sampling_rate is None or ccep_average is None:
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
