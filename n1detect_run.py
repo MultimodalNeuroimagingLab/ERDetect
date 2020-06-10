@@ -403,8 +403,9 @@ for subject in subjects_to_analyze:
                         {'sampling_rate': sampling_rate,
                          'onset_sample': onset_sample,
                          'ccep_average': ccep_average,
-                         'stimpair_labels': stimpair_labels,
-                         'electrode_labels': electrode_labels})
+                         'stimpair_labels': np.asarray(stimpair_labels, dtype='object'),
+                         'electrode_labels': np.asarray(electrode_labels, dtype='object'),
+                         'config': config})
 
             # write the configuration
             write_config(os.path.join(output_root, 'ccep_config.json'), config)
@@ -430,10 +431,11 @@ for subject in subjects_to_analyze:
                         {'sampling_rate': sampling_rate,
                          'onset_sample': onset_sample,
                          'ccep_average': ccep_average,
-                         'stimpair_labels': stimpair_labels,
-                         'electrode_labels': electrode_labels,
+                         'stimpair_labels': np.asarray(stimpair_labels, dtype='object'),
+                         'electrode_labels': np.asarray(electrode_labels, dtype='object'),
                          'n1_peak_indices': n1_peak_indices,
-                         'n1_peak_amplitudes': n1_peak_amplitudes})
+                         'n1_peak_amplitudes': n1_peak_amplitudes,
+                         'config': config})
 
 
             #
