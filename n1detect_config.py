@@ -14,6 +14,7 @@ def default_config():
     config['trials']['baseline_epoch']                      = (-1.0, -0.1)          # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                       = 'median'
     config['trials']['concat_bidirectional_pairs']          = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
+    config['trials']['minimum_stimpair_trials']             = 5                     # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
 
     config['channels'] = dict()
     config['channels']['types']                             = ('ECOG', 'SEEG', 'DBS')
@@ -146,6 +147,16 @@ def read_config(filepath):
     config['trials']['baseline_norm'] = str(config['trials']['baseline_norm']).lower()
     if not retrieve_config_bool(json_config, config, 'trials', 'concat_bidirectional_pairs'):
         return None
+    if not retrieve_config_number(json_config, config, 'trials', 'minimum_stimpair_trials'):
+        return None
+    if not config['trials']['minimum_stimpair_trials'] == round(config['trials']['minimum_stimpair_trials']):
+        logging.error('Invalid value in the configuration file for trials->minimum_stimpair_trials, the value should be an integer')
+        return None
+    if config['trials']['minimum_stimpair_trials'] < 0:
+        logging.error('Invalid value in the configuration file for trials->minimum_stimpair_trials, the value can be 0 (no trial limit) or higher')
+        return None
+    config['trials']['minimum_stimpair_trials'] = int(config['trials']['minimum_stimpair_trials'])
+
 
     VALID_CHANNEL_TYPES = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')
     if not retrieve_config_tuple(json_config, config, 'channels', 'types', VALID_CHANNEL_TYPES):
@@ -155,6 +166,7 @@ def read_config(filepath):
         return None
     config['channels']['types'] = [value.upper() for value in config['channels']['types']]
 
+
     if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
         return None
     if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_search_epoch'):
@@ -163,6 +175,7 @@ def read_config(filepath):
         return None
     if not retrieve_config_number(json_config, config, 'n1_detect', 'n1_baseline_threshold_factor'):
         return None
+
 
     if not retrieve_config_range(json_config, config, 'visualization', 'x_axis_epoch'):
         return None
@@ -187,7 +200,8 @@ def write_config(filepath, config):
                     '        "out_of_bounds_handling":          "' + config['trials']['out_of_bounds_handling'] + '",\n' \
                     '        "baseline_epoch":                  [' + numbers_to_padded_string(config['trials']['baseline_epoch'], 16) + '],\n' \
                     '        "baseline_norm":                   "' + config['trials']['baseline_norm'] + '",\n' \
-                    '        "concat_bidirectional_pairs":      ' + ('true' if config['trials']['concat_bidirectional_pairs'] else 'false') + '\n' \
+                    '        "concat_bidirectional_pairs":      ' + ('true' if config['trials']['concat_bidirectional_pairs'] else 'false') + ',\n' \
+                    '        "minimum_stimpair_trials":         ' + str(config['trials']['minimum_stimpair_trials']) + '\n' \
                     '    },\n\n' \
                     '    "channels": {\n' \
                     '        "types":                           ' + json.dumps(config['channels']['types']) + '\n' \
