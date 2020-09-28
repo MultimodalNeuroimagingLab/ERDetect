@@ -9,9 +9,9 @@ def default_config():
 
     config = dict()
     config['trials'] = dict()
-    config['trials']['trial_epoch']                         = (-1.0, 3.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
+    config['trials']['trial_epoch']                         = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
     config['trials']['out_of_bounds_handling']              = 'first_last_only'     #
-    config['trials']['baseline_epoch']                      = (-1.0, -0.1)          # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    config['trials']['baseline_epoch']                      = (-0.5, -0.02)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                       = 'median'
     config['trials']['concat_bidirectional_pairs']          = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
     config['trials']['minimum_stimpair_trials']             = 5                     # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
