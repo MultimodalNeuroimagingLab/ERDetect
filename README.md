@@ -55,7 +55,7 @@ For more information the settings...
 ## Acknowledgements
 
 - Written by Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
-- Local extremum detection method by Dorien van Blooijs & Dora Hermes (2018)
+- Local extremum detection method by Dorien van Blooijs & Dora Hermes (2018), with optimized parameters by Jaap van der Aar
 - Dependencies:
   - PyMef by Jan Cimbalnik, Matt Stead, Ben Brinkmann, and Dan Crepeau (https://github.com/msel-source/pymef)
   - MNE-Python (https://mne.tools/)
