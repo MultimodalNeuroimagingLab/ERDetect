@@ -724,7 +724,7 @@ for subject in subjects_to_analyze:
                     ax = fig.gca()
 
                     # create a color map
-                    cmap = cm.get_cmap("viridis").copy()
+                    cmap = cm.get_cmap("autumn").copy()
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
@@ -768,13 +768,13 @@ for subject in subjects_to_analyze:
                     #matrix_latencies[np.isnan(matrix_latencies)] = 0
 
                     # determine the latest
-                    latest_N1 = np.nanmax(n1_peak_indices)
+                    latest_N1 = np.nanmax(matrix_latencies)
                     if np.isnan(latest_N1):
                         latest_N1 = 10
                     latest_N1 = int(ceil(latest_N1 / 10)) * 10
 
                     # create a color map
-                    cmap = cm.get_cmap('viridis').copy()
+                    cmap = cm.get_cmap('summer_r').copy()
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
@@ -799,11 +799,14 @@ for subject in subjects_to_analyze:
                         legend_tick_values.append(latency)
                         legend_tick_labels.append(str(latency) + ' ms')
 
+                    # set the color limits for the image based on the range display in the legend
+                    im.set_clim([legend_tick_values[0], legend_tick_values[-1]])
+
                     # set a color-bar
                     cbar = fig.colorbar(im, pad=colorbar_padding)
-                    im.set_clim([legend_tick_values[0], legend_tick_values[-1]])
                     cbar.set_ticks(legend_tick_values)
                     cbar.ax.set_yticklabels(legend_tick_labels, fontsize=legend_font_size - 4)
+                    cbar.ax.invert_yaxis()
                     cbar.outline.set_linewidth(1.5)
 
                     # save figure
