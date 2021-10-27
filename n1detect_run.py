@@ -546,7 +546,7 @@ for subject in subjects_to_analyze:
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(channels_labels[iElec] + '\n', fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(channels_labels[iElec] + '\n', fontsize=title_font_size, fontweight='bold')
 
                         # loop through the stimulation-pairs
                         for iPair in range(len(stimpair_labels)):
@@ -575,23 +575,23 @@ for subject in subjects_to_analyze:
                                 ax.plot(xN1, yN1, 'bo')
 
                         # set the x axis
-                        ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
+                        ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
                         # set the y axis
-                        ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+                        ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
                         ax.set_ylim((0, len(stimpair_labels) + 1))
                         ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
-                        ax.set_yticklabels(np.flip(stimpair_labels), fontSize=stimpair_axis_ticks_font_size)
+                        ax.set_yticklabels(np.flip(stimpair_labels), fontsize=stimpair_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
                         legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
                         ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontSize=legend_font_size)
+                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -622,7 +622,7 @@ for subject in subjects_to_analyze:
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(stimpair_labels[iPair] + '\n', fontSize=title_font_size, fontweight='bold')
+                        ax.set_title(stimpair_labels[iPair] + '\n', fontsize=title_font_size, fontweight='bold')
 
                         # loop through the electrodes
                         for iElec in range(len(channels_labels)):
@@ -651,23 +651,23 @@ for subject in subjects_to_analyze:
                                 ax.plot(xN1, yN1, 'bo')
 
                         # set the x axis
-                        ax.set_xlabel('\ntime (s)', fontSize=axis_label_font_size)
+                        ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
                         ax.set_xlim(config['visualization']['x_axis_epoch'])
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
                         # set the y axis
-                        ax.set_ylabel('Measured electrodes\n', fontSize=axis_label_font_size)
+                        ax.set_ylabel('Measured electrodes\n', fontsize=axis_label_font_size)
                         ax.set_ylim((0, len(channels_labels) + 1))
                         ax.set_yticks(np.arange(1, len(channels_labels) + 1, 1))
-                        ax.set_yticklabels(np.flip(channels_labels), fontSize=electrode_axis_ticks_font_size)
+                        ax.set_yticklabels(np.flip(channels_labels), fontsize=electrode_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
                         legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
                         ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontSize=legend_font_size)
+                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -724,7 +724,7 @@ for subject in subjects_to_analyze:
                     ax = fig.gca()
 
                     # create a color map
-                    cmap = cm.get_cmap('viridis')
+                    cmap = cm.get_cmap("viridis").copy()
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
@@ -732,20 +732,20 @@ for subject in subjects_to_analyze:
 
                     # set labels and ticks
                     ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
-                    ax.set_yticklabels(stimpair_labels, fontSize=stimpair_axis_ticks_font_size)
+                    ax.set_yticklabels(stimpair_labels, fontsize=stimpair_axis_ticks_font_size)
                     ax.set_xticks(np.arange(0, len(channels_labels), 1))
                     ax.set_xticklabels(channels_labels,
                                        rotation=90,
-                                       fontSize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
-                    ax.set_xlabel('\nMeasured electrode', fontSize=axis_label_font_size)
-                    ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+                                       fontsize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
+                    ax.set_xlabel('\nMeasured electrode', fontsize=axis_label_font_size)
+                    ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
                     for axis in ['top', 'bottom', 'left', 'right']:
                         ax.spines[axis].set_linewidth(1.5)
 
                     # set a color-bar
                     cbar = fig.colorbar(im, pad=colorbar_padding)
                     cbar.set_ticks([0, 100, 200, 300, 400, 500])
-                    cbar.ax.set_yticklabels(['0', '-100 \u03bcV', '-200 \u03bcV', '-300 \u03bcV', '-400 \u03bcV', '-500 \u03bcV'], fontSize=legend_font_size - 4)
+                    cbar.ax.set_yticklabels(['0', '-100 \u03bcV', '-200 \u03bcV', '-300 \u03bcV', '-400 \u03bcV', '-500 \u03bcV'], fontsize=legend_font_size - 4)
                     cbar.outline.set_linewidth(1.5)
 
                     # save figure
@@ -774,7 +774,7 @@ for subject in subjects_to_analyze:
                     latest_N1 = int(ceil(latest_N1 / 10)) * 10
 
                     # create a color map
-                    cmap = cm.get_cmap('viridis')
+                    cmap = cm.get_cmap('viridis').copy()
                     cmap.set_bad((.7, .7, .7, 1))
 
                     # draw the matrix
@@ -782,13 +782,13 @@ for subject in subjects_to_analyze:
 
                     # set labels and ticks
                     ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
-                    ax.set_yticklabels(stimpair_labels, fontSize=stimpair_axis_ticks_font_size)
+                    ax.set_yticklabels(stimpair_labels, fontsize=stimpair_axis_ticks_font_size)
                     ax.set_xticks(np.arange(0, len(channels_labels), 1))
                     ax.set_xticklabels(channels_labels,
                                        rotation=90,
-                                       fontSize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
-                    ax.set_xlabel('\nMeasured electrode', fontSize=axis_label_font_size)
-                    ax.set_ylabel('Stimulated electrode-pair\n', fontSize=axis_label_font_size)
+                                       fontsize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
+                    ax.set_xlabel('\nMeasured electrode', fontsize=axis_label_font_size)
+                    ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
                     for axis in ['top', 'bottom', 'left', 'right']:
                         ax.spines[axis].set_linewidth(1.5)
 
@@ -803,7 +803,7 @@ for subject in subjects_to_analyze:
                     cbar = fig.colorbar(im, pad=colorbar_padding)
                     im.set_clim([legend_tick_values[0], legend_tick_values[-1]])
                     cbar.set_ticks(legend_tick_values)
-                    cbar.ax.set_yticklabels(legend_tick_labels, fontSize=legend_font_size - 4)
+                    cbar.ax.set_yticklabels(legend_tick_labels, fontsize=legend_font_size - 4)
                     cbar.outline.set_linewidth(1.5)
 
                     # save figure
