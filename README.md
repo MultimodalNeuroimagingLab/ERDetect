@@ -1,7 +1,5 @@
 # N1Detect
-A BIDS App for the automatic detection of early responses (N1) in CCEP data
-
-This BIDS app was developed with support from the National Institute of Mental Health, R01MH122258 to DH.
+A BIDS Docker application for the automatic detection of early responses (N1) in CCEP data
 
 ## Usage
 
@@ -16,8 +14,7 @@ For example, to run an analysis, type:
 $ docker run -ti --rm \
   -v /path/to/local/bids/input/dataset/:/data \
   -v /path/to/local/output/:/output \
-  bids/n1detect \
-  /data /output --participant_label 01
+  bids/n1detect /data /output --participant_label 01 --skip_bids_validator
 ```
 
 ----
@@ -54,3 +51,20 @@ An example JSON of the standard settings has the following content:
 }
 ```
 For more information the settings...
+
+## Acknowledgements
+
+- Written by Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+- Local extremum detection method by Dorien van Blooijs & Dora Hermes (2018)
+- Dependencies:
+  - PyMef by Jan Cimbalnik, Matt Stead, Ben Brinkmann, and Dan Crepeau (https://github.com/msel-source/pymef)
+  - MNE-Python (https://mne.tools/)
+  - BIDS-validator (https://github.com/bids-standard/bids-validator)
+  - NumPy
+  - SciPy
+  - Pandas
+  - KiwiSolver
+  - Matplotlib
+  - psutil
+
+- This project was funded by the National Institute Of Mental Health of the National Institutes of Health Award Number R01MH122258 to Dora Hermes
