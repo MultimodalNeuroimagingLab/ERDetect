@@ -3,10 +3,10 @@ A BIDS Docker application for the automatic detection of early responses (N1) in
 
 ## Usage
 
-To launch an instance of the container and analyse some data in BIDS format, type:
+To launch an instance of the container and analyse data in BIDS format, type:
 
 ```
-$ docker run bids/N1Detect bids_dir output_dir [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
+$ docker run multimodalneuro/n1detect bids_dir output_dir [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
 For example, to run an analysis, type:
 
@@ -14,10 +14,10 @@ For example, to run an analysis, type:
 $ docker run -ti --rm \
   -v /path/to/local/bids/input/dataset/:/data \
   -v /path/to/local/output/:/output \
-  bids/n1detect /data /output --participant_label 01 --skip_bids_validator
+  multimodalneuro/n1detect /data /output --participant_label 01 --skip_bids_validator
 ```
 
-----
+## Configure detection
 To adjust the N1 detection and visualization settings, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter.
 An example JSON of the standard settings has the following content:
 ```
