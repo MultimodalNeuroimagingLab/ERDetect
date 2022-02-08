@@ -18,7 +18,7 @@ from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
 import numpy as np
 import pandas as pd
-from functions.misc import print_progressbar, allocate_array
+from utils.misc import print_progressbar, allocate_array
 
 
 def load_channel_info(tsv_filepath):

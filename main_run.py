@@ -25,11 +25,12 @@ import numpy as np
 import scipy.io as sio
 from matplotlib import cm
 
-from n1detect_config import default_config, check_config, read_config, write_config
-from functions.load_bids import load_channel_info, load_event_info, load_data_epochs_averages
-from functions.ieeg_detect_n1 import ieeg_detect_n1
-from functions.visualization import create_figure
-from functions.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, run_cmd
+from app.config import default_config, check_config, read_config, write_config
+from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
+
+from utils.visualization import create_figure
+from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, run_cmd
+from app.detection import ieeg_detect_n1
 
 
 #

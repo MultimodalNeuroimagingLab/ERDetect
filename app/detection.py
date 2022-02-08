@@ -18,7 +18,7 @@ You should have received a copy of the GNU General Public License along with thi
 import logging
 import warnings
 import numpy as np
-from functions.peak_finder import peak_finder
+from app.peak_finder import peak_finder
 
 
 def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 0.5), n1_search_epoch=(0.009, 0.09), baseline_epoch=(-1, -.1), baseline_threshold_factor=3.4):

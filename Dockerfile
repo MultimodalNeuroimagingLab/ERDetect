@@ -35,11 +35,12 @@ ENV PYTHONPATH=""
 #
 RUN mkdir -p /scripts
 COPY n1detect_*.py /scripts/
-RUN chmod +x /scripts/n1detect_run.py
+RUN chmod +x /scripts/main_run.py
 
 #
 COPY version /scripts/version
-COPY ./functions /scripts/functions
+COPY ./app /scripts/app
+COPY ./utils /scripts/utils
 
 # 
-ENTRYPOINT ["/scripts/n1detect_run.py"]
+ENTRYPOINT ["/scripts/main_run.py"]
