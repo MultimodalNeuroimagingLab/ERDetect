@@ -864,9 +864,8 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
                         logging.error('Could not find metadata for channel ' + channels[channel_idx])
                         return None, None
 
-                    # apply a conversion factor if needed
-                    # TODO: check with Dan, if this is the way, always on index 10
-                    channel_conversion_factor = mef.session_md['time_series_metadata']['section_2'].item(0)[10]
+                    # apply the channel's conversion factor if needed
+                    channel_conversion_factor = channel_metadata['section_2']['units_conversion_factor'].item(0)
                     if channel_conversion_factor != 0 and channel_conversion_factor != 1:
                         trial_data[channel_idx] *= channel_conversion_factor
 
