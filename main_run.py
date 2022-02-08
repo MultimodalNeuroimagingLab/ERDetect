@@ -5,7 +5,7 @@ Early response detection - docker entry-point
 Entry-point python script for the automatic detection of early responses (N1) in CCEP data.
 
 
-Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -25,20 +25,14 @@ import numpy as np
 import scipy.io as sio
 from matplotlib import cm
 
-from app.config import default_config, check_config, read_config, write_config
+from app.config import load_config, write_config, get as cfg, get_config_dict,\
+    VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
 
 from utils.visualization import create_figure
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, run_cmd
 from app.detection import ieeg_detect_n1
 
-
-#
-# constants
-#
-VALID_FORMAT_EXTENSIONS         = ('.mefd', '.edf', '.vhdr', '.vmrk', '.eeg')   # valid data format to search for (European Data Format, BrainVision and MEF3)
-OUTPUT_IMAGE_SIZE               = 2000                                          # the number of pixels that is used as the "initial" height or width for the output images
-LOGGING_CAPTION_INDENT_LENGTH   = 50                                            # the indent length of the caption in a logging output string
 
 #
 # version and logging
@@ -138,39 +132,31 @@ if not args.skip_bids_validator:
 #
 # configure
 #
-config = default_config()
-
 #  read the configuration file (if passed)
 if args.config_filepath:
-    config = read_config(args.config_filepath)
-    if config is None:
+    if not load_config(args.config_filepath):
         logging.error('Could not load the configuration file, exiting...')
         exit(1)
 
-# check on the configuration values
-if not check_config(config):
-    logging.error('Invalid configuration, exiting...')
-    exit(1)
-
 # print configuration information
-log_indented_line('Trial epoch window:', str(config['trials']['trial_epoch'][0]) + 's < stim onset < ' + str(config['trials']['trial_epoch'][1]) + 's  (window size ' + str(abs(config['trials']['trial_epoch'][1] - config['trials']['trial_epoch'][0])) + 's)')
-log_indented_line('Trial out-of-bounds handling:', str(config['trials']['out_of_bounds_handling']))
-log_indented_line('Trial baseline window:', str(config['trials']['baseline_epoch'][0]) + 's : ' + str(config['trials']['baseline_epoch'][1]) + 's')
-log_indented_line('Trial baseline normalization:', str(config['trials']['baseline_norm']))
-log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if config['trials']['concat_bidirectional_pairs'] else 'No'))
-log_indented_line('Minimum # of required stimulus-pair trials:', str(config['trials']['minimum_stimpair_trials']))
-logging.info(multi_line_list(config['channels']['types'], LOGGING_CAPTION_INDENT_LENGTH, 'Channels types:', 20, ' '))
+log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
+log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
+log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's')
+log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
+log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
+log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
+logging.info(multi_line_list(cfg('channels', 'types'), LOGGING_CAPTION_INDENT_LENGTH, 'Channels types:', 20, ' '))
 logging.info('')
-log_indented_line('Peak search window:', str(config['n1_detect']['peak_search_epoch'][0]) + 's : ' + str(config['n1_detect']['peak_search_epoch'][1]) + 's')
-log_indented_line('N1 search window:', str(config['n1_detect']['n1_search_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_search_epoch'][1]) + 's')
-log_indented_line('N1 baseline window:', str(config['n1_detect']['n1_baseline_epoch'][0]) + 's : ' + str(config['n1_detect']['n1_baseline_epoch'][1]) + 's')
-log_indented_line('N1 baseline threshold factor:', str(config['n1_detect']['n1_baseline_threshold_factor']))
+log_indented_line('Peak search window:', str(cfg('n1_detect', 'peak_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'peak_search_epoch')[1]) + 's')
+log_indented_line('N1 search window:', str(cfg('n1_detect', 'n1_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_search_epoch')[1]) + 's')
+log_indented_line('N1 baseline window:', str(cfg('n1_detect', 'n1_baseline_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_baseline_epoch')[1]) + 's')
+log_indented_line('N1 baseline threshold factor:', str(cfg('n1_detect', 'n1_baseline_threshold_factor')))
 logging.info('')
-log_indented_line('Visualization x-axis epoch:', str(config['visualization']['x_axis_epoch'][0]) + 's : ' + str(config['visualization']['x_axis_epoch'][1]) + 's')
-log_indented_line('Visualization blank stimulation epoch:', str(config['visualization']['blank_stim_epoch'][0]) + 's : ' + str(config['visualization']['blank_stim_epoch'][1]) + 's')
-log_indented_line('Generate electrode images:', ('Yes' if config['visualization']['generate_electrode_images'] else 'No'))
-log_indented_line('Generate stimulation-pair images:', ('Yes' if config['visualization']['generate_stimpair_images'] else 'No'))
-log_indented_line('Generate matrix images:', ('Yes' if config['visualization']['generate_matrix_images'] else 'No'))
+log_indented_line('Visualization x-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
+log_indented_line('Visualization blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
+log_indented_line('Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
+log_indented_line('Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
+log_indented_line('Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
 logging.info('')
 
 
@@ -269,7 +255,7 @@ for subject in subjects_to_analyze:
                     if row['status'].lower() == 'bad':
                         channels_bad.append(row['name'])
                         excluded = True
-                if not row['type'].upper() in config['channels']['types']:
+                if not row['type'].upper() in cfg('channels', 'types'):
                     channels_excluded_by_type.append(row['name'])
                     excluded = True
                 if not excluded:
@@ -340,7 +326,7 @@ for subject in subjects_to_analyze:
 
                     # retrieve the indices of all the trials that concern this stim-pair
                     indices = []
-                    if config['trials']['concat_bidirectional_pairs']:
+                    if cfg('trials', 'concat_bidirectional_pairs'):
                         # allow concatenation of bidirectional pairs, pair order does not matter
                         if not iChannel1 < iChannel0:
                             # unique pairs while ignoring pair order
@@ -363,7 +349,7 @@ for subject in subjects_to_analyze:
             # search the stimulus-pair with too little trials
             stimpair_remove_indices = []
             for iPair in range(len(stimpair_labels)):
-                if len(stimpair_trial_indices[iPair]) < config['trials']['minimum_stimpair_trials']:
+                if len(stimpair_trial_indices[iPair]) < cfg('trials', 'minimum_stimpair_trials'):
                     stimpair_remove_indices.append(iPair)
             if len(stimpair_remove_indices) > 0:
 
@@ -399,10 +385,10 @@ for subject in subjects_to_analyze:
             #       memory efficient is only the averages are needed
             logging.info('- Reading data...')
             sampling_rate, ccep_average = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
-                                                                    trial_epoch=config['trials']['trial_epoch'],
-                                                                    baseline_norm=config['trials']['baseline_norm'],
-                                                                    baseline_epoch=config['trials']['baseline_epoch'],
-                                                                    out_of_bound_handling=config['trials']['out_of_bounds_handling'])
+                                                                    trial_epoch=cfg('trials', 'trial_epoch'),
+                                                                    baseline_norm=cfg('trials', 'baseline_norm'),
+                                                                    baseline_epoch=cfg('trials', 'baseline_epoch'),
+                                                                    out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'))
             if sampling_rate is None or ccep_average is None:
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
@@ -413,7 +399,7 @@ for subject in subjects_to_analyze:
                 ccep_average[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
 
             # determine the sample of stimulus onset (counting from the epoch start)
-            onset_sample = int(round(abs(config['trials']['trial_epoch'][0] * sampling_rate)))
+            onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
             # todo: handle trial epochs which start after the trial onset, currently disallowed by config
 
 
@@ -437,10 +423,10 @@ for subject in subjects_to_analyze:
                          'ccep_average': ccep_average,
                          'stimpair_labels': np.asarray(stimpair_labels, dtype='object'),
                          'channel_labels': np.asarray(channels_labels, dtype='object'),
-                         'config': config})
+                         'config': get_config_dict()})
 
             # write the configuration
-            write_config(os.path.join(output_root, 'ccep_config.json'), config)
+            write_config(os.path.join(output_root, 'ccep_config.json'))
 
 
             #
@@ -467,16 +453,16 @@ for subject in subjects_to_analyze:
                          'channel_labels': np.asarray(channels_labels, dtype='object'),
                          'n1_peak_indices': n1_peak_indices,
                          'n1_peak_amplitudes': n1_peak_amplitudes,
-                         'config': config})
+                         'config': get_config_dict()})
 
 
             #
             # generate images
             #
 
-            if config['visualization']['generate_electrode_images'] or \
-                config['visualization']['generate_stimpair_images'] or \
-                config['visualization']['generate_matrix_images']:
+            if cfg('visualization', 'generate_electrode_images') or \
+                cfg('visualization', 'generate_stimpair_images') or \
+                cfg('visualization', 'generate_matrix_images'):
 
                 #
                 # prepare some settings for plotting
@@ -485,15 +471,15 @@ for subject in subjects_to_analyze:
                 # generate the x-axis values
                 # TODO: what if TRIAL_EPOCH_START is after the stimulus onset, currently disallowed by config
                 x = np.arange(ccep_average.shape[2])
-                x = x / sampling_rate + config['trials']['trial_epoch'][0]
+                x = x / sampling_rate + cfg('trials', 'trial_epoch')[0]
 
                 # determine the range on the x axis where the stimulus was in samples
                 # TODO: what if TRIAL_EPOCH_START is after the stimulus onset, currently disallowed by config
-                stim_start_x = int(round(abs(config['trials']['trial_epoch'][0] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
-                stim_end_x = stim_start_x + int(ceil(abs(config['visualization']['blank_stim_epoch'][1] - config['visualization']['blank_stim_epoch'][0]) * sampling_rate)) - 1
+                stim_start_x = int(round(abs(cfg('trials', 'trial_epoch')[0] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
+                stim_end_x = stim_start_x + int(ceil(abs(cfg('visualization', 'blank_stim_epoch')[1] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
 
                 # calculate the legend x position
-                legend_x = config['visualization']['x_axis_epoch'][1] - .13
+                legend_x = cfg('visualization', 'x_axis_epoch')[1] - .13
 
                 # adjust line and font sizes to resolution
                 zero_line_thickness = OUTPUT_IMAGE_SIZE / 2000
@@ -531,7 +517,7 @@ for subject in subjects_to_analyze:
                 #
                 # generate the electrodes plot
                 #
-                if config['visualization']['generate_electrode_images']:
+                if cfg('visualization', 'generate_electrode_images'):
 
                     #
                     logging.info('- Generating electrode plots...')
@@ -568,16 +554,16 @@ for subject in subjects_to_analyze:
                             # plot the signal
                             ax.plot(x, y, linewidth=signal_line_thickness)
 
-                            # if N1 is detected, plot it
+                            # if app is detected, plot it
                             if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + config['trials']['trial_epoch'][0]
+                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yN1 = n1_peak_amplitudes[iElec, iPair] / 500
                                 yN1 += len(stimpair_labels) - iPair
                                 ax.plot(xN1, yN1, 'bo')
 
                         # set the x axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
-                        ax.set_xlim(config['visualization']['x_axis_epoch'])
+                        ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
@@ -607,7 +593,7 @@ for subject in subjects_to_analyze:
                 #
                 # generate the stimulation-pair plots
                 #
-                if config['visualization']['generate_stimpair_images']:
+                if cfg('visualization', 'generate_stimpair_images'):
 
                     #
                     logging.info('- Generating stimulation-pair plots...')
@@ -644,16 +630,16 @@ for subject in subjects_to_analyze:
                             # plot the signal
                             ax.plot(x, y, linewidth=signal_line_thickness)
 
-                            # if N1 is detected, plot it
+                            # if app is detected, plot it
                             if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + config['trials']['trial_epoch'][0]
+                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yN1 = n1_peak_amplitudes[iElec, iPair] / 500
                                 yN1 += len(channels_labels) - iElec
                                 ax.plot(xN1, yN1, 'bo')
 
                         # set the x axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
-                        ax.set_xlim(config['visualization']['x_axis_epoch'])
+                        ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
@@ -683,7 +669,7 @@ for subject in subjects_to_analyze:
                 #
                 # generate the matrices
                 #
-                if config['visualization']['generate_matrix_images']:
+                if cfg('visualization', 'generate_matrix_images'):
 
                     #
                     logging.info('- Generating matrices...')
