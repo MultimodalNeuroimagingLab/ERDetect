@@ -1,10 +1,10 @@
 """
-Function file for 'ieeg_detect_n1peak'
+Function file
 =====================================================
 Detect N1 peaks
 
 
-Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 Adapted from:
     Original author: Dorien van Blooijs (2018)
     Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro; UMC Utrecht, 2019
@@ -18,10 +18,11 @@ You should have received a copy of the GNU General Public License along with thi
 import logging
 import warnings
 import numpy as np
+from app.config import get as config
 from app.peak_finder import peak_finder
 
 
-def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 0.5), n1_search_epoch=(0.009, 0.09), baseline_epoch=(-1, -.1), baseline_threshold_factor=3.4):
+def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
     """
     Detect the N1 in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -31,22 +32,8 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
         stim_onset_index (int):             the time-point on the input data's time-dimension of stimulation onset (as a
                                             0-based sample-index, all indices before this value are considered pre-stim)
         sampling_rate (int or double):      The sampling rate at which the data was acquired
-        peak_search_epoch(tuple):           The time-span in which to search for peaks, expressed as a tuple with the
-                                            start- and end-point in seconds relative to stimulation onset (e.g. the
-                                            standard tuple of '0, 0.5' will have the algorithm search for peaks in the
-                                            period from stimulus onset till 500ms after stimulation onset)
-        n1_search_epoch (tuple):            The time-span in which a N1 will be searched, expressed as a tuple with the
-                                            start- and end-point in seconds relative to stimulation onset (e.g. the
-                                            standard tuple of '0.02, 0.09' will have the algorithm start the search for
-                                            an N1 at 20ms after stimulation onset up to 90ms after stimulation onset)
-        baseline_epoch (tuple):             The time-span on which the baseline is calculated, expressed as a tuple with
-                                            the start- and end-point in seconds relative to stimulation onset (e.g. the
-                                            standard tuple of '-1, -.1' will use the period from 1s before stimulation
-                                            onset to 100ms before stimulation onset to calculate the baseline on)
-        baseline_threshold_factor (double): The factor that is applied to the standard deviation of the baseline
-                                            amplitude, that defines the threshold which needs to be exceeded to detect a
-                                            peak (the minimum std is considered 50uV; therefore a factor of 3.4 is
-                                            recommended to end up with a conservative threshold of 170 uV)
+        method (func or tuple):
+
 
     Returns:
         tuple:                              A tuple containing two ndarrays. Both arrays will be two-dimensional
@@ -56,47 +43,33 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
     """
 
 
-    #
-    # data parameter
-    #
+    # (tuple) The time-span in which to search for peaks, expressed as a tuple with the  start- and end-point in seconds
+    # relative to stimulation onset (e.g. the standard tuple of '0, 0.5' will have the algorithm search for peaks in
+    # the period from stimulus onset till 500ms after stimulation onset)
+    peak_search_epoch = config('n1_detect', 'peak_search_epoch')
 
-    # TODO:
+    # (tuple) The time-span in which a app will be searched, expressed as a tuple with the start- and end-point in seconds
+    # relative to stimulation onset (e.g. the standard tuple of '0.02, 0.09' will have the algorithm start the search
+    # for an app at 20ms after stimulation onset up to 90ms after stimulation onset)
+    n1_search_epoch = config('n1_detect', 'n1_search_epoch')
 
+    # (tuple) The time-span on which the baseline is calculated, expressed as a tuple with the start- and end-point in
+    # seconds relative to stimulation onset (e.g. the standard tuple of '-1, -.1' will use the period from 1s before
+    # stimulation onset to 100ms before stimulation onset to calculate the baseline on)
+    baseline_epoch = config('n1_detect', 'n1_baseline_epoch')
 
-
-
-    #
-    # onset parameter
-    #
-
-    # TODO:
-
-    #
-    #
-    #
-
-    # TODO: sampling_rate and n1_search_end checks
-
-
+    # (double) The factor that is applied to the standard deviation of the baseline amplitude, that defines the
+    # threshold which needs to be exceeded to detect a peak (the minimum std is considered 50uV; therefore a factor
+    # of 3.4 is recommended to end up with a conservative threshold of 170 uV)
+    baseline_threshold_factor = config('n1_detect', 'n1_baseline_threshold_factor')
 
 
     #
-    # peak detection
+    #
     #
 
+    # retrieve the number of samples
     num_samples = data.shape[2]
-
-    # TODO: ranges have same checks, catch in one function
-
-    # determine the std baseline range in samples
-    baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
-    baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
-    if baseline_end_sample < baseline_start_sample:
-        logging.error('Invalid \'baseline_epoch\' parameter, the given end-point (at ' + str(baseline_epoch[1]) + ') lies before the start-point (at t = ' + str(baseline_epoch[0]) + ')')
-        return None, None
-    if baseline_start_sample < 0:
-        logging.error('The data epoch is not big enough, the baseline requires at least ' + str(stim_onset_index + abs(baseline_start_sample)) + ' samples before stimulation onset')
-        return None, None
 
     # determine the peak search window in samples
     peak_search_start_sample = int(round(peak_search_epoch[0] * sampling_rate)) + stim_onset_index
@@ -120,6 +93,10 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, peak_search_epoch=(0, 
     n1_peak_indices.fill(np.nan)
     n1_peak_amplitudes = np.empty((data.shape[0], data.shape[1]))
     n1_peak_amplitudes.fill(np.nan)
+
+    # determine the peak search window in samples
+    baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
+    baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
 
     # for every electrode
     for iElec in range(data.shape[0]):
