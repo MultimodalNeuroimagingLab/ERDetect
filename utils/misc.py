@@ -4,7 +4,7 @@ Miscellaneous functions and classes
 A variety of helper functions and classes
 
 
-Copyright 2020, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -14,10 +14,12 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import os
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import subprocess
 from psutil import virtual_memory
 from math import ceil
+from matplotlib.figure import Figure
 
 
 def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
@@ -57,6 +59,24 @@ def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
     except MemoryError:
         logging.error('Not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)')
         return None
+
+
+def create_figure(width=500, height=500, onScreen=False):
+    """
+    Create a figure in memory or on-screen, and resize the figure to a specific resolution
+
+    """
+
+    if onScreen:
+        fig = plt.figure()
+    else:
+        fig = Figure()
+
+    # resize the figure
+    DPI = fig.get_dpi()
+    fig.set_size_inches(float(width) / float(DPI), float(height) / float(DPI))
+
+    return fig
 
 
 def is_number(value):

@@ -121,7 +121,7 @@ def load_config(filepath):
         return None
 
     #
-    # read helper app
+    # read helper functions
     #
 
     def retrieve_config_bool(json_dict, ref_config, level1, level2):
