@@ -38,7 +38,7 @@ def __create_default_config():
     config['trials']['trial_epoch']                         = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
     config['trials']['out_of_bounds_handling']              = 'first_last_only'     #
     # TODO: for comparison now set to -.1s. Should check metric results in matlab if I change those to -.02
-    # config['trials']['baseline_epoch']                      = (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    #config['trials']['baseline_epoch']                      = (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_epoch']                      = (-0.5, -0.1)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                       = 'median'
     config['trials']['concat_bidirectional_pairs']          = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
@@ -54,6 +54,7 @@ def __create_default_config():
     config['shape_metric'] = dict()
     config['shape_metric']['enabled']                       = True
     config['shape_metric']['epoch']                         = (0.012, 0.09)
+    config['shape_metric']['bandpass']                      = (10, 30)
 
     config['n1_detect'] = dict()
     config['n1_detect']['peak_search_epoch']                = (0, 0.5)
@@ -246,6 +247,8 @@ def load_config(filepath):
         return False
     if not retrieve_config_range(json_config, config, 'shape_metric', 'epoch'):
         return False
+    if not retrieve_config_range(json_config, config, 'shape_metric', 'bandpass'):
+        return False
 
     # n1 app settings
     if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
@@ -309,7 +312,8 @@ def write_config(filepath):
                 '    },\n\n' \
                 '    "shape_metric": {\n' \
                 '        "enabled":                          ' + json.dumps(_config['shape_metric']['enabled']) + ',\n' \
-                '        "epoch":                            [' + numbers_to_padded_string(_config['shape_metric']['epoch'], 16) + ']\n' \
+                '        "epoch":                            [' + numbers_to_padded_string(_config['shape_metric']['epoch'], 16) + '],\n' \
+                '        "bandpass":                         [' + numbers_to_padded_string(_config['shape_metric']['bandpass'], 16) + ']\n' \
                 '    },\n\n' \
                 '    "n1_detect": {\n' \
                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
@@ -332,7 +336,15 @@ def write_config(filepath):
 
 
 def __check_config(config):
+    """
+    Perform sanity chech on a given configuration
 
+    Args:
+        config (dict):                        The configuration to check
+
+    Returns:
+        bool:                                 True when passing all checks, False elsewise
+    """
     def check_epoch_start_after_onset(ref_config, level1, level2):
         if ref_config[level1][level2][0] < 0:
             logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the epoch should start after the stimulus onset (>= 0s)')
@@ -412,6 +424,20 @@ def __check_config(config):
     # the baseline threshold factor should be a positive number
     if config['n1_detect']['n1_baseline_threshold_factor'] <= 0:
         logging.error('Invalid [\'n1_detect\'][\'n1_baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
+        return False
+
+    # the shape bandpass limits
+    if config['shape_metric']['bandpass'][0] <= 0:
+        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given lower cutoff frequency should be a positive number (' + str(config['shape_metric']['bandpass'][0]) + ')')
+        return False
+    if config['shape_metric']['bandpass'][1] <= 0:
+        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given upper cutoff frequency should be a positive number (' + str(config['shape_metric']['bandpass'][1]) + ')')
+        return False
+    if config['shape_metric']['bandpass'][1] < config['shape_metric']['bandpass'][0]:
+        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the upper cutoff frequency (' + str(config['shape_metric']['bandpass'][1]) + ') is smaller than the lower cutoff frequency (' + str(config['shape_metric']['bandpass'][0]) + ')')
+        return False
+    if config['shape_metric']['bandpass'][0] == config['shape_metric']['bandpass'][1]:
+        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given lower and upper cutoff frequencies are the same (' + str(config['shape_metric']['bandpass'][0]) + ')')
         return False
 
     # return success
