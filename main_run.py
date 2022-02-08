@@ -28,8 +28,8 @@ from matplotlib import cm
 from app.config import load_config, write_config, get as cfg, get_config_dict,\
     VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
-
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
+from metric_callbacks import metric_cross_proj, metric_shape
 from app.detection import ieeg_detect_n1
 
 
@@ -379,15 +379,28 @@ for subject in subjects_to_analyze:
             # read and epoch the data
             #
 
+            # determine the metrics that should be produced
+            metric_callbacks = tuple()
+            # TODO: if metric is used for detection, enable
+            if cfg('cross_projection_metric', 'enabled'):
+                metric_callbacks += tuple([metric_cross_proj])
+            if cfg('shape_metric', 'enabled'):
+                metric_callbacks += tuple([metric_shape])
+
+
             # read, normalize by median and average the trials within the condition
-            # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs_averages' here because it is more
-            #       memory efficient is only the averages are needed
-            logging.info('- Reading data...')
-            sampling_rate, ccep_average = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
+            # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
+            #       efficient when only the averages are needed
+            logging.info('- Reading data and calculating metrics...')
+            # TODO: normalize to raw or to Z-values (return both raw and z?)
+            #       z-might be needed for detection
+            sampling_rate, ccep_average, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
                                                                     trial_epoch=cfg('trials', 'trial_epoch'),
                                                                     baseline_norm=cfg('trials', 'baseline_norm'),
                                                                     baseline_epoch=cfg('trials', 'baseline_epoch'),
-                                                                    out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'))
+                                                                    out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
+                                                                    metric_callbacks=metric_callbacks)
+
             if sampling_rate is None or ccep_average is None:
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
@@ -400,6 +413,16 @@ for subject in subjects_to_analyze:
             # determine the sample of stimulus onset (counting from the epoch start)
             onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
             # todo: handle trial epochs which start after the trial onset, currently disallowed by config
+
+            # split out the metric results
+            cross_proj_metrics = None
+            shape_metrics = None
+            metric_counter = 0
+            if cfg('cross_projection_metric', 'enabled'):
+                cross_proj_metrics = metrics[:, :, metric_counter]
+                metric_counter += 1
+            if cfg('shape_metric', 'enabled'):
+                shape_metrics = metrics[:, :, metric_counter]
 
 
             #
@@ -416,13 +439,18 @@ for subject in subjects_to_analyze:
                     exit(1)
 
             # intermediate saving of the ccep data as .mat
-            sio.savemat(os.path.join(output_root, 'ccep_data.mat'),
-                        {'sampling_rate': sampling_rate,
-                         'onset_sample': onset_sample,
-                         'ccep_average': ccep_average,
-                         'stimpair_labels': np.asarray(stimpair_labels, dtype='object'),
-                         'channel_labels': np.asarray(channels_labels, dtype='object'),
-                         'config': get_config_dict()})
+            saveDict = dict()
+            saveDict['sampling_rate'] = sampling_rate
+            saveDict['onset_sample'] = onset_sample
+            saveDict['ccep_average'] = ccep_average
+            saveDict['stimpair_labels'] = np.asarray(stimpair_labels, dtype='object')
+            saveDict['channel_labels'] = np.asarray(channels_labels, dtype='object')
+            saveDict['config'] = get_config_dict()
+            if cfg('cross_projection_metric', 'enabled'):
+                saveDict['cross_proj_metrics'] = cross_proj_metrics
+            if cfg('shape_metric', 'enabled'):
+                saveDict['shape_metrics'] = shape_metrics
+            sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
             # write the configuration
             write_config(os.path.join(output_root, 'ccep_config.json'))
@@ -434,25 +462,16 @@ for subject in subjects_to_analyze:
 
             # detect N1s
             logging.info('- Detecting N1s...')
-            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate),
-                                                                 peak_search_epoch=config['n1_detect']['peak_search_epoch'],
-                                                                 n1_search_epoch=config['n1_detect']['n1_search_epoch'],
-                                                                 baseline_epoch=config['n1_detect']['n1_baseline_epoch'],
-                                                                 baseline_threshold_factor=config['n1_detect']['n1_baseline_threshold_factor'])
+            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate))
+            # TODO: cross_proj_metrics & shape_metrics
             if n1_peak_indices is None or n1_peak_amplitudes is None:
                 logging.error('N1 detection failed, exiting...')
                 exit(1)
 
             # intermediate saving of the data and N1 detection as .mat
-            sio.savemat(os.path.join(output_root, 'ccep_data.mat'),
-                        {'sampling_rate': sampling_rate,
-                         'onset_sample': onset_sample,
-                         'ccep_average': ccep_average,
-                         'stimpair_labels': np.asarray(stimpair_labels, dtype='object'),
-                         'channel_labels': np.asarray(channels_labels, dtype='object'),
-                         'n1_peak_indices': n1_peak_indices,
-                         'n1_peak_amplitudes': n1_peak_amplitudes,
-                         'config': get_config_dict()})
+            saveDict['n1_peak_indices'] = n1_peak_indices
+            saveDict['n1_peak_amplitudes'] = n1_peak_amplitudes
+            sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
 
             #
