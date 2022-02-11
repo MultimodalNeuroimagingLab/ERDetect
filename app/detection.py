@@ -19,7 +19,7 @@ from app.config import get as config
 from app.peak_finder import peak_finder
 
 
-def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_proj_metrics=None, shape_metrics=None):
+def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_proj_metrics=None, waveform_metrics=None):
     """
     Detect the N1 in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -31,7 +31,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
         sampling_rate (int or double):      The sampling rate at which the data was acquired
         method (string):
         cross_proj_metrics (ndarray):
-        shape_metrics (ndarray):
+        waveform_metrics (ndarray):
 
 
     Returns:
@@ -79,7 +79,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
         logging.error('The data epoch is not big enough, the peak window requires at least ' + str(stim_onset_index + abs(peak_search_start_sample)) + ' samples after stimulation onset')
         return None, None
 
-    # determine the start- and end-point (in samples) of the time-span in which to search for an N1
+    # determine the start- and end-point (in samples) of the time-span in which to search for a N1
     n1_search_start_sample = int(round(n1_search_epoch[0] * sampling_rate)) + stim_onset_index
     n1_search_end_sample = int(round(n1_search_epoch[1] * sampling_rate)) + stim_onset_index
     if n1_search_end_sample < n1_search_start_sample:
@@ -92,26 +92,26 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
     n1_peak_amplitudes = np.empty((data.shape[0], data.shape[1]))
     n1_peak_amplitudes.fill(np.nan)
 
-    # determine the peak search window in samples
+    # determine the std baseline range in samples
     baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
     baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
 
     # check the method and corresponding input
-    if method == 'shape':
+    if method == 'waveform':
 
-        if shape_metrics is None:
-            logging.error('Method is set to \'shape\' but no shape-metrics were passed to the detection function')
+        if waveform_metrics is None:
+            logging.error('Method is set to \'waveform\' but no waveform-metrics were passed to the detection function')
             return None, None
-        elif not shape_metrics.shape == n1_peak_indices.shape:
-            logging.error('Size of the shape-metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
+        elif not waveform_metrics.shape == n1_peak_indices.shape:
+            logging.error('Size of the waveform-metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
             return None, None
 
     elif method == 'cross_proj':
 
-        if shape_metrics is None:
+        if waveform_metrics is None:
             logging.error('Method is set to \'cross_proj\' but no cross-projection metrics were passed to the detection function')
             return None, None
-        elif not shape_metrics.shape == n1_peak_indices.shape:
+        elif not waveform_metrics.shape == n1_peak_indices.shape:
             logging.error('Size of the cross-projection metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
             return None, None
 
@@ -151,7 +151,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
             # shift the indices to align with the full epoch (not the subsection that was passed to the peak_finder)
             neg_inds = neg_inds + peak_search_start_sample
 
-            # keep the peaks within the N1 search range, or continue if there are none
+            # keep the peaks within the app search range, or continue if there are none
             in_range = (neg_inds >= n1_search_start_sample) & (neg_inds <= n1_search_end_sample)
             if any(in_range):
                 neg_inds = neg_inds[in_range]
@@ -170,10 +170,14 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
             if abs(neg_mags[max_ind]) > 3000:
                 continue
 
-            if method == 'shape':
+            #
+            # Determine whether peak can be considered a N1 (by the peak or by other metrics)
+            #
+
+            if method == 'waveform':
 
                 # classify as an N1 on threshold, store the peak (index and amplitude)
-                if shape_metrics[iElec, iPair] > 1000:
+                if waveform_metrics[iElec, iPair] > 1000:
                     n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
@@ -185,10 +189,7 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
                     n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
             else:
-
-                #
                 # Detection by baseline std
-                #
 
                 # retrieve the baseline
                 # Note: check all nans; which is often the case when the stimulated electrodes are nan-ed out
@@ -211,7 +212,6 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
                     n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
-
-    # return results
+    # pass results back
     return n1_peak_indices, n1_peak_amplitudes
 

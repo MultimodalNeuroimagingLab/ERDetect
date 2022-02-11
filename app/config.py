@@ -51,10 +51,10 @@ def __create_default_config():
     config['cross_projection_metric']['enabled']            = True
     config['cross_projection_metric']['epoch']              = (0.012, 0.09)
 
-    config['shape_metric'] = dict()
-    config['shape_metric']['enabled']                       = True
-    config['shape_metric']['epoch']                         = (0.012, 0.09)
-    config['shape_metric']['bandpass']                      = (10, 30)
+    config['waveform_metric'] = dict()
+    config['waveform_metric']['enabled']                    = True
+    config['waveform_metric']['epoch']                      = (0.012, 0.09)
+    config['waveform_metric']['bandpass']                   = (10, 30)
 
     config['n1_detect'] = dict()
     config['n1_detect']['peak_search_epoch']                = (0, 0.5)
@@ -242,12 +242,12 @@ def load_config(filepath):
     if not retrieve_config_range(json_config, config, 'cross_projection_metric', 'epoch'):
         return False
 
-    # shape metric settings
-    if not retrieve_config_bool(json_config, config, 'shape_metric', 'enabled'):
+    # waveform metric settings
+    if not retrieve_config_bool(json_config, config, 'waveform_metric', 'enabled'):
         return False
-    if not retrieve_config_range(json_config, config, 'shape_metric', 'epoch'):
+    if not retrieve_config_range(json_config, config, 'waveform_metric', 'epoch'):
         return False
-    if not retrieve_config_range(json_config, config, 'shape_metric', 'bandpass'):
+    if not retrieve_config_range(json_config, config, 'waveform_metric', 'bandpass'):
         return False
 
     # n1 app settings
@@ -310,10 +310,10 @@ def write_config(filepath):
                 '        "enabled":                          ' + json.dumps(_config['cross_projection_metric']['enabled']) + ',\n' \
                 '        "epoch":                            [' + numbers_to_padded_string(_config['cross_projection_metric']['epoch'], 16) + ']\n' \
                 '    },\n\n' \
-                '    "shape_metric": {\n' \
-                '        "enabled":                          ' + json.dumps(_config['shape_metric']['enabled']) + ',\n' \
-                '        "epoch":                            [' + numbers_to_padded_string(_config['shape_metric']['epoch'], 16) + '],\n' \
-                '        "bandpass":                         [' + numbers_to_padded_string(_config['shape_metric']['bandpass'], 16) + ']\n' \
+                '    "waveform_metric": {\n' \
+                '        "enabled":                          ' + json.dumps(_config['waveform_metric']['enabled']) + ',\n' \
+                '        "epoch":                            [' + numbers_to_padded_string(_config['waveform_metric']['epoch'], 16) + '],\n' \
+                '        "bandpass":                         [' + numbers_to_padded_string(_config['waveform_metric']['bandpass'], 16) + ']\n' \
                 '    },\n\n' \
                 '    "n1_detect": {\n' \
                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
@@ -376,7 +376,7 @@ def __check_config(config):
         return False
     if not check_range_order(config, 'cross_projection_metric', 'epoch'):
         return False
-    if not check_range_order(config, 'shape_metric', 'epoch'):
+    if not check_range_order(config, 'waveform_metric', 'epoch'):
         return False
     if not check_range_order(config, 'n1_detect', 'peak_search_epoch'):
         return False
@@ -392,7 +392,7 @@ def __check_config(config):
     # app epoch parameters should be within trial epoch
     if not check_epoch_within_trial(config, 'cross_projection_metric', 'epoch'):
         return False
-    if not check_epoch_within_trial(config, 'shape_metric', 'epoch'):
+    if not check_epoch_within_trial(config, 'waveform_metric', 'epoch'):
         return False
     if not check_epoch_within_trial(config, 'n1_detect', 'peak_search_epoch'):
         return False
@@ -412,7 +412,7 @@ def __check_config(config):
     # metric epochs should be after stimulus onset
     if not check_epoch_start_after_onset(config, 'cross_projection_metric', 'epoch'):
         return False
-    if not check_epoch_start_after_onset(config, 'shape_metric', 'epoch'):
+    if not check_epoch_start_after_onset(config, 'waveform_metric', 'epoch'):
         return False
 
     # app peak search should be after stimulus onset
@@ -426,18 +426,18 @@ def __check_config(config):
         logging.error('Invalid [\'n1_detect\'][\'n1_baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
         return False
 
-    # the shape bandpass limits
-    if config['shape_metric']['bandpass'][0] <= 0:
-        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given lower cutoff frequency should be a positive number (' + str(config['shape_metric']['bandpass'][0]) + ')')
+    # the waveform bandpass limits
+    if config['waveform_metric']['bandpass'][0] <= 0:
+        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given lower cutoff frequency should be a positive number (' + str(config['waveform_metric']['bandpass'][0]) + ')')
         return False
-    if config['shape_metric']['bandpass'][1] <= 0:
-        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given upper cutoff frequency should be a positive number (' + str(config['shape_metric']['bandpass'][1]) + ')')
+    if config['waveform_metric']['bandpass'][1] <= 0:
+        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given upper cutoff frequency should be a positive number (' + str(config['waveform_metric']['bandpass'][1]) + ')')
         return False
-    if config['shape_metric']['bandpass'][1] < config['shape_metric']['bandpass'][0]:
-        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the upper cutoff frequency (' + str(config['shape_metric']['bandpass'][1]) + ') is smaller than the lower cutoff frequency (' + str(config['shape_metric']['bandpass'][0]) + ')')
+    if config['waveform_metric']['bandpass'][1] < config['waveform_metric']['bandpass'][0]:
+        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the upper cutoff frequency (' + str(config['waveform_metric']['bandpass'][1]) + ') is smaller than the lower cutoff frequency (' + str(config['waveform_metric']['bandpass'][0]) + ')')
         return False
-    if config['shape_metric']['bandpass'][0] == config['shape_metric']['bandpass'][1]:
-        logging.error('Invalid [\'shape_metric\'][\'bandpass\'] parameter, the given lower and upper cutoff frequencies are the same (' + str(config['shape_metric']['bandpass'][0]) + ')')
+    if config['waveform_metric']['bandpass'][0] == config['waveform_metric']['bandpass'][1]:
+        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given lower and upper cutoff frequencies are the same (' + str(config['waveform_metric']['bandpass'][0]) + ')')
         return False
 
     # return success

@@ -45,7 +45,7 @@ def metric_cross_proj(sampling_rate, data, baseline):
     else:
         #TODO:
         pass
-    # TODO: check when no normalization to baseline, whether shape method still works, or should give warning
+    # TODO: check when no normalization to baseline, whether waveform method still works, or should give warning
     # check if data by ref
     # if config('trials', 'baseline_norm') == "None"
 
@@ -66,9 +66,9 @@ def metric_cross_proj(sampling_rate, data, baseline):
     return test_result.statistic
 
 
-def metric_shape(sampling_rate, data, baseline):
+def metric_waveform(sampling_rate, data, baseline):
     """
-    Calculate a shape (10-30Hz) metric, called per (measurement) channel and per condition (=stim-pair)
+    Calculate a waveform (10-30Hz) metric, called per (measurement) channel and per condition (=stim-pair)
 
     Args:
         sampling_rate (int):                  The sampling rate of the data
@@ -81,12 +81,12 @@ def metric_shape(sampling_rate, data, baseline):
 
     trial_epoch = config('trials', 'trial_epoch')
     baseline_norm = config('trials', 'baseline_norm')
-    shape_epoch = config('shape_metric', 'epoch')
-    bandpass = config('shape_metric', 'bandpass')
+    waveform_epoch = config('waveform_metric', 'epoch')
+    bandpass = config('waveform_metric', 'bandpass')
 
-    # calculate the sample indices for the shape epoch (relative to the trial epoch)
-    start_sample = round((shape_epoch[0] - trial_epoch[0]) * sampling_rate)
-    end_sample = round((shape_epoch[1] - trial_epoch[0]) * sampling_rate)
+    # calculate the sample indices for the waveform epoch (relative to the trial epoch)
+    start_sample = round((waveform_epoch[0] - trial_epoch[0]) * sampling_rate)
+    end_sample = round((waveform_epoch[1] - trial_epoch[0]) * sampling_rate)
 
     # extract the data to calculate the metric and normalize
     if baseline_norm.lower() == 'mean' or baseline_norm.lower() == 'average':
@@ -94,7 +94,7 @@ def metric_shape(sampling_rate, data, baseline):
     elif baseline_norm.lower() == 'median':
         metric_data = data[:, start_sample:end_sample] - np.nanmedian(baseline, axis=1)[:, None]
     else:
-        # TODO: check when no normalization to baseline, whether shape method still works, or should give warning
+        # TODO: check when no normalization to baseline, whether waveform method still works, or should give warning
         return np.nan
 
     # take the average over all trials

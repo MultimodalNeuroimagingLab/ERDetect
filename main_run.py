@@ -29,7 +29,7 @@ from app.config import load_config, write_config, get as cfg, get_config_dict,\
     VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
-from metric_callbacks import metric_cross_proj, metric_shape
+from metric_callbacks import metric_cross_proj, metric_waveform
 from app.detection import ieeg_detect_n1
 
 
@@ -383,8 +383,8 @@ for subject in subjects_to_analyze:
             # TODO: if metric is used for detection, enable
             if cfg('cross_projection_metric', 'enabled'):
                 metric_callbacks += tuple([metric_cross_proj])
-            if cfg('shape_metric', 'enabled'):
-                metric_callbacks += tuple([metric_shape])
+            if cfg('waveform_metric', 'enabled'):
+                metric_callbacks += tuple([metric_waveform])
 
             # read, normalize by median and average the trials within the condition
             # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
@@ -414,13 +414,13 @@ for subject in subjects_to_analyze:
 
             # split out the metric results
             cross_proj_metrics = None
-            shape_metrics = None
+            waveform_metrics = None
             metric_counter = 0
             if cfg('cross_projection_metric', 'enabled'):
                 cross_proj_metrics = metrics[:, :, metric_counter]
                 metric_counter += 1
-            if cfg('shape_metric', 'enabled'):
-                shape_metrics = metrics[:, :, metric_counter]
+            if cfg('waveform_metric', 'enabled'):
+                waveform_metrics = metrics[:, :, metric_counter]
 
 
             #
@@ -446,8 +446,8 @@ for subject in subjects_to_analyze:
             saveDict['config'] = get_config_dict()
             if cfg('cross_projection_metric', 'enabled'):
                 saveDict['cross_proj_metrics'] = cross_proj_metrics
-            if cfg('shape_metric', 'enabled'):
-                saveDict['shape_metrics'] = shape_metrics
+            if cfg('waveform_metric', 'enabled'):
+                saveDict['waveform_metrics'] = waveform_metrics
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
             # write the configuration
@@ -463,7 +463,7 @@ for subject in subjects_to_analyze:
             n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate),
                                                                  method='',
                                                                  cross_proj_metrics=cross_proj_metrics,
-                                                                 shape_metrics=shape_metrics)
+                                                                 waveform_metrics=waveform_metrics)
             if n1_peak_indices is None or n1_peak_amplitudes is None:
                 logging.error('N1 detection failed, exiting...')
                 exit(1)
