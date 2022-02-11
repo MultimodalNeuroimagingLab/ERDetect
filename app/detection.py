@@ -19,7 +19,7 @@ from app.config import get as config
 from app.peak_finder import peak_finder
 
 
-def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
+def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_proj_metrics=None, shape_metrics=None):
     """
     Detect the N1 in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -29,7 +29,9 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
         stim_onset_index (int):             the time-point on the input data's time-dimension of stimulation onset (as a
                                             0-based sample-index, all indices before this value are considered pre-stim)
         sampling_rate (int or double):      The sampling rate at which the data was acquired
-        method (func or tuple):
+        method (string):
+        cross_proj_metrics (ndarray):
+        shape_metrics (ndarray):
 
 
     Returns:
@@ -38,7 +40,6 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
                                             dimensions of the input. The first ndarray contains the (sample) indices of
                                             the N1s; The second ndarray contains the amplitudes of the N1s.
     """
-
 
     # (tuple) The time-span in which to search for peaks, expressed as a tuple with the  start- and end-point in seconds
     # relative to stimulation onset (e.g. the standard tuple of '0, 0.5' will have the algorithm search for peaks in
@@ -95,6 +96,25 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
     baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
     baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
 
+    # check the method and corresponding input
+    if method == 'shape':
+
+        if shape_metrics is None:
+            logging.error('Method is set to \'shape\' but no shape-metrics were passed to the detection function')
+            return None, None
+        elif not shape_metrics.shape == n1_peak_indices.shape:
+            logging.error('Size of the shape-metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
+            return None, None
+
+    elif method == 'cross_proj':
+
+        if shape_metrics is None:
+            logging.error('Method is set to \'cross_proj\' but no cross-projection metrics were passed to the detection function')
+            return None, None
+        elif not shape_metrics.shape == n1_peak_indices.shape:
+            logging.error('Size of the cross-projection metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
+            return None, None
+
     # for every electrode
     for iElec in range(data.shape[0]):
 
@@ -150,33 +170,46 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
             if abs(neg_mags[max_ind]) > 3000:
                 continue
 
+            if method == 'shape':
 
-            #
-            # filtering by baseline
-            #
+                # classify as an N1 on threshold, store the peak (index and amplitude)
+                if shape_metrics[iElec, iPair] > 1000:
+                    n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
+                    n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
-            # retrieve the baseline
-            # Note: check all nans; which is often the case when the stimulated electrodes are nan-ed out
-            #       on the electrode dimensions, just continue to next
-            baseline_signal = data[iElec, iPair, baseline_start_sample:baseline_end_sample]
-            if np.all(np.isnan(baseline_signal)):
-                continue
+            elif method == 'cross_proj':
 
-            # calculate the std of the baseline samples
-            baseline_std = np.nanstd(baseline_signal)
+                # classify as an N1 on threshold, store the peak (index and amplitude)
+                if cross_proj_metrics[iElec, iPair] > 3.5:
+                    n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
+                    n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
+            else:
 
-            # make sure the baseline_std is not smaller than 50uV (this value was validated by Jaap)
-            if baseline_std < 50:
-                baseline_std = 50
+                #
+                # Detection by baseline std
+                #
 
-            # check if the peak value does not exceeds the baseline standard deviation time a factor
-            if abs(neg_mags[max_ind]) < baseline_threshold_factor * abs(baseline_std):
-                continue
+                # retrieve the baseline
+                # Note: check all nans; which is often the case when the stimulated electrodes are nan-ed out
+                #       on the electrode dimensions, just continue to next
+                baseline_signal = data[iElec, iPair, baseline_start_sample:baseline_end_sample]
+                if np.all(np.isnan(baseline_signal)):
+                    continue
 
-            # store the peak (index and amplitude)
-            n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
-            n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
+                # calculate the std of the baseline samples
+                baseline_std = np.nanstd(baseline_signal)
+
+                # make sure the baseline_std is not smaller than 50uV (this value was validated by Jaap)
+                if baseline_std < 50:
+                    baseline_std = 50
+
+                # check if the peak value does not exceed the baseline standard deviation time a factor
+                if abs(neg_mags[max_ind]) >= baseline_threshold_factor * abs(baseline_std):
+
+                    # classify as an N1, store the peak (index and amplitude)
+                    n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
+                    n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
 
     # return results

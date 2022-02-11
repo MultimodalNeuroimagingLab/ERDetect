@@ -344,7 +344,6 @@ for subject in subjects_to_analyze:
                         stimpair_trial_indices.append(indices)
                         stimpair_trial_onsets.append([trial_onsets[i] for i in indices])
 
-
             # search the stimulus-pair with too little trials
             stimpair_remove_indices = []
             for iPair in range(len(stimpair_labels)):
@@ -386,7 +385,6 @@ for subject in subjects_to_analyze:
                 metric_callbacks += tuple([metric_cross_proj])
             if cfg('shape_metric', 'enabled'):
                 metric_callbacks += tuple([metric_shape])
-
 
             # read, normalize by median and average the trials within the condition
             # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
@@ -462,8 +460,10 @@ for subject in subjects_to_analyze:
 
             # detect N1s
             logging.info('- Detecting N1s...')
-            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate))
-            # TODO: cross_proj_metrics & shape_metrics
+            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate),
+                                                                 method='',
+                                                                 cross_proj_metrics=cross_proj_metrics,
+                                                                 shape_metrics=shape_metrics)
             if n1_peak_indices is None or n1_peak_amplitudes is None:
                 logging.error('N1 detection failed, exiting...')
                 exit(1)
@@ -513,8 +513,6 @@ for subject in subjects_to_analyze:
                     stimpair_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(stimpair_labels))
                 else:
                     stimpair_axis_ticks_font_size = axis_ticks_font_size
-
-                 
                 if len(channels_labels) > 36 and axis_ticks_font_size > 4:
                     electrode_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(channels_labels))
                 else:
