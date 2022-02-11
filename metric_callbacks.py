@@ -51,7 +51,9 @@ def metric_cross_proj(sampling_rate, data, baseline):
 
 
     # normalize (L2 norm) each trial
-    norm_metric_data = metric_data / np.sqrt(np.power(metric_data, 2).sum(axis=1))[:, None]
+    norm_matrix = np.sqrt(np.power(metric_data, 2).sum(axis=1))
+    norm_matrix[norm_matrix == 0] = np.nan                          # prevent division by 0
+    norm_metric_data = metric_data / norm_matrix[:, None]
 
     # calculate internal projections
     proj = np.matmul(norm_metric_data, np.transpose(metric_data))
