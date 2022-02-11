@@ -1,7 +1,5 @@
 """
-Function file
-=====================================================
-Detect N1 peaks
+Module that contains the function(s) to detect N1 peaks
 
 
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
@@ -16,7 +14,6 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import logging
-import warnings
 import numpy as np
 from app.config import get as config
 from app.peak_finder import peak_finder
@@ -158,14 +155,16 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None):
             # filtering by baseline
             #
 
-            # calculate the std of the baseline samples
-            warnings.filterwarnings('error')
-            try:
-                baseline_std = np.nanstd(data[iElec, iPair, baseline_start_sample:baseline_end_sample])
-            except Warning:
-                # assume the warning is generated because of all nans; which is often the case when
-                # the stimulated electrodes are nan-ed out on the electrode dimensions, just continue to next
+            # retrieve the baseline
+            # Note: check all nans; which is often the case when the stimulated electrodes are nan-ed out
+            #       on the electrode dimensions, just continue to next
+            baseline_signal = data[iElec, iPair, baseline_start_sample:baseline_end_sample]
+            if np.all(np.isnan(baseline_signal)):
                 continue
+
+            # calculate the std of the baseline samples
+            baseline_std = np.nanstd(baseline_signal)
+
 
             # make sure the baseline_std is not smaller than 50uV (this value was validated by Jaap)
             if baseline_std < 50:
