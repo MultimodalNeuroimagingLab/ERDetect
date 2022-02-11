@@ -567,15 +567,18 @@ for subject in subjects_to_analyze:
                             #TODO, only nan if within display range
                             y[stim_start_x:stim_end_x] = np.nan
 
-                            # plot the signal
-                            ax.plot(x, y, linewidth=signal_line_thickness)
+                            # check if there is a signal to plot
+                            if not np.isnan(y).all():
 
-                            # if app is detected, plot it
-                            if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                                yN1 = n1_peak_amplitudes[iElec, iPair] / 500
-                                yN1 += len(stimpair_labels) - iPair
-                                ax.plot(xN1, yN1, 'bo')
+                                # plot the signal
+                                ax.plot(x, y, linewidth=signal_line_thickness)
+
+                                # if app is detected, plot it
+                                if not isnan(n1_peak_indices[iElec, iPair]):
+                                    xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                    yN1 = n1_peak_amplitudes[iElec, iPair] / 500
+                                    yN1 += len(stimpair_labels) - iPair
+                                    ax.plot(xN1, yN1, 'bo')
 
                         # set the x axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
