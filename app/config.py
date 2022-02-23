@@ -73,19 +73,24 @@ def __create_default_config():
     return config
 
 
-def get(level1, level2):
+def get(level1, level2, level3=None):
     """
     Retrieve a configuration value
 
     Args:
         level1 (str):                         The first level in the configuration structure
         level2 (str):                         The second level in the configuration structure
+        level3 (str, optional):               The third level in the configuration structure
 
     Returns:
         The configuration value within the structure
     """
     global _config
-    return _config[level1][level2]
+    if level3 is None:
+        return _config[level1][level2]
+    else:
+        return _config[level1][level2][level3]
+
 
 def get_config_dict():
     """
@@ -95,6 +100,24 @@ def get_config_dict():
         The configuration dictionary
     """
     return _config
+
+
+
+def set(value, level1, level2, level3=None):
+    """
+    Set a configuration value
+
+    Args:
+        level1 (str):                         The first level in the configuration structure
+        level2 (str):                         The second level in the configuration structure
+        level3 (str, optional):               The third level in the configuration structure
+
+    """
+    global _config
+    if level3 is None:
+        _config[level1][level2] = value
+    else:
+        _config[level1][level2][level3] = value
 
 def load_config(filepath):
     """
@@ -125,80 +148,163 @@ def load_config(filepath):
     # read helper functions
     #
 
-    def retrieve_config_bool(json_dict, ref_config, level1, level2):
+    def retrieve_config_bool(json_dict, ref_config, level1, level2, level3=None):
         if level1 in json_dict:
             if level2 in json_dict[level1]:
-                try:
-                    ref_config[level1][level2] = bool(json_dict[level1][level2])
-                except:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a boolean (true, false, 0 or 1)')
-                    return False
-        return True
 
-    def retrieve_config_number(json_dict, ref_config, level1, level2):
-        if level1 in json_dict:
-            if level2 in json_dict[level1]:
-                if is_number(json_dict[level1][level2]):
-                    ref_config[level1][level2] = float(json_dict[level1][level2])
+                if level3 is None:
+                    try:
+                        ref_config[level1][level2] = bool(json_dict[level1][level2])
+                    except:
+                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a boolean (true, false, 0 or 1)')
+                        return False
+
                 else:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a single number')
-                    return False
+                    if level3 in json_dict[level1][level2]:
+                        try:
+                            ref_config[level1][level2][level3] = bool(json_dict[level1][level2][level3])
+                        except:
+                            logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value should be a boolean (true, false, 0 or 1)')
+                            return False
+
         return True
 
-    def retrieve_config_range(json_dict, ref_config, level1, level2):
+    def retrieve_config_number(json_dict, ref_config, level1, level2, level3=None):
         if level1 in json_dict:
             if level2 in json_dict[level1]:
-                if is_valid_numeric_range(json_dict[level1][level2]):
-                    ref_config[level1][level2] = (json_dict[level1][level2][0], json_dict[level1][level2][1])
-                else:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be an array of two numbers')
-                    return False
-        return True
 
-    def retrieve_config_string(json_dict, ref_config, level1, level2, options=None, case_sensitive=False):
-        if level1 in json_dict:
-            if level2 in json_dict[level1]:
-                if isinstance(json_dict[level1][level2], str):
-                    if options is None:
-                        ref_config[level1][level2] = json_dict[level1][level2]
+                if level3 is None:
+                    if is_number(json_dict[level1][level2]):
+                        ref_config[level1][level2] = float(json_dict[level1][level2])
                     else:
-                        value_cased = json_dict[level1][level2]
-                        if not case_sensitive:
-                            options = (option.lower() for option in options)
-                            value_cased = value_cased.lower()
-                        if value_cased in options:
+                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a single number')
+                        return False
+
+                else:
+                    if level3 in json_dict[level1][level2]:
+                        if is_number(json_dict[level1][level2][level3]):
+                            ref_config[level1][level2][level3] = float(json_dict[level1][level2][level3])
+                        else:
+                            logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value should be a single number')
+                            return False
+
+        return True
+
+    def retrieve_config_range(json_dict, ref_config, level1, level2, level3=None):
+        if level1 in json_dict:
+            if level2 in json_dict[level1]:
+
+                if level3 is None:
+                    if is_valid_numeric_range(json_dict[level1][level2]):
+                        ref_config[level1][level2] = (json_dict[level1][level2][0], json_dict[level1][level2][1])
+                    else:
+                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be an array of two numbers')
+                        return False
+
+                else:
+                    if level3 in json_dict[level1][level2]:
+                        if is_valid_numeric_range(json_dict[level1][level2][level3]):
+                            ref_config[level1][level2][level3] = (json_dict[level1][level2][level3][0], json_dict[level1][level2][level3][1])
+                        else:
+                            logging.error(
+                                'Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value should be an array of two numbers')
+                            return False
+
+        return True
+
+    def retrieve_config_string(json_dict, ref_config, level1, level2, level3=None, options=None, case_sensitive=False):
+        if level1 in json_dict:
+            if level2 in json_dict[level1]:
+
+                if level3 is None:
+
+                    if isinstance(json_dict[level1][level2], str):
+                        if options is None:
                             ref_config[level1][level2] = json_dict[level1][level2]
                         else:
-                            logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value can only be one of the following options: ' + str(options)[1:-1])
-                            return False
+                            value_cased = json_dict[level1][level2]
+                            if not case_sensitive:
+                                options = (option.lower() for option in options)
+                                value_cased = value_cased.lower()
+                            if value_cased in options:
+                                ref_config[level1][level2] = json_dict[level1][level2]
+                            else:
+                                logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value can only be one of the following options: ' + str(options)[1:-1])
+                                return False
+                    else:
+                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a string')
+                        return False
+
                 else:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should be a string')
-                    return False
+                    if level3 in json_dict[level1][level2]:
+                        if isinstance(json_dict[level1][level2][level3], str):
+                            if options is None:
+                                ref_config[level1][level2][level3] = json_dict[level1][level2][level3]
+                            else:
+                                value_cased = json_dict[level1][level2][level3]
+                                if not case_sensitive:
+                                    options = (option.lower() for option in options)
+                                    value_cased = value_cased.lower()
+                                if value_cased in options:
+                                    ref_config[level1][level2][level3] = json_dict[level1][level2][level3]
+                                else:
+                                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value can only be one of the following options: ' + str(options)[1:-1])
+                                    return False
+                        else:
+                            logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value should be a string')
+                            return False
+
         return True
 
-    def retrieve_config_tuple(json_dict, ref_config, level1, level2, options=None, case_sensitive=False):
+    def retrieve_config_tuple(json_dict, ref_config, level1, level2, level3=None, options=None, case_sensitive=False):
         if level1 in json_dict:
             if level2 in json_dict[level1]:
-                if isinstance(json_dict[level1][level2], list):
-                    if options is None:
-                        ref_config[level1][level2] = tuple(json_dict[level1][level2])
+
+                if level3 is None:
+                    if isinstance(json_dict[level1][level2], list):
+                        if options is None:
+                            ref_config[level1][level2] = tuple(json_dict[level1][level2])
+                        else:
+                            options_cased = options
+                            values_cased = json_dict[level1][level2]
+                            if not case_sensitive:
+                                options_cased = [option.lower() for option in options]
+                                values_cased = [value.lower() for value in values_cased]
+                            ref_config[level1][level2] = list()
+                            for value in values_cased:
+                                if value in options_cased:
+                                    ref_config[level1][level2].append(value)
+                                else:
+                                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the following values are allowed: ' + str(options)[1:-1])
+                                    return False
+                            ref_config[level1][level2] = tuple(ref_config[level1][level2])
                     else:
-                        options_cased = options
-                        values_cased = json_dict[level1][level2]
-                        if not case_sensitive:
-                            options_cased = [option.lower() for option in options]
-                            values_cased = [value.lower() for value in values_cased]
-                        ref_config[level1][level2] = list()
-                        for value in values_cased:
-                            if value in options_cased:
-                                ref_config[level1][level2].append(value)
-                            else:
-                                logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the following values are allowed: ' + str(options)[1:-1])
-                                return False
-                        ref_config[level1][level2] = tuple(ref_config[level1][level2])
+                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should an array of strings')
+                        return False
+
                 else:
-                    logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + ', the value should an array of strings')
-                    return False
+                    if level3 in json_dict[level1][level2]:
+                        if isinstance(json_dict[level1][level2][level3], list):
+                            if options is None:
+                                ref_config[level1][level2][level3] = tuple(json_dict[level1][level2][level3])
+                            else:
+                                options_cased = options
+                                values_cased = json_dict[level1][level2][level3]
+                                if not case_sensitive:
+                                    options_cased = [option.lower() for option in options]
+                                    values_cased = [value.lower() for value in values_cased]
+                                ref_config[level1][level2][level3] = list()
+                                for value in values_cased:
+                                    if value in options_cased:
+                                        ref_config[level1][level2][level3].append(value)
+                                    else:
+                                        logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the following values are allowed: ' + str(options)[1:-1])
+                                        return False
+                                ref_config[level1][level2][level3] = tuple(ref_config[level1][level2][level3])
+                        else:
+                            logging.error('Invalid value in the configuration file for ' + level1 + '->' + level2 + '->' + level3 + ', the value should an array of strings')
+                            return False
+
         return True
 
     #
@@ -208,12 +314,12 @@ def load_config(filepath):
     # trials settings
     if not retrieve_config_range(json_config, config, 'trials', 'trial_epoch'):
         return False
-    if not retrieve_config_string(json_config, config, 'trials', 'out_of_bounds_handling', ('error', 'first_last_only', 'allow')):
+    if not retrieve_config_string(json_config, config, 'trials', 'out_of_bounds_handling', options=('error', 'first_last_only', 'allow')):
         return False
     config['trials']['out_of_bounds_handling'] = str(config['trials']['out_of_bounds_handling']).lower()
     if not retrieve_config_range(json_config, config, 'trials', 'baseline_epoch'):
         return False
-    if not retrieve_config_string(json_config, config, 'trials', 'baseline_norm', ('median', 'mean', 'none')):
+    if not retrieve_config_string(json_config, config, 'trials', 'baseline_norm', options=('median', 'mean', 'none')):
         return False
     config['trials']['baseline_norm'] = str(config['trials']['baseline_norm']).lower()
     if not retrieve_config_bool(json_config, config, 'trials', 'concat_bidirectional_pairs'):
@@ -334,10 +440,9 @@ def write_config(filepath):
         json_out.write(config_str + '\n')
         json_out.close()
 
-
 def __check_config(config):
     """
-    Perform sanity chech on a given configuration
+    Perform sanity checks on a given configuration
 
     Args:
         config (dict):                        The configuration to check
@@ -345,28 +450,58 @@ def __check_config(config):
     Returns:
         bool:                                 True when passing all checks, False elsewise
     """
-    def check_epoch_start_after_onset(ref_config, level1, level2):
-        if ref_config[level1][level2][0] < 0:
-            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the epoch should start after the stimulus onset (>= 0s)')
-            return False
+    def check_epoch_start_after_onset(ref_config, level1, level2, level3=None):
+
+        if level3 is None:
+            if ref_config[level1][level2][0] < 0:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the epoch should start after the stimulus onset (>= 0s)')
+                return False
+
+        else:
+            if ref_config[level1][level2][level3][0] < 0:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the epoch should start after the stimulus onset (>= 0s)')
+                return False
+
         return True
 
-    def check_epoch_within_trial(ref_config, level1, level2):
-        if ref_config[level1][level2][0] < config['trials']['trial_epoch'][0]:
-            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given start-point (at ' + str(ref_config[level1][level2][0]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
-            return False
-        if ref_config[level1][level2][1] > config['trials']['trial_epoch'][1]:
-            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][1]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
-            return False
+    def check_epoch_within_trial(ref_config, level1, level2, level3=None):
+
+        if level3 is None:
+            if ref_config[level1][level2][0] < config['trials']['trial_epoch'][0]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given start-point (at ' + str(ref_config[level1][level2][0]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
+                return False
+            if ref_config[level1][level2][1] > config['trials']['trial_epoch'][1]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][1]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
+                return False
+
+        else:
+            if ref_config[level1][level2][level3][0] < config['trials']['trial_epoch'][0]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the given start-point (at ' + str(ref_config[level1][level2][level3][0]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
+                return False
+            if ref_config[level1][level2][level3][1] > config['trials']['trial_epoch'][1]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][level3][1]) + 's) lies outside of the trial epoch (' + str(ref_config['trials']['trial_epoch'][0]) + 's - ' + str(ref_config['trials']['trial_epoch'][1]) + 's)')
+                return False
+
         return True
 
-    def check_range_order(ref_config, level1, level2):
-        if ref_config[level1][level2][1] < ref_config[level1][level2][0]:
-            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][1]) + 's) lies before the start-point (at ' + str(ref_config[level1][level2][0]) + 's)')
-            return False
-        if ref_config[level1][level2][0] == ref_config[level1][level2][1]:
-            logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given start and end-point are the same (' + str(ref_config[level1][level2][0]) + 's)')
-            return False
+    def check_range_order(ref_config, level1, level2, level3=None):
+
+        if level3 is None:
+            if ref_config[level1][level2][1] < ref_config[level1][level2][0]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][1]) + 's) lies before the start-point (at ' + str(ref_config[level1][level2][0]) + 's)')
+                return False
+            if ref_config[level1][level2][0] == ref_config[level1][level2][1]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the given start and end-point are the same (' + str(ref_config[level1][level2][0]) + 's)')
+                return False
+
+        else:
+            if ref_config[level1][level2][level3][1] < ref_config[level1][level2][level3][0]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the given end-point (at ' + str(ref_config[level1][level2][level3][1]) + 's) lies before the start-point (at ' + str(ref_config[level1][level2][level3][0]) + 's)')
+                return False
+            if ref_config[level1][level2][level3][0] == ref_config[level1][level2][level3][1]:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the given start and end-point are the same (' + str(ref_config[level1][level2][level3][0]) + 's)')
+                return False
+
         return True
 
     # parameter start-end order

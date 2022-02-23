@@ -25,7 +25,7 @@ import numpy as np
 import scipy.io as sio
 from matplotlib import cm
 
-from app.config import load_config, write_config, get as cfg, get_config_dict,\
+from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set,\
     VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
