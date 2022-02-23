@@ -498,12 +498,12 @@ def __check_config(config):
     def check_number_positive(ref_config, level1, level2, level3=None):
 
         if level3 is None:
-            if ref_config[level1][level2][0] <= 0:
+            if ref_config[level1][level2] <= 0:
                 logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the input should be a positive value (> 0)')
                 return False
 
         else:
-            if ref_config[level1][level2][level3][0] < 0:
+            if ref_config[level1][level2][level3] < 0:
                 logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the input should be a positive value (> 0)')
                 return False
 
@@ -624,10 +624,10 @@ def __check_config(config):
         if not check_number_positive(config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
             return False
     elif config['n1_detect']['method'] == 'cross_proj':
-        if not check_number_positive(config, 'n1_detect', 'cross_proj', 'baseline_threshold_factor'):
+        if not check_number_positive(config, 'n1_detect', 'cross_proj', 'threshold'):
             return False
     elif config['n1_detect']['method'] == 'waveform':
-        if not check_number_positive(config, 'n1_detect', 'waveform', 'baseline_threshold_factor'):
+        if not check_number_positive(config, 'n1_detect', 'waveform', 'threshold'):
             return False
 
     # the waveform bandpass limits
