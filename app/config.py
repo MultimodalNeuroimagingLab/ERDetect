@@ -24,6 +24,11 @@ OUTPUT_IMAGE_SIZE               = 2000                                          
 LOGGING_CAPTION_INDENT_LENGTH   = 50                                            # the indent length of the caption in a logging output string
 VALID_CHANNEL_TYPES             = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')
 
+CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT = (-1, -0.1)
+CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR = 3.4
+CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD = 3.5
+CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD = 1000
+
 
 def __create_default_config():
     """
@@ -66,8 +71,8 @@ def __create_default_config():
     config['n1_detect']['n1_search_epoch']                          = (0.009, 0.09)
     config['n1_detect']['method']                                   = 'std_base'
     config['n1_detect']['std_base'] = dict()
-    config['n1_detect']['std_base']['baseline_epoch']               = (-1, -0.1)
-    config['n1_detect']['std_base']['baseline_threshold_factor']    = 3.4
+    config['n1_detect']['std_base']['baseline_epoch']               = CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT
+    config['n1_detect']['std_base']['baseline_threshold_factor']    = CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR
 
     config['visualization'] = dict()
     config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
@@ -121,10 +126,35 @@ def set(value, level1, level2, level3=None):
 
     """
     global _config
+
+    if not level1 in _config:
+        _config[level1] = dict()
+
     if level3 is None:
         _config[level1][level2] = value
     else:
+
+        if not level2 in _config[level1]:
+            _config[level1][level2] = dict()
+
         _config[level1][level2][level3] = value
+
+
+def rem(level1, level2, level3=None):
+    """
+    Remove a configuration value
+
+    Args:
+        level1 (str):                         The first level in the configuration structure
+        level2 (str):                         The second level in the configuration structure
+        level3 (str, optional):               The third level in the configuration structure
+
+    """
+    global _config
+    if level3 is None:
+        _config[level1].pop(level2, None)
+    else:
+        _config[level1][level2].pop(level3, None)
 
 
 def load_config(filepath):
@@ -364,28 +394,33 @@ def load_config(filepath):
     if not retrieve_config_range(json_config, config, 'metrics', 'waveform', 'bandpass'):
         return False
 
-    # n1 detection settings
+    # n1 peak detection settings
     if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
         return False
     if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_search_epoch'):
         return False
 
+    # detection methods
     if not retrieve_config_string(json_config, config, 'n1_detect', 'method', options=('std_base', 'cross_proj', 'waveform')):
         return False
     # TODO: multiple options?
+
+    config['n1_detect'].pop('std_base', None)
+    config['n1_detect'].pop('cross_proj', None)
+    config['n1_detect'].pop('waveform', None)
+
     if config['n1_detect']['method'] == 'std_base':
+        config['n1_detect']['std_base'] = dict()
         if not retrieve_config_range(json_config, config, 'n1_detect', 'std_base', 'baseline_epoch'):
             return False
         if not retrieve_config_number(json_config, config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
             return False
     elif config['n1_detect']['method'] == 'cross_proj':
         config['n1_detect']['cross_proj'] = dict()
-        #config['n1_detect']['std_base']['baseline_threshold_factor'] = 3.4
         if not retrieve_config_number(json_config, config, 'n1_detect', 'cross_proj', 'threshold'):
             return False
     elif config['n1_detect']['method'] == 'waveform':
         config['n1_detect']['waveform'] = dict()
-        #config['n1_detect']['std_base']['baseline_threshold_factor'] = 3.4
         if not retrieve_config_number(json_config, config, 'n1_detect', 'waveform', 'threshold'):
             return False
 

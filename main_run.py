@@ -25,8 +25,9 @@ import numpy as np
 import scipy.io as sio
 from matplotlib import cm
 
-from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set,\
-    VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
+from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set, rem as cfg_rem,\
+    VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, \
+    CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
@@ -55,38 +56,56 @@ def log_indented_line(caption, text):
 #
 # define and parse the input arguments
 #
-parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of early responses (N1) in CCEP data.')
+parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of early responses (N1) in CCEP data.',
+                                 formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('bids_dir',
                     help='The directory with the input dataset formatted according to the BIDS standard.')
 parser.add_argument('output_dir',
-                    help='The directory where the output files should be stored. If you are running group level '
-                         'analysis this folder should be prepopulated with the results of the participant level analysis.')
+                    help='The directory where the output files should be stored. If you are running group\n'
+                         'level analysis this folder should be prepopulated with the results of the\n'
+                         'participant level analysis.')
 parser.add_argument('--participant_label',
-                    help='The label(s) of the participant(s) that should be analyzed. The label corresponds '
-                         'to sub-<participant_label> from the BIDS spec (so it does not include "sub-"). If this '
-                         'parameter is not provided all subjects will be analyzed. Multiple participants can be '
-                         'specified with a space separated list.',
+                    help='The label(s) of the participant(s) that should be analyzed. The label corresponds\n'
+                         'to sub-<participant_label> from the BIDS spec (so it does not include "sub-").\n'
+                         'If this parameter is not provided all subjects will be analyzed. Multiple\n'
+                         'participants can be specified with a space separated list.',
                     nargs="+")
 parser.add_argument('--subset_search_pattern',
-                    help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS '
-                         'compliant folder name (e.g. "task-ccep_run-01"). If this parameter is not provided all '
-                         'the found subset(s) will be analyzed. Multiple subsets can be specified with a space '
-                         'separated list.',
+                    help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS\n'
+                         'compliant folder name (e.g. "task-ccep_run-01"). If this parameter is not provided\n'
+                         'all the found subset(s) will be analyzed. Multiple subsets can be specified with\n'
+                         'a space separated list.',
                     nargs="+")
 parser.add_argument('--format_extension',
-                    help='The data format(s) to include. The format(s) should be specified by their '
-                         'extension (e.g. ".edf"). If this parameter is not provided, then by default the European '
-                         'Data Format (''.edf''), BrainVision (''.vhdr'', ''.vmrk'', ''.eeg'') and MEF3 (''.mefd'') '
-                         'formats will be included. Multiple formats can be specified with a space separated list.',
+                    help='The data format(s) to include. The format(s) should be specified by their\n'
+                         'extension (e.g. ".edf"). If this parameter is not provided, then by default\n'
+                         'the European Data Format (''.edf''), BrainVision (''.vhdr'', ''.vmrk'', ''.eeg'')\n'
+                         'and MEF3 (''.mefd'') formats will be included. Multiple formats can be specified\n'
+                         'with a space separated list.',
                     nargs="+")
 parser.add_argument('--config_filepath',
                     help='Configures the app according to the settings in the JSON configuration file')
 parser.add_argument('--skip_bids_validator',
                     help='Whether or not to perform BIDS data-set validation',
                     action='store_true')
+parser.add_argument('--method',
+                    help='The method that should be used to determine N1s. the options are:\n'
+                         '    - std_base   = The standard deviation of a baseline-epoch is used as a\n'
+                         '                   threshold (times a factor) to determine whether the average evoked N1\n'
+                         '                   deflection is strong enough. Usage example: ''--method std_base''\n'
+                         '    - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
+                         '                   similarity. A peak with a strong inter-trial similarity is\n'
+                         '                   considered N1s. Usage example: ''--method cross-proj''\n'
+                         '    - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
+                         '                   to determine whether the peak that was found can be considered a N1.\n'
+                         '                   Usage example: ''--method waveform'''
+                         'Note: If a configuration file is provided, then the method set in this argument will\n'
+                         '      overrule the method set in the configuration file',
+                    nargs="?")
 parser.add_argument('-v', '--version',
                     action='version',
                     version='N1Detection BIDS-App version {}'.format(__version__))
+
 args = parser.parse_args()
 
 #
@@ -101,40 +120,32 @@ logging.info('')
 
 
 #
-# check if the input is a valid BIDS dataset
-#
-if not args.skip_bids_validator:
-    #process = run_cmd('bids-validator %s' % args.bids_dir)
-    #logging.info(process.stdout)
-    #if process.returncode != 0:
-    #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-    #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-    #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
-    #    exit(1)
-    bids_error = False
-    for dir_, d, files in os.walk(args.bids_dir):
-        for file in files:
-            rel_file = os.path.relpath(dir_, args.bids_dir)
-            if rel_file[0] == '.':
-                rel_file = rel_file[1:]
-            rel_file = os.path.join(rel_file, file)
-            if not BIDSValidator().is_bids('/' + rel_file):
-                logging.error('Invalid BIDS-file: ' + rel_file)
-                bids_error = True
-    if bids_error:
-        logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-                      'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
-        exit(1)
-
-
-#
 # configure
 #
+
 #  read the configuration file (if passed)
 if args.config_filepath:
     if not load_config(args.config_filepath):
         logging.error('Could not load the configuration file, exiting...')
+        exit(1)
+
+# check for a method argument
+if args.method:
+    cfg_rem('n1_detect', 'std_base')
+    cfg_rem('n1_detect', 'cross_proj')
+    cfg_rem('n1_detect', 'waveform')
+    if args.method == "std_base":
+        cfg_set('std_base', 'n1_detect', 'method')
+        cfg_set(CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, 'n1_detect', 'std_base', 'baseline_epoch')
+        cfg_set(CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, 'n1_detect', 'std_base', 'baseline_threshold_factor')
+    elif args.method == "cross_proj":
+        cfg_set('cross_proj', 'n1_detect', 'method')
+        cfg_set(CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, 'n1_detect', 'cross_proj', 'threshold')
+    elif args.method == "waveform":
+        cfg_set('waveform', 'n1_detect', 'method')
+        cfg_set(CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD, 'n1_detect', 'waveform', 'threshold')
+    else:
+        logging.error('Invalid method argument \'' + args.method + '\', pick one of the following: \'std_base\', \'cross_proj\' or \'waveform\'')
         exit(1)
 
 # if a metric is used for detection, enable them
@@ -180,6 +191,34 @@ log_indented_line('Generate stimulation-pair images:', ('Yes' if cfg('visualizat
 log_indented_line('Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
 logging.info('')
 
+
+#
+# check if the input is a valid BIDS dataset
+#
+
+if not args.skip_bids_validator:
+    #process = run_cmd('bids-validator %s' % args.bids_dir)
+    #logging.info(process.stdout)
+    #if process.returncode != 0:
+    #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+    #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+    #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+    #    exit(1)
+    bids_error = False
+    for dir_, d, files in os.walk(args.bids_dir):
+        for file in files:
+            rel_file = os.path.relpath(dir_, args.bids_dir)
+            if rel_file[0] == '.':
+                rel_file = rel_file[1:]
+            rel_file = os.path.join(rel_file, file)
+            if not BIDSValidator().is_bids('/' + rel_file):
+                logging.error('Invalid BIDS-file: ' + rel_file)
+                bids_error = True
+    if bids_error:
+        logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+                      'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+        exit(1)
 
 #
 # process per subject and subset
