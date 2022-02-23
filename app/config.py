@@ -59,8 +59,10 @@ def __create_default_config():
     config['n1_detect'] = dict()
     config['n1_detect']['peak_search_epoch']                        = (0, 0.5)
     config['n1_detect']['n1_search_epoch']                          = (0.009, 0.09)
-    config['n1_detect']['n1_baseline_epoch']                        = (-1, -0.1)
-    config['n1_detect']['n1_baseline_threshold_factor']             = 3.4
+    config['n1_detect']['method']                                   = 'std_base'
+    config['n1_detect']['std_base'] = dict()
+    config['n1_detect']['std_base']['baseline_epoch']               = (-1, -0.1)
+    config['n1_detect']['std_base']['baseline_threshold_factor']    = 3.4
 
     config['visualization'] = dict()
     config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
@@ -362,10 +364,25 @@ def load_config(filepath):
         return False
     if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_search_epoch'):
         return False
-    if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_baseline_epoch'):
+
+    if not retrieve_config_string(json_config, config, 'n1_detect', 'method', options=('std_base', 'cross_proj', 'waveform')):
         return False
-    if not retrieve_config_number(json_config, config, 'n1_detect', 'n1_baseline_threshold_factor'):
-        return False
+    # TODO: multiple options?
+    if config['n1_detect']['method'] == 'std_base':
+        if not retrieve_config_range(json_config, config, 'n1_detect', 'std_base', 'baseline_epoch'):
+            return False
+        if not retrieve_config_number(json_config, config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
+            return False
+    elif config['n1_detect']['method'] == 'cross_proj':
+        config['n1_detect']['cross_proj'] = dict()
+        #config['n1_detect']['std_base']['baseline_threshold_factor'] = 3.4
+        if not retrieve_config_number(json_config, config, 'n1_detect', 'cross_proj', 'threshold'):
+            return False
+    elif config['n1_detect']['method'] == 'waveform':
+        config['n1_detect']['waveform'] = dict()
+        #config['n1_detect']['std_base']['baseline_threshold_factor'] = 3.4
+        if not retrieve_config_number(json_config, config, 'n1_detect', 'waveform', 'threshold'):
+            return False
 
     # visualization settings
     if not retrieve_config_range(json_config, config, 'visualization', 'x_axis_epoch'):
@@ -427,9 +444,23 @@ def write_config(filepath):
                 '    "n1_detect": {\n' \
                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
                 '        "n1_search_epoch":                  [' + numbers_to_padded_string(_config['n1_detect']['n1_search_epoch'], 16) + '],\n' \
-                '        "n1_baseline_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['n1_baseline_epoch'], 16) + '],\n' \
-                '        "n1_baseline_threshold_factor":     ' + str(_config['n1_detect']['n1_baseline_threshold_factor']) + '\n' \
-                '    },\n\n' \
+                '        "method":                           "' + _config['n1_detect']['method'] + '",\n'
+
+    if _config['n1_detect']['method'] == 'std_base':
+        config_str += '        "std_base": {\n' \
+                      '            "baseline_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['std_base']['baseline_epoch'], 16) + '],\n' \
+                      '            "baseline_threshold_factor":     ' + str(_config['n1_detect']['std_base']['baseline_threshold_factor']) + '\n' \
+                      '        }\n'
+    elif _config['n1_detect']['method'] == 'cross_proj':
+        config_str += '        "cross_proj": {\n' \
+                      '            "threshold":                     ' + str(_config['n1_detect']['cross_proj']['threshold']) + '\n' \
+                      '        }\n'
+    elif _config['n1_detect']['method'] == 'waveform':
+        config_str += '        "waveform": {\n' \
+                      '            "threshold":                     ' + str(_config['n1_detect']['waveform']['threshold']) + '\n' \
+                      '        }\n'
+
+    config_str += '    },\n\n' \
                 '    "visualization": {\n' \
                 '        "x_axis_epoch":                     [' + numbers_to_padded_string(_config['visualization']['x_axis_epoch'], 16) + '],\n' \
                 '        "blank_stim_epoch":                 [' + numbers_to_padded_string(_config['visualization']['blank_stim_epoch'], 16) + '],\n' \
@@ -521,8 +552,9 @@ def __check_config(config):
         return False
     if not check_range_order(config, 'n1_detect', 'n1_search_epoch'):
         return False
-    if not check_range_order(config, 'n1_detect', 'n1_baseline_epoch'):
-        return False
+    if config['n1_detect']['method'] == 'std_base':
+        if not check_range_order(config, 'n1_detect', 'std_base', 'baseline_epoch'):
+            return False
     if not check_range_order(config, 'visualization', 'x_axis_epoch'):
         return False
     if not check_range_order(config, 'visualization', 'blank_stim_epoch'):
@@ -537,8 +569,10 @@ def __check_config(config):
         return False
     if not check_epoch_within_trial(config, 'n1_detect', 'n1_search_epoch'):
         return False
-    if not check_epoch_within_trial(config, 'n1_detect', 'n1_baseline_epoch'):
-        return False
+    if config['n1_detect']['method'] == 'std_base':
+        if not check_epoch_within_trial(config, 'n1_detect', 'std_base', 'baseline_epoch'):
+            return False
+
     if not check_epoch_within_trial(config, 'visualization', 'x_axis_epoch'):
         return False
     if not check_epoch_within_trial(config, 'visualization', 'blank_stim_epoch'):
@@ -562,9 +596,10 @@ def __check_config(config):
         return False
 
     # the baseline threshold factor should be a positive number
-    if config['n1_detect']['n1_baseline_threshold_factor'] <= 0:
-        logging.error('Invalid [\'n1_detect\'][\'n1_baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
-        return False
+    if config['n1_detect']['method'] == 'std_base':
+        if config['n1_detect']['std_base']['baseline_threshold_factor'] <= 0:
+            logging.error('Invalid [\'n1_detect\'][\'std_base\'][\'baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
+            return False
 
     # the waveform bandpass limits
     if config['metrics']['waveform']['bandpass'][0] <= 0:

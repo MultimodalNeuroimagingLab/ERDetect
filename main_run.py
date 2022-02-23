@@ -137,6 +137,14 @@ if args.config_filepath:
         logging.error('Could not load the configuration file, exiting...')
         exit(1)
 
+# if a metric is used for detection, enable them
+if cfg('n1_detect', 'method') == 'cross_proj' and not cfg('metrics', 'cross_proj', 'enabled'):
+    logging.warning('N1 detection is set to use cross-projections but the cross-projection metric is disabled, the cross-projection metric will be enabled')
+    cfg_set(True, 'metrics', 'cross_proj', 'enabled')
+if cfg('n1_detect', 'method') == 'waveform' and not cfg('metrics', 'waveform', 'enabled'):
+    logging.warning('N1 detection is set to use waveforms but the waveform metric is disabled, the waveform metric will be enabled')
+    cfg_set(True, 'metrics', 'waveform', 'enabled')
+
 # print configuration information
 log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
 log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
@@ -156,8 +164,14 @@ if cfg('metrics', 'waveform', 'enabled'):
 logging.info('')
 log_indented_line('Peak search window:', str(cfg('n1_detect', 'peak_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'peak_search_epoch')[1]) + 's')
 log_indented_line('N1 search window:', str(cfg('n1_detect', 'n1_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_search_epoch')[1]) + 's')
-log_indented_line('N1 baseline window:', str(cfg('n1_detect', 'n1_baseline_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_baseline_epoch')[1]) + 's')
-log_indented_line('N1 baseline threshold factor:', str(cfg('n1_detect', 'n1_baseline_threshold_factor')))
+log_indented_line('N1 detection method:', str(cfg('n1_detect', 'method')))
+if cfg('n1_detect', 'method') == 'std_base':
+    log_indented_line('    Std baseline window:', str(cfg('n1_detect', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'std_base', 'baseline_epoch')[1]) + 's')
+    log_indented_line('    Std baseline threshold factor:', str(cfg('n1_detect', 'std_base', 'baseline_threshold_factor')))
+elif cfg('n1_detect', 'method') == 'cross_proj':
+    log_indented_line('    Cross-projection detection threshold:', str(cfg('n1_detect', 'cross_proj', 'threshold')))
+elif cfg('n1_detect', 'method') == 'waveform':
+    log_indented_line('    Waveform detection threshold:', str(cfg('n1_detect', 'waveform', 'threshold')))
 logging.info('')
 log_indented_line('Visualization x-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
 log_indented_line('Visualization blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
@@ -468,7 +482,6 @@ for subject in subjects_to_analyze:
             # detect N1s
             logging.info('- Detecting N1s...')
             n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate),
-                                                                 method='',
                                                                  cross_proj_metrics=cross_proj_metrics,
                                                                  waveform_metrics=waveform_metrics)
             if n1_peak_indices is None or n1_peak_amplitudes is None:

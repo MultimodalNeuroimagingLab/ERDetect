@@ -3,9 +3,10 @@ Module that contains the function(s) to detect N1 peaks
 
 
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+
 Baseline standard deviation based detection method is adapted from:
     Original author: Dorien van Blooijs (2018)
-    Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro; UMC Utrecht, 2019
+    Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro; (UMC Utrecht, 2019)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -19,7 +20,7 @@ from app.config import get as config
 from app.peak_finder import peak_finder
 
 
-def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_proj_metrics=None, waveform_metrics=None):
+def ieeg_detect_n1(data, stim_onset_index, sampling_rate, cross_proj_metrics=None, waveform_metrics=None):
     """
     Detect the N1 in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -29,7 +30,6 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
         stim_onset_index (int):             the time-point on the input data's time-dimension of stimulation onset (as a
                                             0-based sample-index, all indices before this value are considered pre-stim)
         sampling_rate (int or double):      The sampling rate at which the data was acquired
-        method (string):
         cross_proj_metrics (ndarray):
         waveform_metrics (ndarray):
 
@@ -41,6 +41,11 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
                                             the N1s; The second ndarray contains the amplitudes of the N1s.
     """
 
+
+    #
+    # Retrieve detection parameters from the config
+    #
+
     # (tuple) The time-span in which to search for peaks, expressed as a tuple with the  start- and end-point in seconds
     # relative to stimulation onset (e.g. the standard tuple of '0, 0.5' will have the algorithm search for peaks in
     # the period from stimulus onset till 500ms after stimulation onset)
@@ -51,15 +56,32 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
     # for an app at 20ms after stimulation onset up to 90ms after stimulation onset)
     n1_search_epoch = config('n1_detect', 'n1_search_epoch')
 
-    # (tuple) The time-span on which the baseline is calculated, expressed as a tuple with the start- and end-point in
-    # seconds relative to stimulation onset (e.g. the standard tuple of '-1, -.1' will use the period from 1s before
-    # stimulation onset to 100ms before stimulation onset to calculate the baseline on)
-    baseline_epoch = config('n1_detect', 'n1_baseline_epoch')
+    # (tuple) The time-span in which a app will be searched, expressed as a tuple with the start- and end-point in seconds
+    # relative to stimulation onset (e.g. the standard tuple of '0.02, 0.09' will have the algorithm start the search
+    # for an app at 20ms after stimulation onset up to 90ms after stimulation onset)
+    method = config('n1_detect', 'method')
 
-    # (double) The factor that is applied to the standard deviation of the baseline amplitude, that defines the
-    # threshold which needs to be exceeded to detect a peak (the minimum std is considered 50uV; therefore a factor
-    # of 3.4 is recommended to end up with a conservative threshold of 170 uV)
-    baseline_threshold_factor = config('n1_detect', 'n1_baseline_threshold_factor')
+    if method == 'std_base':
+
+        # (tuple) The time-span on which the baseline is calculated, expressed as a tuple with the start- and end-point in
+        # seconds relative to stimulation onset (e.g. the standard tuple of '-1, -.1' will use the period from 1s before
+        # stimulation onset to 100ms before stimulation onset to calculate the baseline on)
+        baseline_epoch = config('n1_detect', 'std_base', 'baseline_epoch')
+
+        # (double) The factor that is applied to the standard deviation of the baseline amplitude, that defines the
+        # threshold which needs to be exceeded to detect a peak (the minimum std is considered 50uV; therefore a factor
+        # of 3.4 is recommended to end up with a conservative threshold of 170 uV)
+        baseline_threshold_factor = config('n1_detect', 'std_base', 'baseline_threshold_factor')
+
+    elif method == 'cross_proj':
+
+        # (double) The threshold which needs to be exceeded to detect a peak
+        cross_proj_threshold = config('n1_detect', 'cross_proj', 'threshold')
+
+    elif method == 'waveform':
+
+        # (double) The threshold which needs to be exceeded to detect a peak
+        waveform_threshold = config('n1_detect', 'waveform', 'threshold')
 
 
     #
@@ -92,12 +114,14 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
     n1_peak_amplitudes = np.empty((data.shape[0], data.shape[1]))
     n1_peak_amplitudes.fill(np.nan)
 
-    # determine the std baseline range in samples
-    baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
-    baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
+    # check method and corresponding input
+    if method == 'std_base':
 
-    # check the method and corresponding input
-    if method == 'waveform':
+        # determine the std baseline range in samples
+        baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
+        baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
+
+    elif method == 'waveform':
 
         if waveform_metrics is None:
             logging.error('Method is set to \'waveform\' but no waveform-metrics were passed to the detection function')
@@ -174,17 +198,17 @@ def ieeg_detect_n1(data, stim_onset_index, sampling_rate, method=None, cross_pro
             # Determine whether peak can be considered a N1 (by the peak or by other metrics)
             #
 
-            if method == 'waveform':
+            if method == 'cross_proj':
 
                 # classify as an N1 on threshold, store the peak (index and amplitude)
-                if waveform_metrics[iElec, iPair] > 1000:
+                if cross_proj_metrics[iElec, iPair] > cross_proj_threshold:
                     n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
-            elif method == 'cross_proj':
+            elif method == 'waveform':
 
                 # classify as an N1 on threshold, store the peak (index and amplitude)
-                if cross_proj_metrics[iElec, iPair] > 3.5:
+                if waveform_metrics[iElec, iPair] > waveform_threshold:
                     n1_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     n1_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 

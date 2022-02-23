@@ -31,7 +31,7 @@ def metric_cross_proj(sampling_rate, data, baseline):
 
     trial_epoch = config('trials', 'trial_epoch')
     baseline_norm = config('trials', 'baseline_norm')
-    cross_proj_epoch = config('cross_projection_metric', 'epoch')
+    cross_proj_epoch = config('metrics', 'cross_proj', 'epoch')
 
     # calculate the sample indices for the cross-projection epoch (relative to the trial epoch)
     start_sample = round((cross_proj_epoch[0] - trial_epoch[0]) * sampling_rate)
@@ -81,8 +81,8 @@ def metric_waveform(sampling_rate, data, baseline):
 
     trial_epoch = config('trials', 'trial_epoch')
     baseline_norm = config('trials', 'baseline_norm')
-    waveform_epoch = config('waveform_metric', 'epoch')
-    bandpass = config('waveform_metric', 'bandpass')
+    waveform_epoch = config('metrics', 'waveform', 'epoch')
+    bandpass = config('metrics', 'waveform', 'bandpass')
 
     # calculate the sample indices for the waveform epoch (relative to the trial epoch)
     start_sample = round((waveform_epoch[0] - trial_epoch[0]) * sampling_rate)
