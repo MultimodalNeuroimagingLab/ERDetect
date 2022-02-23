@@ -545,7 +545,8 @@ def __check_config(config):
         return False
 
     # trial epoch show start before the stimulus onset (routines in run rely on that)
-    if not check_epoch_start_after_onset(config, 'trials', 'trial_epoch'):
+    if config['trials']['trial_epoch'][0] >= 0:
+        logging.error('Invalid [\'trials\'][\'trial_epoch\'] parameter, the epoch should start before the stimulus onset (< 0s)')
         return False
 
     # metric epochs should be after stimulus onset
