@@ -34,11 +34,16 @@ def __create_default_config():
     """
 
     config = dict()
+
+    config['prepare'] = dict()
+    config['prepare']['filter_highpass']                            = 'true'                #
+    config['prepare']['filter_line_noise']                          = 'auto'                #
+
     config['trials'] = dict()
     config['trials']['trial_epoch']                                 = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
     config['trials']['out_of_bounds_handling']                      = 'first_last_only'     #
     # TODO: for comparison now set to -.1s. Should check metric results in matlab if I change those to -.02
-    #config['trials']['baseline_epoch']                      		= (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    #config['trials']['baseline_epoch']                             = (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_epoch']                              = (-0.5, -0.1)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                               = 'median'
     config['trials']['concat_bidirectional_pairs']                  = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
@@ -359,7 +364,7 @@ def load_config(filepath):
     if not retrieve_config_range(json_config, config, 'metrics', 'waveform', 'bandpass'):
         return False
 
-    # n1 app settings
+    # n1 detection settings
     if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
         return False
     if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_search_epoch'):
@@ -419,7 +424,11 @@ def write_config(filepath):
     global _config
 
     # save the configuration that was used
-    config_str = '{\n    "trials": {\n' \
+    config_str = '{\n    "prepare": {\n' \
+                '        "filter_highpass":                  ' + str(_config['prepare']['filter_highpass']) + ',\n' \
+                '        "filter_line_noise":                "' + str(_config['prepare']['filter_line_noise']) + '"\n' \
+                '    },\n\n' \
+                '    "trials": {\n' \
                 '        "trial_epoch":                      [' + numbers_to_padded_string(_config['trials']['trial_epoch'], 16) + '],\n' \
                 '        "out_of_bounds_handling":           "' + _config['trials']['out_of_bounds_handling'] + '",\n' \
                 '        "baseline_epoch":                   [' + numbers_to_padded_string(_config['trials']['baseline_epoch'], 16) + '],\n' \
@@ -485,6 +494,21 @@ def __check_config(config):
     Returns:
         bool:                                 True when passing all checks, False elsewise
     """
+
+    def check_number_positive(ref_config, level1, level2, level3=None):
+
+        if level3 is None:
+            if ref_config[level1][level2][0] <= 0:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'] parameter, the input should be a positive value (> 0)')
+                return False
+
+        else:
+            if ref_config[level1][level2][level3][0] < 0:
+                logging.error('Invalid [\'' + level1 + '\'][\'' + level2 + '\'][\'' + level3 + '\'] parameter, the input should be a positive value (> 0)')
+                return False
+
+        return True
+
     def check_epoch_start_after_onset(ref_config, level1, level2, level3=None):
 
         if level3 is None:
@@ -578,7 +602,7 @@ def __check_config(config):
     if not check_epoch_within_trial(config, 'visualization', 'blank_stim_epoch'):
         return False
 
-    # trial epoch show start before the stimulus onset (routines in run rely on that)
+    # trial epoch should start before the stimulus onset (routines in run rely on that)
     if config['trials']['trial_epoch'][0] >= 0:
         logging.error('Invalid [\'trials\'][\'trial_epoch\'] parameter, the epoch should start before the stimulus onset (< 0s)')
         return False
@@ -597,8 +621,13 @@ def __check_config(config):
 
     # the baseline threshold factor should be a positive number
     if config['n1_detect']['method'] == 'std_base':
-        if config['n1_detect']['std_base']['baseline_threshold_factor'] <= 0:
-            logging.error('Invalid [\'n1_detect\'][\'std_base\'][\'baseline_threshold_factor\'] parameter, the threshold should be a positive value (> 0)')
+        if not check_number_positive(config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
+            return False
+    elif config['n1_detect']['method'] == 'cross_proj':
+        if not check_number_positive(config, 'n1_detect', 'cross_proj', 'baseline_threshold_factor'):
+            return False
+    elif config['n1_detect']['method'] == 'waveform':
+        if not check_number_positive(config, 'n1_detect', 'waveform', 'baseline_threshold_factor'):
             return False
 
     # the waveform bandpass limits
