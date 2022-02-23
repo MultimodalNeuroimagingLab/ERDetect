@@ -35,39 +35,39 @@ def __create_default_config():
 
     config = dict()
     config['trials'] = dict()
-    config['trials']['trial_epoch']                         = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
-    config['trials']['out_of_bounds_handling']              = 'first_last_only'     #
+    config['trials']['trial_epoch']                                 = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
+    config['trials']['out_of_bounds_handling']                      = 'first_last_only'     #
     # TODO: for comparison now set to -.1s. Should check metric results in matlab if I change those to -.02
-    #config['trials']['baseline_epoch']                      = (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
-    config['trials']['baseline_epoch']                      = (-0.5, -0.1)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
-    config['trials']['baseline_norm']                       = 'median'
-    config['trials']['concat_bidirectional_pairs']          = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
-    config['trials']['minimum_stimpair_trials']             = 5                     # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
+    #config['trials']['baseline_epoch']                      		= (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    config['trials']['baseline_epoch']                              = (-0.5, -0.1)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    config['trials']['baseline_norm']                               = 'median'
+    config['trials']['concat_bidirectional_pairs']                  = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
+    config['trials']['minimum_stimpair_trials']                     = 5                     # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
 
     config['channels'] = dict()
-    config['channels']['types']                             = ('ECOG', 'SEEG', 'DBS')
+    config['channels']['types']                                     = ('ECOG', 'SEEG', 'DBS')
 
-    config['cross_projection_metric'] = dict()
-    config['cross_projection_metric']['enabled']            = True
-    config['cross_projection_metric']['epoch']              = (0.012, 0.09)
-
-    config['waveform_metric'] = dict()
-    config['waveform_metric']['enabled']                    = True
-    config['waveform_metric']['epoch']                      = (0.012, 0.09)
-    config['waveform_metric']['bandpass']                   = (10, 30)
+    config['metrics'] = dict()
+    config['metrics']['cross_proj'] = dict()
+    config['metrics']['cross_proj']['enabled']                      = True
+    config['metrics']['cross_proj']['epoch']                        = (0.012, 0.09)
+    config['metrics']['waveform'] = dict()
+    config['metrics']['waveform']['enabled']                        = True
+    config['metrics']['waveform']['epoch']                          = (0.012, 0.09)
+    config['metrics']['waveform']['bandpass']                       = (10, 30)
 
     config['n1_detect'] = dict()
-    config['n1_detect']['peak_search_epoch']                = (0, 0.5)
-    config['n1_detect']['n1_search_epoch']                  = (0.009, 0.09)
-    config['n1_detect']['n1_baseline_epoch']                = (-1, -0.1)
-    config['n1_detect']['n1_baseline_threshold_factor']     = 3.4
+    config['n1_detect']['peak_search_epoch']                        = (0, 0.5)
+    config['n1_detect']['n1_search_epoch']                          = (0.009, 0.09)
+    config['n1_detect']['n1_baseline_epoch']                        = (-1, -0.1)
+    config['n1_detect']['n1_baseline_threshold_factor']             = 3.4
 
     config['visualization'] = dict()
-    config['visualization']['x_axis_epoch']                 = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
-    config['visualization']['blank_stim_epoch']             = (-0.015, 0.0025)      # the range
-    config['visualization']['generate_electrode_images']    = True
-    config['visualization']['generate_stimpair_images']     = True
-    config['visualization']['generate_matrix_images']       = True
+    config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+    config['visualization']['blank_stim_epoch']                     = (-0.015, 0.0025)      # the range
+    config['visualization']['generate_electrode_images']            = True
+    config['visualization']['generate_stimpair_images']             = True
+    config['visualization']['generate_matrix_images']               = True
 
     # return a default configuration
     return config
@@ -118,6 +118,7 @@ def set(value, level1, level2, level3=None):
         _config[level1][level2] = value
     else:
         _config[level1][level2][level3] = value
+
 
 def load_config(filepath):
     """
@@ -335,7 +336,7 @@ def load_config(filepath):
     config['trials']['minimum_stimpair_trials'] = int(config['trials']['minimum_stimpair_trials'])
 
     # channel settings
-    if not retrieve_config_tuple(json_config, config, 'channels', 'types', VALID_CHANNEL_TYPES):
+    if not retrieve_config_tuple(json_config, config, 'channels', 'types', options=VALID_CHANNEL_TYPES):
         return False
     if len(config['channels']['types']) == 0:
         logging.error('Invalid value in the configuration file for channels->types, at least one channel type should be given')
@@ -343,17 +344,17 @@ def load_config(filepath):
     config['channels']['types'] = [value.upper() for value in config['channels']['types']]
 
     # cross-projection metric settings
-    if not retrieve_config_bool(json_config, config, 'cross_projection_metric', 'enabled'):
+    if not retrieve_config_bool(json_config, config, 'metrics', 'cross_proj', 'enabled'):
         return False
-    if not retrieve_config_range(json_config, config, 'cross_projection_metric', 'epoch'):
+    if not retrieve_config_range(json_config, config, 'metrics', 'cross_proj', 'epoch'):
         return False
 
     # waveform metric settings
-    if not retrieve_config_bool(json_config, config, 'waveform_metric', 'enabled'):
+    if not retrieve_config_bool(json_config, config, 'metrics', 'waveform', 'enabled'):
         return False
-    if not retrieve_config_range(json_config, config, 'waveform_metric', 'epoch'):
+    if not retrieve_config_range(json_config, config, 'metrics', 'waveform', 'epoch'):
         return False
-    if not retrieve_config_range(json_config, config, 'waveform_metric', 'bandpass'):
+    if not retrieve_config_range(json_config, config, 'metrics', 'waveform', 'bandpass'):
         return False
 
     # n1 app settings
@@ -412,14 +413,16 @@ def write_config(filepath):
                 '    "channels": {\n' \
                 '        "types":                            ' + json.dumps(_config['channels']['types']) + '\n' \
                 '    },\n\n' \
-                '    "cross_projection_metric": {\n' \
-                '        "enabled":                          ' + json.dumps(_config['cross_projection_metric']['enabled']) + ',\n' \
-                '        "epoch":                            [' + numbers_to_padded_string(_config['cross_projection_metric']['epoch'], 16) + ']\n' \
-                '    },\n\n' \
-                '    "waveform_metric": {\n' \
-                '        "enabled":                          ' + json.dumps(_config['waveform_metric']['enabled']) + ',\n' \
-                '        "epoch":                            [' + numbers_to_padded_string(_config['waveform_metric']['epoch'], 16) + '],\n' \
-                '        "bandpass":                         [' + numbers_to_padded_string(_config['waveform_metric']['bandpass'], 16) + ']\n' \
+                '    "metrics": {\n' \
+                '        "cross_proj": {\n' \
+                '            "enabled":                      ' + json.dumps(_config['metrics']['cross_proj']['enabled']) + ',\n' \
+                '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['cross_proj']['epoch'], 16) + ']\n' \
+                '        },\n' \
+                '        "waveform": {\n' \
+                '            "enabled":                      ' + json.dumps(_config['metrics']['waveform']['enabled']) + ',\n' \
+                '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['waveform']['epoch'], 16) + '],\n' \
+                '            "bandpass":                     [' + numbers_to_padded_string(_config['metrics']['waveform']['bandpass'], 16) + ']\n' \
+                '        }\n' \
                 '    },\n\n' \
                 '    "n1_detect": {\n' \
                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
@@ -439,6 +442,7 @@ def write_config(filepath):
     with open(filepath, 'w') as json_out:
         json_out.write(config_str + '\n')
         json_out.close()
+
 
 def __check_config(config):
     """
@@ -509,9 +513,9 @@ def __check_config(config):
         return False
     if not check_range_order(config, 'trials', 'baseline_epoch'):
         return False
-    if not check_range_order(config, 'cross_projection_metric', 'epoch'):
+    if not check_range_order(config, 'metrics', 'cross_proj', 'epoch'):
         return False
-    if not check_range_order(config, 'waveform_metric', 'epoch'):
+    if not check_range_order(config, 'metrics', 'waveform', 'epoch'):
         return False
     if not check_range_order(config, 'n1_detect', 'peak_search_epoch'):
         return False
@@ -524,10 +528,10 @@ def __check_config(config):
     if not check_range_order(config, 'visualization', 'blank_stim_epoch'):
         return False
 
-    # app epoch parameters should be within trial epoch
-    if not check_epoch_within_trial(config, 'cross_projection_metric', 'epoch'):
+    # detection epoch parameters should be within trial epoch
+    if not check_epoch_within_trial(config, 'metrics', 'cross_proj', 'epoch'):
         return False
-    if not check_epoch_within_trial(config, 'waveform_metric', 'epoch'):
+    if not check_epoch_within_trial(config, 'metrics', 'waveform', 'epoch'):
         return False
     if not check_epoch_within_trial(config, 'n1_detect', 'peak_search_epoch'):
         return False
@@ -545,12 +549,12 @@ def __check_config(config):
         return False
 
     # metric epochs should be after stimulus onset
-    if not check_epoch_start_after_onset(config, 'cross_projection_metric', 'epoch'):
+    if not check_epoch_start_after_onset(config, 'metrics', 'cross_proj', 'epoch'):
         return False
-    if not check_epoch_start_after_onset(config, 'waveform_metric', 'epoch'):
+    if not check_epoch_start_after_onset(config, 'metrics', 'waveform', 'epoch'):
         return False
 
-    # app peak search should be after stimulus onset
+    # detection peak search should be after stimulus onset
     if not check_epoch_start_after_onset(config, 'n1_detect', 'peak_search_epoch'):
         return False
     if not check_epoch_start_after_onset(config, 'n1_detect', 'n1_search_epoch'):
@@ -562,17 +566,17 @@ def __check_config(config):
         return False
 
     # the waveform bandpass limits
-    if config['waveform_metric']['bandpass'][0] <= 0:
-        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given lower cutoff frequency should be a positive number (' + str(config['waveform_metric']['bandpass'][0]) + ')')
+    if config['metrics']['waveform']['bandpass'][0] <= 0:
+        logging.error('Invalid [\'metrics\'][\'waveform\'][\'bandpass\'] parameter, the given lower cutoff frequency should be a positive number (' + str(config['metrics']['waveform']['bandpass'][0]) + ')')
         return False
-    if config['waveform_metric']['bandpass'][1] <= 0:
-        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given upper cutoff frequency should be a positive number (' + str(config['waveform_metric']['bandpass'][1]) + ')')
+    if config['metrics']['waveform']['bandpass'][1] <= 0:
+        logging.error('Invalid [\'metrics\'][\'waveform\'][\'bandpass\'] parameter, the given upper cutoff frequency should be a positive number (' + str(config['metrics']['waveform']['bandpass'][1]) + ')')
         return False
-    if config['waveform_metric']['bandpass'][1] < config['waveform_metric']['bandpass'][0]:
-        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the upper cutoff frequency (' + str(config['waveform_metric']['bandpass'][1]) + ') is smaller than the lower cutoff frequency (' + str(config['waveform_metric']['bandpass'][0]) + ')')
+    if config['metrics']['waveform']['bandpass'][1] < config['metrics']['waveform']['bandpass'][0]:
+        logging.error('Invalid [\'metrics\'][\'waveform\'][\'bandpass\'] parameter, the upper cutoff frequency (' + str(config['metrics']['waveform']['bandpass'][1]) + ') is smaller than the lower cutoff frequency (' + str(config['metrics']['waveform']['bandpass'][0]) + ')')
         return False
-    if config['waveform_metric']['bandpass'][0] == config['waveform_metric']['bandpass'][1]:
-        logging.error('Invalid [\'waveform_metric\'][\'bandpass\'] parameter, the given lower and upper cutoff frequencies are the same (' + str(config['waveform_metric']['bandpass'][0]) + ')')
+    if config['metrics']['waveform']['bandpass'][0] == config['metrics']['waveform']['bandpass'][1]:
+        logging.error('Invalid [\'metrics\'][\'waveform\'][\'bandpass\'] parameter, the given lower and upper cutoff frequencies are the same (' + str(config['metrics']['waveform']['bandpass'][0]) + ')')
         return False
 
     # return success

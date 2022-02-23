@@ -3,7 +3,7 @@ Module that contains the function(s) to detect N1 peaks
 
 
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
-Adapted from:
+Baseline standard deviation based detection method is adapted from:
     Original author: Dorien van Blooijs (2018)
     Adjusted by: Jaap van der Aar, Dora Hermes, Dorien van Blooijs, Giulio Castegnaro; UMC Utrecht, 2019
 

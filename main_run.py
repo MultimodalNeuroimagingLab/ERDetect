@@ -123,8 +123,8 @@ if not args.skip_bids_validator:
                 bids_error = True
     if bids_error:
         logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-                        'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-                        '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+                      'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
         exit(1)
 
 
@@ -145,6 +145,14 @@ log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_n
 log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
 log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
 logging.info(multi_line_list(cfg('channels', 'types'), LOGGING_CAPTION_INDENT_LENGTH, 'Channels types:', 20, ' '))
+logging.info('')
+log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
+if cfg('metrics', 'cross_proj', 'enabled'):
+    log_indented_line('    Cross-projection epoch:', str(cfg('metrics', 'cross_proj', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'cross_proj', 'epoch')[1]) + 's')
+log_indented_line('Waveform metric:', ('Enabled' if cfg('metrics', 'waveform', 'enabled') else 'Disabled'))
+if cfg('metrics', 'waveform', 'enabled'):
+    log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
+    log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
 logging.info('')
 log_indented_line('Peak search window:', str(cfg('n1_detect', 'peak_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'peak_search_epoch')[1]) + 's')
 log_indented_line('N1 search window:', str(cfg('n1_detect', 'n1_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_search_epoch')[1]) + 's')
@@ -380,10 +388,9 @@ for subject in subjects_to_analyze:
 
             # determine the metrics that should be produced
             metric_callbacks = tuple()
-            # TODO: if metric is used for detection, enable
-            if cfg('cross_projection_metric', 'enabled'):
+            if cfg('metrics', 'cross_proj', 'enabled'):
                 metric_callbacks += tuple([metric_cross_proj])
-            if cfg('waveform_metric', 'enabled'):
+            if cfg('metrics', 'waveform', 'enabled'):
                 metric_callbacks += tuple([metric_waveform])
 
             # read, normalize by median and average the trials within the condition
@@ -416,10 +423,10 @@ for subject in subjects_to_analyze:
             cross_proj_metrics = None
             waveform_metrics = None
             metric_counter = 0
-            if cfg('cross_projection_metric', 'enabled'):
+            if cfg('metrics', 'cross_proj', 'enabled'):
                 cross_proj_metrics = metrics[:, :, metric_counter]
                 metric_counter += 1
-            if cfg('waveform_metric', 'enabled'):
+            if cfg('metrics', 'waveform', 'enabled'):
                 waveform_metrics = metrics[:, :, metric_counter]
 
 
@@ -444,9 +451,9 @@ for subject in subjects_to_analyze:
             saveDict['stimpair_labels'] = np.asarray(stimpair_labels, dtype='object')
             saveDict['channel_labels'] = np.asarray(channels_labels, dtype='object')
             saveDict['config'] = get_config_dict()
-            if cfg('cross_projection_metric', 'enabled'):
+            if cfg('metrics', 'cross_proj', 'enabled'):
                 saveDict['cross_proj_metrics'] = cross_proj_metrics
-            if cfg('waveform_metric', 'enabled'):
+            if cfg('metrics', 'waveform', 'enabled'):
                 saveDict['waveform_metrics'] = waveform_metrics
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
