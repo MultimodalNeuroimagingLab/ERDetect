@@ -366,7 +366,7 @@ for subject in subjects_to_analyze:
                         stimpair_trial_indices.append(indices)
                         stimpair_trial_onsets.append([trial_onsets[i] for i in indices])
 
-            # search the stimulus-pair with too little trials
+            # search for stimulus-pairs with too little trials
             stimpair_remove_indices = []
             for iPair in range(len(stimpair_labels)):
                 if len(stimpair_trial_indices[iPair]) < cfg('trials', 'minimum_stimpair_trials'):
@@ -507,12 +507,12 @@ for subject in subjects_to_analyze:
                 #
 
                 # generate the x-axis values
-                # TODO: what if TRIAL_EPOCH_START is after the stimulus onset, currently disallowed by config
+                # Note: TRIAL_EPOCH_START is not expected to start after the stimulus onset, currently disallowed by config
                 x = np.arange(ccep_average.shape[2])
                 x = x / sampling_rate + cfg('trials', 'trial_epoch')[0]
 
                 # determine the range on the x axis where the stimulus was in samples
-                # TODO: what if TRIAL_EPOCH_START is after the stimulus onset, currently disallowed by config
+                # Note: TRIAL_EPOCH_START is not expected to start after the stimulus onset, currently disallowed by config
                 stim_start_x = int(round(abs(cfg('trials', 'trial_epoch')[0] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
                 stim_end_x = stim_start_x + int(ceil(abs(cfg('visualization', 'blank_stim_epoch')[1] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
 
@@ -600,13 +600,13 @@ for subject in subjects_to_analyze:
                                     yN1 += len(stimpair_labels) - iPair
                                     ax.plot(xN1, yN1, 'bo')
 
-                        # set the x axis
+                        # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
                         ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
-                        # set the y axis
+                        # set the y-axis
                         ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
                         ax.set_ylim((0, len(stimpair_labels) + 1))
                         ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
@@ -637,7 +637,7 @@ for subject in subjects_to_analyze:
                     #
                     logging.info('- Generating stimulation-pair plots...')
 
-                    # create a progress bar
+                    # create progress bar
                     print_progressbar(0, len(stimpair_labels), prefix='Progress:', suffix='Complete', length=50)
 
                     # loop through the stimulation-pairs
@@ -676,13 +676,13 @@ for subject in subjects_to_analyze:
                                 yN1 += len(channels_labels) - iElec
                                 ax.plot(xN1, yN1, 'bo')
 
-                        # set the x axis
+                        # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
                         ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
                             label.set_fontsize(axis_ticks_font_size)
 
-                        # set the y axis
+                        # set the y-axis
                         ax.set_ylabel('Measured electrodes\n', fontsize=axis_label_font_size)
                         ax.set_ylim((0, len(channels_labels) + 1))
                         ax.set_yticks(np.arange(1, len(channels_labels) + 1, 1))
