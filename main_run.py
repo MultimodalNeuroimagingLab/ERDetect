@@ -456,21 +456,20 @@ for subject in subjects_to_analyze:
                 logging.info('- Reading data and calculating metrics...')
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
-            sampling_rate, ccep_average, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
-                                                                    trial_epoch=cfg('trials', 'trial_epoch'),
-                                                                    baseline_norm=cfg('trials', 'baseline_norm'),
-                                                                    baseline_epoch=cfg('trials', 'baseline_epoch'),
-                                                                    out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
-                                                                    metric_callbacks=metric_callbacks)
-
-            if sampling_rate is None or ccep_average is None:
+            sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
+                                                                         trial_epoch=cfg('trials', 'trial_epoch'),
+                                                                         baseline_norm=cfg('trials', 'baseline_norm'),
+                                                                         baseline_epoch=cfg('trials', 'baseline_epoch'),
+                                                                         out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
+                                                                         metric_callbacks=metric_callbacks)
+            if sampling_rate is None or averages is None:
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
             for iPair in range(len(stimpair_labels)):
-                ccep_average[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
-                ccep_average[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
+                averages[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
+                averages[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
 
             # determine the sample of stimulus onset (counting from the epoch start)
             onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
@@ -504,7 +503,7 @@ for subject in subjects_to_analyze:
             saveDict = dict()
             saveDict['sampling_rate'] = sampling_rate
             saveDict['onset_sample'] = onset_sample
-            saveDict['ccep_average'] = ccep_average
+            saveDict['ccep_average'] = averages
             saveDict['stimpair_labels'] = np.asarray(stimpair_labels, dtype='object')
             saveDict['channel_labels'] = np.asarray(channels_labels, dtype='object')
             saveDict['config'] = get_config_dict()
@@ -524,7 +523,7 @@ for subject in subjects_to_analyze:
 
             # detect N1s
             logging.info('- Detecting N1s...')
-            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(ccep_average, onset_sample, int(sampling_rate),
+            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(averages, onset_sample, int(sampling_rate),
                                                                  cross_proj_metrics=cross_proj_metrics,
                                                                  waveform_metrics=waveform_metrics)
             if n1_peak_indices is None or n1_peak_amplitudes is None:
@@ -551,7 +550,7 @@ for subject in subjects_to_analyze:
 
                 # generate the x-axis values
                 # Note: TRIAL_EPOCH_START is not expected to start after the stimulus onset, currently disallowed by config
-                x = np.arange(ccep_average.shape[2])
+                x = np.arange(averages.shape[2])
                 x = x / sampling_rate + cfg('trials', 'trial_epoch')[0]
 
                 # determine the range on the x axis where the stimulus was in samples
@@ -618,12 +617,12 @@ for subject in subjects_to_analyze:
                         for iPair in range(len(stimpair_labels)):
 
                             # draw 0 line
-                            y = np.empty((ccep_average.shape[2], 1))
+                            y = np.empty((averages.shape[2], 1))
                             y.fill(len(stimpair_labels) - iPair)
                             ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
-                            y = ccep_average[iElec, iPair, :] / 500
+                            y = averages[iElec, iPair, :] / 500
                             y += len(stimpair_labels) - iPair
 
                             # nan out the stimulation
@@ -697,12 +696,12 @@ for subject in subjects_to_analyze:
                         for iElec in range(len(channels_labels)):
 
                             # draw 0 line
-                            y = np.empty((ccep_average.shape[2], 1))
+                            y = np.empty((averages.shape[2], 1))
                             y.fill(len(channels_labels) - iElec)
                             ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
-                            y = ccep_average[iElec, iPair, :] / 500
+                            y = averages[iElec, iPair, :] / 500
                             y += len(channels_labels) - iElec
 
                             # nan out the stimulation
