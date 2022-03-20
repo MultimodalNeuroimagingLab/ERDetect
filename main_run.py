@@ -365,6 +365,7 @@ for subject in subjects_to_analyze:
                         exit(1)
                     trial_onsets.append(float(row['onset']))
                     trial_pairs.append(pair)
+
             if len(trials_bad_onsets) > 0:
                 log_indented_line('Number of trials marked as bad (excluded):', str(len(trials_bad_onsets)))
 
@@ -449,7 +450,10 @@ for subject in subjects_to_analyze:
             # read, normalize by median and average the trials within the condition
             # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
             #       efficient when only the averages are needed
-            logging.info('- Reading data and calculating metrics...')
+            if len(metric_callbacks) == 0:
+                logging.info('- Reading data...')
+            else:
+                logging.info('- Reading data and calculating metrics...')
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
             sampling_rate, ccep_average, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
