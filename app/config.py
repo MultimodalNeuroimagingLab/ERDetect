@@ -19,7 +19,6 @@ from utils.misc import is_number, is_valid_numeric_range, numbers_to_padded_stri
 #
 # constants
 #
-VALID_FORMAT_EXTENSIONS         = ('.mefd', '.edf', '.vhdr', '.vmrk', '.eeg')   # valid data format to search for (European Data Format, BrainVision and MEF3)
 OUTPUT_IMAGE_SIZE               = 2000                                          # the number of pixels that is used as the "initial" height or width for the output images
 LOGGING_CAPTION_INDENT_LENGTH   = 50                                            # the indent length of the caption in a logging output string
 VALID_CHANNEL_TYPES             = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')

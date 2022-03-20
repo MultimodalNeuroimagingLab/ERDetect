@@ -26,9 +26,10 @@ import scipy.io as sio
 from matplotlib import cm
 
 from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set, rem as cfg_rem,\
-    VALID_FORMAT_EXTENSIONS, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, \
+    OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
+from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
 from app.detection import ieeg_detect_n1
