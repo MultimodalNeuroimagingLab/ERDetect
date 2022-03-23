@@ -176,10 +176,10 @@ def load_config(filepath):
             json_config = json.load(json_file)
     except IOError:
         logging.error('Could not access configuration file at \'' + filepath + '\'')
-        return None
+        return False
     except json.decoder.JSONDecodeError as e:
         logging.error('Could not interpret configuration file at \'' + filepath + '\', make sure the JSON syntax is valid: \'' + str(e) + '\'')
-        return None
+        return False
 
     #
     # read helper functions
