@@ -300,8 +300,9 @@ for subject in subjects_to_analyze:
             #
 
             # retrieve the channel metadata from the channels.tsv file
-            csv = load_channel_info(bids_subset_root + '_channels.tsv')
-            if csv is None:
+            try:
+                csv = load_channel_info(bids_subset_root + '_channels.tsv')
+            except (FileNotFoundError, LookupError):
                 logging.error('Could not load the channel metadata, exiting...')
                 exit(1)
 
@@ -339,8 +340,9 @@ for subject in subjects_to_analyze:
             #
 
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
-            csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
-            if csv is None:
+            try:
+                csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
+            except (FileNotFoundError, LookupError):
                 logging.error('Could not load the stimulation event metadata, exiting...')
                 exit(1)
 
@@ -457,13 +459,14 @@ for subject in subjects_to_analyze:
                 logging.info('- Reading data and calculating metrics...')
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
-            sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
-                                                                         trial_epoch=cfg('trials', 'trial_epoch'),
-                                                                         baseline_norm=cfg('trials', 'baseline_norm'),
-                                                                         baseline_epoch=cfg('trials', 'baseline_epoch'),
-                                                                         out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
-                                                                         metric_callbacks=metric_callbacks)
-            if sampling_rate is None or averages is None:
+            try:
+                sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_labels, stimpair_trial_onsets,
+                                                                             trial_epoch=cfg('trials', 'trial_epoch'),
+                                                                             baseline_norm=cfg('trials', 'baseline_norm'),
+                                                                             baseline_epoch=cfg('trials', 'baseline_epoch'),
+                                                                             out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
+                                                                             metric_callbacks=metric_callbacks)
+            except (ValueError, RuntimeError):
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
 

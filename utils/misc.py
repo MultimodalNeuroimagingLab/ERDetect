@@ -39,6 +39,7 @@ def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
 
     """
     # initialize a data buffer (channel x trials/epochs x time)
+    mem = None
     try:
 
         # create a ndarray object (no memory is allocated here)
@@ -57,8 +58,11 @@ def allocate_array(dimensions, fill_value=np.nan, dtype='float64'):
         return data
 
     except MemoryError:
-        logging.error('Not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)')
-        return None
+        if mem is None:
+            logging.error('Not enough memory available to create array.\n(for docker users: extend the memory resources available to the docker service)')
+        else:
+            logging.error('Not enough memory available to create array.\nAt least ' + str(int((mem.used + data_bytes_needed) / (1024.0 ** 2))) + ' MB total is needed, most likely more.\n(for docker users: extend the memory resources available to the docker service)')
+        raise MemoryError('Not enough memory available to create array.')
 
 
 def create_figure(width=500, height=500, onScreen=False):
