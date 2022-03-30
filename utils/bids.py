@@ -66,42 +66,42 @@ def load_event_info(tsv_filepath, addition_required_columns=None):
     return csv
 
 
-def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1), out_of_bound_handling='error', high_pass=None):
+def load_data_epochs(data_path, retrieve_channels, onsets, trial_epoch=(-1, 3), baseline_norm=None, baseline_epoch=(-1, -0.1), out_of_bound_handling='error', high_pass=None):
     """
     Load and epoch the data into a matrix based on channels, the trial onsets and the epoch range (relative to the onsets)
 
     Args:
-        data_path (str):                Path to the data file or folder
-        channels (list or tuple):       The channels that should read from the data, the output will be sorted
-                                        according to this input argument.
-        onsets (1d list or tuple):      The onsets of the trials around which to epoch the data
-        trial_epoch (tuple):            The time-span that will be considered as the signal belonging to a single trial.
-                                        Expressed as a tuple with the start- and end-point in seconds relative to
-                                        the onset of the trial (e.g. the standard tuple of '-1, 3' will extract
-                                        the signal in the period from 1s before the trial onset to 3s after trial onset).
-        baseline_norm (None or str):    Baseline normalization setting [None, 'Mean' or 'Median']. If other than None,
-                                        normalizes each trial epoch by subtracting the mean or median of part of the
-                                        trial (the epoch of the trial indicated in baseline_epoch)
-        baseline_epoch (tuple):         The time-span on which the baseline is calculated, expressed as a tuple with the
-                                        start- and end-point in seconds relative to the trial onset (e.g. the
-                                        standard tuple of '-1, -.1' will use the period from 1s before trial onset
-                                        to 100ms before trial onset to calculate the baseline on); this argument
-                                        is only used when baseline_norm is set to mean or median
-        out_of_bound_handling (str):    Configure the handling of out-of-bound trial epochs;
-                                            'error': (default) Throw an error and return when any epoch is out of bound;
-                                            'first_last_only': Allows only the first trial epoch to start before the
-                                                               data-set and the last trial epoch to end beyond the
-                                                               length of the data-set, the trial epochs will be padded
-                                                               with NaN values. Note that the first and last trial are
-                                                               determined by the first and last entry in the 'onsets'
-                                                               parameter, which is not sorted by this function;
-                                            'allow':           Allow trial epochs to be out-of-bound, NaNs values will
-                                                               be used for part of, or the entire, the trial epoch
+        data_path (str):                    Path to the data file or folder
+        retrieve_channels (list or tuple):  The channels (by name) of which the data should be retrieved, the output will
+                                            be sorted accordingly according to this input argument.
+        onsets (1d list or tuple):          The onsets of the trials around which to epoch the data
+        trial_epoch (tuple):                The time-span that will be considered as the signal belonging to a single trial.
+                                            Expressed as a tuple with the start- and end-point in seconds relative to
+                                            the onset of the trial (e.g. the standard tuple of '-1, 3' will extract
+                                            the signal in the period from 1s before the trial onset to 3s after trial onset).
+        baseline_norm (None or str):        Baseline normalization setting [None, 'Mean' or 'Median']. If other than None,
+                                            normalizes each trial epoch by subtracting the mean or median of part of the
+                                            trial (the epoch of the trial indicated in baseline_epoch)
+        baseline_epoch (tuple):             The time-span on which the baseline is calculated, expressed as a tuple with the
+                                            start- and end-point in seconds relative to the trial onset (e.g. the
+                                            standard tuple of '-1, -.1' will use the period from 1s before trial onset
+                                            to 100ms before trial onset to calculate the baseline on); this argument
+                                            is only used when baseline_norm is set to mean or median
+        out_of_bound_handling (str):        Configure the handling of out-of-bound trial epochs;
+                                                'error': (default) Throw an error and return when any epoch is out of bound;
+                                                'first_last_only': Allows only the first trial epoch to start before the
+                                                                   data-set and the last trial epoch to end beyond the
+                                                                   length of the data-set, the trial epochs will be padded
+                                                                   with NaN values. Note that the first and last trial are
+                                                                   determined by the first and last entry in the 'onsets'
+                                                                   parameter, which is not sorted by this function;
+                                                'allow':           Allow trial epochs to be out-of-bound, NaNs values will
+                                                                   be used for part of, or the entire, the trial epoch
 
     Returns:
-        sampling_rate (int or double):  the sampling rate at which the data was acquired
-        data (ndarray):                 A three-dimensional array with data epochs per channel (format: channel x
-                                        trials/epochs x time); or None when an error occurs
+        sampling_rate (int or double):      the sampling rate at which the data was acquired
+        data (ndarray):                     A three-dimensional array with data epochs per channel (format: channel x
+                                            trials/epochs x time); or None when an error occurs
 
     Note: this function's input arguments are in seconds relative to the trial onsets because the sample rate will
           only be known till after we read the data
@@ -123,13 +123,13 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
     # read and process the data
     #
     try:
-        
+
         if data_reader.data_format in (0, 1):
             # EDF or BrainVision format, use MNE to read
 
             # load the data by iterating over the channels and picking out the epochs, for EDF and BrainVision this is
             # a reasonable options since MNE already loads the entire dataset in memory
-            sampling_rate, data = __load_data_epochs__by_channels(  data_reader, channels, onsets,
+            sampling_rate, data = __load_data_epochs__by_channels(  data_reader, retrieve_channels, onsets,
                                                                     trial_epoch=trial_epoch,
                                                                     baseline_method=baseline_method, baseline_epoch=baseline_epoch,
                                                                     out_of_bound_method=out_of_bound_method)
@@ -141,7 +141,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
             # MEF3 format
 
             # load the data by iterating over the epochs, for MEF3 this is the most memory efficient (and likely fastest)
-            sampling_rate, data = __load_data_epochs__by_trial(data_reader, channels, onsets,
+            sampling_rate, data = __load_data_epochs__by_trial(data_reader, retrieve_channels, onsets,
                                                                trial_epoch=trial_epoch,
                                                                baseline_method=baseline_method, baseline_epoch=baseline_epoch,
                                                                out_of_bound_method=out_of_bound_method)
@@ -157,7 +157,7 @@ def load_data_epochs(data_path, channels, onsets, trial_epoch=(-1, 3), baseline_
     return sampling_rate, data
 
 
-def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoch=(-1, 3), baseline_norm=None,
+def load_data_epochs_averages(data_path, retrieve_channels, conditions_onsets, trial_epoch=(-1, 3), baseline_norm=None,
                               baseline_epoch=(-1, -0.1), out_of_bound_handling='error', metric_callbacks=None):
     """
     Load, epoch and return the average for each channel and condition (i.e. the signal in time averaged
@@ -171,8 +171,8 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
 
     Args:
         data_path (str):                      Path to the data file or folder
-        channels (list or tuple):             The channels that should read from the data, the output will be sorted
-                                              according to this input argument.
+        retrieve_channels (list or tuple):    The channels (by name) of which the data should be retrieved, the output
+                                              will be sorted accordingly
         conditions_onsets (2d list or tuple): A two-dimensional list to indicate the conditions, and the onsets
                                               of the trials that belong to each condition.
                                               (format: conditions x condition onsets)
@@ -247,7 +247,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             #
             # Note:     This method is good for EDF and BrainVision because MNE already loads the entire set in memory. So
             #           there is no minimum of loading of data possible.
-            sampling_rate, data, metric_values = __load_data_epoch_averages__by_channel_condition_trial(data_reader, channels, conditions_onsets,
+            sampling_rate, data, metric_values = __load_data_epoch_averages__by_channel_condition_trial(data_reader, retrieve_channels, conditions_onsets,
                                                                                                         trial_epoch=trial_epoch,
                                                                                                         baseline_method=baseline_method, baseline_epoch=baseline_epoch,
                                                                                                         out_of_bound_method=out_of_bound_method, metric_callbacks=metric_callbacks)
@@ -261,7 +261,7 @@ def load_data_epochs_averages(data_path, channels, conditions_onsets, trial_epoc
             #
             # For MEF3 this is the fastest solution while using a small amount of memory (because only the required data is loaded)
             #
-            sampling_rate, data, metric_values = __load_data_epoch_averages__by_condition_trial(data_reader, channels, conditions_onsets,
+            sampling_rate, data, metric_values = __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channels, conditions_onsets,
                                                                                                 trial_epoch=trial_epoch,
                                                                                                 baseline_method=baseline_method, baseline_epoch=baseline_epoch,
                                                                                                 out_of_bound_method=out_of_bound_method, metric_callbacks=metric_callbacks)
@@ -415,7 +415,7 @@ def __epoch_data__from_channel_data__by_trials(ref_data, channel_idx, channel_da
     return ref_data
 
 
-def __load_data_epochs__by_channels(data_reader, channels, onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method):
+def __load_data_epochs__by_channels(data_reader, retrieve_channels, onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method):
     """
     Load data epochs to a matrix (format: channel x trials/epochs x time) by iterating over and loading data per channel
     and retrieving the trial-epochs
@@ -426,8 +426,9 @@ def __load_data_epochs__by_channels(data_reader, channels, onsets, trial_epoch, 
             the '__load_data_epochs__by_trial' method (which should be equally fast or even faster)
 
     Args:
-        data_reader (IeegDataReader):   An instance of the IeegDataReader to retrieve metadata and channel data
-        channels (list or tuple):       The channels that should read from th
+        data_reader (IeegDataReader):       An instance of the IeegDataReader to retrieve metadata and channel data
+        retrieve_channels (list or tuple):  The channels (by name) of which the data should be retrieved, the output
+                                            will be sorted accordingly
     """
 
     # calculate the size of the time dimension (in samples)
@@ -436,17 +437,17 @@ def __load_data_epochs__by_channels(data_reader, channels, onsets, trial_epoch, 
 
     # initialize a data buffer (channel x trials/epochs x time)
     try:
-        data = allocate_array((len(channels), len(onsets), trial_num_samples))
+        data = allocate_array((len(retrieve_channels), len(onsets), trial_num_samples))
     except MemoryError:
         raise MemoryError('Not enough memory create a data output matrix')
 
     # loop through the included channels
-    for channel_idx in range(len(channels)):
+    for channel_idx in range(len(retrieve_channels)):
 
         try:
 
             # retrieve the channel data
-            channel_data = data_reader.retrieve_channel_data(channels[channel_idx])
+            channel_data = data_reader.retrieve_channel_data(retrieve_channels[channel_idx])
 
             # epoch the channel data
             __epoch_data__from_channel_data__by_trials(data,
@@ -464,7 +465,7 @@ def __load_data_epochs__by_channels(data_reader, channels, onsets, trial_epoch, 
     return data_reader.sampling_rate, data
 
 
-def __load_data_epochs__by_trial(data_reader, channels, onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method):
+def __load_data_epochs__by_trial(data_reader, retrieve_channels, onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method):
     """
     Load data epochs to a matrix (format: channel x trials/epochs x time) by looping over and loading data per
     trial (for all channels) and retrieving the trial data by iterating over each of the channels
@@ -475,8 +476,9 @@ def __load_data_epochs__by_trial(data_reader, channels, onsets, trial_epoch, bas
             memory first.
 
     Args:
-        data_reader (IeegDataReader):   An instance of the IeegDataReader to retrieve metadata and channel data
-        channels (list or tuple):       The channels that should read from th
+        data_reader (IeegDataReader):       An instance of the IeegDataReader to retrieve metadata and channel data
+        retrieve_channels (list or tuple):  The channels (by name) of which the data should be retrieved, the output
+                                            will be sorted accordingly
     """
 
     # calculate the size of the time dimension (in samples)
@@ -485,7 +487,7 @@ def __load_data_epochs__by_trial(data_reader, channels, onsets, trial_epoch, bas
 
     # initialize a data buffer (channel x trials/epochs x time)
     try:
-        data = allocate_array((len(channels), len(onsets), trial_num_samples))
+        data = allocate_array((len(retrieve_channels), len(onsets), trial_num_samples))
     except MemoryError:
         raise MemoryError('Not enough memory create a data output matrix')
 
@@ -549,12 +551,12 @@ def __load_data_epochs__by_trial(data_reader, channels, onsets, trial_epoch, bas
 
         # load the trial data
         try:
-            trial_data = data_reader.retrieve_sample_range_data(channels, trial_sample_start, trial_sample_end)
+            trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end)
         except (RuntimeError, LookupError):
             raise RuntimeError('Could not load data')
 
         # loop through the channels
-        for channel_idx in range(len(channels)):
+        for channel_idx in range(len(retrieve_channels)):
 
             # extract the trial data and perform baseline normalization on the trial if needed
             if baseline_method == 0:
@@ -578,7 +580,7 @@ def __load_data_epochs__by_trial(data_reader, channels, onsets, trial_epoch, bas
     return data_reader.sampling_rate, data
 
 
-def __load_data_epoch_averages__by_condition_trial(data_reader, channels, conditions_onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method, metric_callbacks):
+def __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channels, conditions_onsets, trial_epoch, baseline_method, baseline_epoch, out_of_bound_method, metric_callbacks):
     """
     Load data epoch averages to a matrix (format: channel x condition x time) by looping over conditions, looping over
     the trials within a condition and then load the data per condition-trial (for all channels) and perform
@@ -598,7 +600,7 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
 
     # initialize a data buffer (channel x conditions x samples)
     try:
-        data = allocate_array((len(channels), len(conditions_onsets), trial_num_samples))
+        data = allocate_array((len(retrieve_channels), len(conditions_onsets), trial_num_samples))
     except MemoryError:
         raise MemoryError('Not enough memory create a data output matrix')
 
@@ -607,9 +609,9 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
         metric_values = None
         if metric_callbacks is not None:
             if callable(metric_callbacks):
-                metric_values = allocate_array((len(channels), len(conditions_onsets)))
+                metric_values = allocate_array((len(retrieve_channels), len(conditions_onsets)))
             elif type(metric_callbacks) is tuple and len(metric_callbacks) > 0:
-                metric_values = allocate_array((len(channels), len(conditions_onsets), len(metric_callbacks)))
+                metric_values = allocate_array((len(retrieve_channels), len(conditions_onsets), len(metric_callbacks)))
     except MemoryError:
         raise MemoryError('Not enough memory create metric output matrix')
 
@@ -621,7 +623,7 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
 
         # initialize a buffer to put all the data for this condition in (channels x trials x samples)
         try:
-            condition_data = allocate_array((len(channels), len(conditions_onsets[condition_idx]), trial_num_samples))
+            condition_data = allocate_array((len(retrieve_channels), len(conditions_onsets[condition_idx]), trial_num_samples))
         except MemoryError:
             raise MemoryError('Not enough memory create an condition-data matrix')
 
@@ -632,7 +634,7 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
         baseline_data = None
         if not baseline_method == 0 and metric_callbacks is not None:
             try:
-                baseline_data = allocate_array((len(channels), len(conditions_onsets[condition_idx]), baseline_num_samples))
+                baseline_data = allocate_array((len(retrieve_channels), len(conditions_onsets[condition_idx]), baseline_num_samples))
             except MemoryError:
                 raise MemoryError('Not enough memory create temporary baseline-data matrix')
 
@@ -693,12 +695,12 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
 
             # load the trial data
             try:
-                trial_data = data_reader.retrieve_sample_range_data(channels, trial_sample_start, trial_sample_end)
+                trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end)
             except (RuntimeError, LookupError):
                 raise RuntimeError('Could not load data')
 
             # loop through the channels
-            for channel_idx in range(len(channels)):
+            for channel_idx in range(len(retrieve_channels)):
 
                 # extract the trial data and perform baseline normalization on the trial if needed
                 #
@@ -736,7 +738,7 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, channels, condit
 
             # per channel, pass the trials x epoch un-normalized subset to the callback function
             # and retrieve the result
-            for channel_idx in range(len(channels)):
+            for channel_idx in range(len(retrieve_channels)):
 
                 if callable(metric_callbacks):
 
