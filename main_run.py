@@ -344,7 +344,7 @@ for subject in subjects_to_analyze:
 
 
             #
-            # retrieve events and stimulus-pairs
+            # retrieve trials
             #
 
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
@@ -386,13 +386,18 @@ for subject in subjects_to_analyze:
                 exit(1)
 
 
+            #
+            # retrieve stimulus-pairs
+            #
+
             # determine the stimulation-pairs conditions (and the trial and electrodes that belong to them)
             # (note that the 'concat_bidirectional_pairs' configuration setting is taken into account here)
             #
-            stimpair_labels = []                # for each pair, the labels of the electrodes that were stimulated
-            stimpair_trial_indices = []         # for each pair, the indices of the trials that were involved
-            stimpair_trial_onsets = []          # for each pair, the indices of the trials that were involved
-            stimpair_electrode_indices = []     # for each pair, the indices of the electrodes that were stimulated
+            stim_pairs_onsets = dict()              # for each pair, the onsets of the trials that were involved
+            stim_pairs_electrode_indices = dict()   # for each pair, the indices of the electrodes that were stimulated
+
+            # loop over all the combinations of channels
+            # Note:     only the combinations of stim-pairs that actually have events/trials end up in the output
             for iChannel0 in range(len(channels_incl_detect)):
                 for iChannel1 in range(len(channels_incl_detect)):
 
@@ -412,37 +417,35 @@ for subject in subjects_to_analyze:
 
                     # add the pair if there are trials for it
                     if len(indices) > 0:
-                        stimpair_labels.append(channels_incl_detect[iChannel0] + '-' + channels_incl_detect[iChannel1])
-                        stimpair_electrode_indices.append((iChannel0, iChannel1))
-                        stimpair_trial_indices.append(indices)
-                        stimpair_trial_onsets.append([trial_onsets[i] for i in indices])
+                        stim_pairs_onsets[channels_incl_detect[iChannel0] + '-' + channels_incl_detect[iChannel1]] = [trial_onsets[i] for i in indices]
+                        stim_pairs_electrode_indices[channels_incl_detect[iChannel0] + '-' + channels_incl_detect[iChannel1]] = (iChannel0, iChannel1)
 
             # search for stimulus-pairs with too little trials
             stimpair_remove_indices = []
-            for iPair in range(len(stimpair_labels)):
-                if len(stimpair_trial_indices[iPair]) < cfg('trials', 'minimum_stimpair_trials'):
-                    stimpair_remove_indices.append(iPair)
+            for stim_pair, onsets in stim_pairs_onsets.items():
+                if len(onsets) < cfg('trials', 'minimum_stimpair_trials'):
+                    stimpair_remove_indices.append(stim_pair)
+
+            # remove the stimulus-pairs with too little trials
             if len(stimpair_remove_indices) > 0:
 
                 # message
-                stimpair_print = [str(stimpair_labels[stimpair_remove_indices[i]]) + ' (' + str(len(stimpair_trial_indices[stimpair_remove_indices[i]])) + ' trials)' for i in range(len(stimpair_remove_indices))]
+                stimpair_print = [stim_pair + ' (' + str(len(stim_pairs_onsets[stim_pair])) + ' trials)' for stim_pair in stimpair_remove_indices]
                 stimpair_print = [str_print.ljust(len(max(stimpair_print, key=len)), ' ') for str_print in stimpair_print]
                 logging.info(multi_line_list(stimpair_print, LOGGING_CAPTION_INDENT_LENGTH, 'Stim-pairs excluded by number of trials:', 4, '   '))
 
                 # remove those stimulation-pairs
-                for index in sorted(stimpair_remove_indices, reverse=True):
-                    del stimpair_labels[index]
-                    del stimpair_electrode_indices[index]
-                    del stimpair_trial_indices[index]
-                    del stimpair_trial_onsets[index]
+                for stim_pair in stimpair_remove_indices:
+                    del stim_pairs_onsets[stim_pair]
+                    del stim_pairs_electrode_indices[stim_pair]
 
             # display stimulation-pair/trial information
-            stimpair_print = [str(stimpair_labels[i]) + ' (' + str(len(stimpair_trial_indices[i])) + ' trials)' for i in range(len(stimpair_labels))]
+            stimpair_print = [stim_pair + ' (' + str(len(onsets)) + ' trials)' for stim_pair, onsets in stim_pairs_onsets.items()]
             stimpair_print = [str_print.ljust(len(max(stimpair_print, key=len)), ' ') for str_print in stimpair_print]
-            logging.info(multi_line_list(stimpair_print, LOGGING_CAPTION_INDENT_LENGTH, 'Stimulation pairs included:', 4, '   ', str(len(stimpair_labels))))
+            logging.info(multi_line_list(stimpair_print, LOGGING_CAPTION_INDENT_LENGTH, 'Stimulation pairs included:', 4, '   ', str(len(stim_pairs_onsets))))
 
             # check if there are stimulus-pairs
-            if len(stimpair_labels) == 0:
+            if len(stim_pairs_onsets) == 0:
                 logging.error('No stimulus-pairs were found, exiting...')
                 exit(1)
 
@@ -468,7 +471,7 @@ for subject in subjects_to_analyze:
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
             try:
-                sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_incl_detect, stimpair_trial_onsets,
+                sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_incl_detect, list(stim_pairs_onsets.values()),
                                                                              trial_epoch=cfg('trials', 'trial_epoch'),
                                                                              baseline_norm=cfg('trials', 'baseline_norm'),
                                                                              baseline_epoch=cfg('trials', 'baseline_epoch'),
@@ -479,9 +482,12 @@ for subject in subjects_to_analyze:
                 exit(1)
 
             # for each stimulation pair, NaN out the values of the electrodes that were stimulated
-            for iPair in range(len(stimpair_labels)):
-                averages[stimpair_electrode_indices[iPair][0], iPair, :] = np.nan
-                averages[stimpair_electrode_indices[iPair][1], iPair, :] = np.nan
+            # Note: the key order in stim_pairs_onsets and the first dimension of the CCEP averages matrix should match
+            iPair = 0
+            for stim_pair in stim_pairs_onsets.keys():
+                averages[stim_pairs_electrode_indices[stim_pair][0], iPair, :] = np.nan
+                averages[stim_pairs_electrode_indices[stim_pair][1], iPair, :] = np.nan
+                iPair += 1
 
             # determine the sample of stimulus onset (counting from the epoch start)
             onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
@@ -516,7 +522,7 @@ for subject in subjects_to_analyze:
             saveDict['sampling_rate'] = sampling_rate
             saveDict['onset_sample'] = onset_sample
             saveDict['ccep_average'] = averages
-            saveDict['stimpair_labels'] = np.asarray(stimpair_labels, dtype='object')
+            saveDict['stimpair_labels'] = np.asarray(list(stim_pairs_onsets.keys()), dtype='object')
             saveDict['channel_labels'] = np.asarray(channels_incl_detect, dtype='object')
             saveDict['config'] = get_config_dict()
             if cfg('metrics', 'cross_proj', 'enabled'):
@@ -583,8 +589,8 @@ for subject in subjects_to_analyze:
                 legend_font_size = round(OUTPUT_IMAGE_SIZE / 90)
 
                 # Adjust the font sizes of the tick according to the number of items (minimum font-size remains 4)
-                if len(stimpair_labels) > 36 and axis_ticks_font_size > 4:
-                    stimpair_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(stimpair_labels))
+                if len(stim_pairs_onsets) > 36 and axis_ticks_font_size > 4:
+                    stimpair_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(stim_pairs_onsets))
                 else:
                     stimpair_axis_ticks_font_size = axis_ticks_font_size
                 if len(channels_incl_detect) > 36 and axis_ticks_font_size > 4:
@@ -593,8 +599,8 @@ for subject in subjects_to_analyze:
                     electrode_axis_ticks_font_size = axis_ticks_font_size
 
                 # account for the situation where there are only a small number of stimulation-pairs.
-                if len(stimpair_labels) < 10:
-                    stimpair_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(stimpair_labels) / 10)
+                if len(stim_pairs_onsets) < 10:
+                    stimpair_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(stim_pairs_onsets) / 10)
                 else:
                     stimpair_y_image_height = OUTPUT_IMAGE_SIZE
 
@@ -626,16 +632,16 @@ for subject in subjects_to_analyze:
                         ax.set_title(channels_incl_detect[iElec] + '\n', fontsize=title_font_size, fontweight='bold')
 
                         # loop through the stimulation-pairs
-                        for iPair in range(len(stimpair_labels)):
+                        for iPair in range(len(stim_pairs_onsets)):
 
                             # draw 0 line
                             y = np.empty((averages.shape[2], 1))
-                            y.fill(len(stimpair_labels) - iPair)
+                            y.fill(len(stim_pairs_onsets) - iPair)
                             ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = averages[iElec, iPair, :] / 500
-                            y += len(stimpair_labels) - iPair
+                            y += len(stim_pairs_onsets) - iPair
 
                             # nan out the stimulation
                             #TODO, only nan if within display range
@@ -651,7 +657,7 @@ for subject in subjects_to_analyze:
                                 if not isnan(n1_peak_indices[iElec, iPair]):
                                     xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                     yN1 = n1_peak_amplitudes[iElec, iPair] / 500
-                                    yN1 += len(stimpair_labels) - iPair
+                                    yN1 += len(stim_pairs_onsets) - iPair
                                     ax.plot(xN1, yN1, 'bo')
 
                         # set the x-axis
@@ -662,14 +668,14 @@ for subject in subjects_to_analyze:
 
                         # set the y-axis
                         ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
-                        ax.set_ylim((0, len(stimpair_labels) + 1))
-                        ax.set_yticks(np.arange(1, len(stimpair_labels) + 1, 1))
-                        ax.set_yticklabels(np.flip(stimpair_labels), fontsize=stimpair_axis_ticks_font_size)
+                        ax.set_ylim((0, len(stim_pairs_onsets) + 1))
+                        ax.set_yticks(np.arange(1, len(stim_pairs_onsets) + 1, 1))
+                        ax.set_yticklabels(np.flip(list(stim_pairs_onsets.keys())), fontsize=stimpair_axis_ticks_font_size)
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
-                        legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
+                        legend_y = 2 if len(stim_pairs_onsets) > 4 else (1 if len(stim_pairs_onsets) > 1 else 0)
                         ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
                         ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
 
@@ -692,17 +698,19 @@ for subject in subjects_to_analyze:
                     logging.info('- Generating stimulation-pair plots...')
 
                     # create progress bar
-                    print_progressbar(0, len(stimpair_labels), prefix='Progress:', suffix='Complete', length=50)
+                    print_progressbar(0, len(stim_pairs_onsets), prefix='Progress:', suffix='Complete', length=50)
 
                     # loop through the stimulation-pairs
-                    for iPair in range(len(stimpair_labels)):
+                    # Note: the key order in stim_pairs_onsets and the first dimension of the CCEP averages matrix should match
+                    iPair = 0
+                    for stim_pair in stim_pairs_onsets.keys():
 
                         # create a figure and retrieve the axis
                         fig = create_figure(OUTPUT_IMAGE_SIZE, electrode_y_image_height, False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(stimpair_labels[iPair] + '\n', fontsize=title_font_size, fontweight='bold')
+                        ax.set_title(stim_pair + '\n', fontsize=title_font_size, fontweight='bold')
 
                         # loop through the electrodes
                         for iElec in range(len(channels_incl_detect)):
@@ -745,7 +753,7 @@ for subject in subjects_to_analyze:
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
-                        legend_y = 2 if len(stimpair_labels) > 4 else (1 if len(stimpair_labels) > 1 else 0)
+                        legend_y = 2 if len(stim_pairs_onsets) > 4 else (1 if len(stim_pairs_onsets) > 1 else 0)
                         ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
                         ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
 
@@ -754,10 +762,14 @@ for subject in subjects_to_analyze:
                         ax.spines['top'].set_visible(False)
 
                         # save figure
-                        fig.savefig(os.path.join(output_root, 'stimpair_' + str(stimpair_labels[iPair]) + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(output_root, 'stimpair_' + stim_pair + '.png'), bbox_inches='tight')
 
                         # update progress bar
-                        print_progressbar(iPair + 1, len(stimpair_labels), prefix='Progress:', suffix='Complete', length=50)
+                        print_progressbar(iPair + 1, len(stim_pairs_onsets), prefix='Progress:', suffix='Complete', length=50)
+
+                        #
+                        iPair += 1
+
 
                 #
                 # generate the matrices
@@ -768,7 +780,7 @@ for subject in subjects_to_analyze:
                     logging.info('- Generating matrices...')
 
                     # calculate the image width based on the number of stim-pair and electrodes
-                    image_width = stimpair_y_image_height / len(stimpair_labels) * len(channels_incl_detect)
+                    image_width = stimpair_y_image_height / len(stim_pairs_onsets) * len(channels_incl_detect)
                     image_width += 800
 
                     # make sure the image width does not exceed the matplotlib limit of 2**16
@@ -785,7 +797,7 @@ for subject in subjects_to_analyze:
                     # if there are 10 times more electrodes than stimulation-pairs, then allow
                     # the matrix to squeeze horizontally
                     matrix_aspect = 1
-                    element_ratio = len(channels_incl_detect) / len(stimpair_labels)
+                    element_ratio = len(channels_incl_detect) / len(stim_pairs_onsets)
                     if element_ratio > 10:
                         matrix_aspect = element_ratio / 8
 
@@ -811,8 +823,8 @@ for subject in subjects_to_analyze:
                     im = ax.imshow(np.transpose(matrix_amplitudes), origin='upper', vmin=0, vmax=500, cmap=cmap, aspect=matrix_aspect)
 
                     # set labels and ticks
-                    ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
-                    ax.set_yticklabels(stimpair_labels, fontsize=stimpair_axis_ticks_font_size)
+                    ax.set_yticks(np.arange(0, len(stim_pairs_onsets), 1))
+                    ax.set_yticklabels(list(stim_pairs_onsets.keys()), fontsize=stimpair_axis_ticks_font_size)
                     ax.set_xticks(np.arange(0, len(channels_incl_detect), 1))
                     ax.set_xticklabels(channels_incl_detect,
                                        rotation=90,
@@ -861,8 +873,8 @@ for subject in subjects_to_analyze:
                     im = ax.imshow(np.transpose(matrix_latencies), origin='upper', vmin=0, cmap=cmap, aspect=matrix_aspect)
 
                     # set labels and ticks
-                    ax.set_yticks(np.arange(0, len(stimpair_labels), 1))
-                    ax.set_yticklabels(stimpair_labels, fontsize=stimpair_axis_ticks_font_size)
+                    ax.set_yticks(np.arange(0, len(stim_pairs_onsets), 1))
+                    ax.set_yticklabels(list(stim_pairs_onsets.keys()), fontsize=stimpair_axis_ticks_font_size)
                     ax.set_xticks(np.arange(0, len(channels_incl_detect), 1))
                     ax.set_xticklabels(channels_incl_detect,
                                        rotation=90,
