@@ -134,8 +134,6 @@ def load_data_epochs(data_path, retrieve_channels, onsets, trial_epoch=(-1, 3), 
                                                                     baseline_method=baseline_method, baseline_epoch=baseline_epoch,
                                                                     out_of_bound_method=out_of_bound_method)
 
-            if sampling_rate is None or data is None:
-                return None, None
 
         elif data_reader.data_format == 2:
             # MEF3 format
