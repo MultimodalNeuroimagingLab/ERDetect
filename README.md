@@ -1,5 +1,5 @@
-# N1Detect
-A BIDS Docker application for the automatic detection of early responses (N1) in CCEP data
+# Evoked Response Detection
+A BIDS Docker application for the automatic detection of evoked responses in CCEP data
 
 ## Usage
 
@@ -18,35 +18,39 @@ $ docker run -ti --rm \
 ```
 
 ## Configure detection
-To adjust the N1 detection and visualization settings, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter.
+To adjust the preprocessing, evoked response detection and visualization settings, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter.
 An example JSON of the standard settings has the following content:
 ```
 {
     "trials": {
-        "trial_epoch":                     [-1.0,        3.0],
-        "out_of_bounds_handling":          "first_last_only",
-        "baseline_epoch":                  [-1.0,       -0.1],
-        "baseline_norm":                   "median",
-        "concat_bidirectional_pairs":      true
+        "trial_epoch":                      [-1.0,        3.0],
+        "out_of_bounds_handling":           "first_last_only",
+        "baseline_epoch":                   [-1.0,       -0.1],
+        "baseline_norm":                    "median",
+        "concat_bidirectional_pairs":       true,
+        "minimum_stimpair_trials":          5
     },
 
     "channels": {
-        "types":                           ["ECOG", "SEEG", "DBS"]
+        "types":                            ["ECOG", "SEEG", "DBS"]
     },
 
     "n1_detect": {
-        "peak_search_epoch":               [ 0,          0.5],
-        "n1_search_epoch":                 [ 0.009,     0.09],
-        "n1_baseline_epoch":               [-1,         -0.1],
-        "n1_baseline_threshold_factor":    3.4
+        "peak_search_epoch":                [ 0,          0.5],
+        "n1_search_epoch":                  [ 0.009,     0.09],
+        "method":                           "std_base",
+        "std_base": {
+            "baseline_epoch":               [-1,         -0.1],
+            "baseline_threshold_factor":    3.4
+        }
     },
 
     "visualization": {
-        "x_axis_epoch":                    [-0.2,          1],
-        "blank_stim_epoch":                [-0.015,   0.0025],
-        "generate_electrode_images":       false,
-        "generate_stimpair_images":        false,
-        "generate_matrix_images":          true
+        "x_axis_epoch":                     [-0.2,          1],
+        "blank_stim_epoch":                 [-0.015,   0.0025],
+        "generate_electrode_images":        false,
+        "generate_stimpair_images":         false,
+        "generate_matrix_images":           true
     }
 }
 ```
