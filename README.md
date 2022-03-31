@@ -35,9 +35,9 @@ An example JSON of the standard settings has the following content:
         "types":                            ["ECOG", "SEEG", "DBS"]
     },
 
-    "n1_detect": {
+    "detection": {
         "peak_search_epoch":                [ 0,          0.5],
-        "n1_search_epoch":                  [ 0.009,     0.09],
+        "response_search_epoch":            [ 0.009,     0.09],
         "method":                           "std_base",
         "std_base": {
             "baseline_epoch":               [-1,         -0.1],

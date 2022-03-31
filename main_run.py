@@ -2,7 +2,7 @@
 """
 Early response detection - docker entry-point
 =====================================================
-Entry-point python script for the automatic detection of early responses (N1) in CCEP data.
+Entry-point python script for the automatic detection of evoked responses in CCEP data.
 
 
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
@@ -26,13 +26,13 @@ import scipy.io as sio
 from matplotlib import cm
 
 from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set, rem as cfg_rem,\
-    OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, \
-    CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD
+    OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
+    CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages, RerefStruct
 from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
-from app.detection import ieeg_detect_n1
+from app.detection import ieeg_detect_er
 
 
 #
@@ -193,29 +193,29 @@ if args.early_reref:
 
 # check for a method argument
 if args.method:
-    cfg_rem('n1_detect', 'std_base')
-    cfg_rem('n1_detect', 'cross_proj')
-    cfg_rem('n1_detect', 'waveform')
+    cfg_rem('detection', 'std_base')
+    cfg_rem('detection', 'cross_proj')
+    cfg_rem('detection', 'waveform')
     if args.method == "std_base":
-        cfg_set('std_base', 'n1_detect', 'method')
-        cfg_set(CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, 'n1_detect', 'std_base', 'baseline_epoch')
-        cfg_set(CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, 'n1_detect', 'std_base', 'baseline_threshold_factor')
+        cfg_set('std_base', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, 'detection', 'std_base', 'baseline_epoch')
+        cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, 'detection', 'std_base', 'baseline_threshold_factor')
     elif args.method == "cross_proj":
-        cfg_set('cross_proj', 'n1_detect', 'method')
-        cfg_set(CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, 'n1_detect', 'cross_proj', 'threshold')
+        cfg_set('cross_proj', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, 'detection', 'cross_proj', 'threshold')
     elif args.method == "waveform":
-        cfg_set('waveform', 'n1_detect', 'method')
-        cfg_set(CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD, 'n1_detect', 'waveform', 'threshold')
+        cfg_set('waveform', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD, 'detection', 'waveform', 'threshold')
     else:
         logging.error('Invalid method argument \'' + args.method + '\', pick one of the following: \'std_base\', \'cross_proj\' or \'waveform\'')
         exit(1)
 
 # if a metric is used for detection, enable them
-if cfg('n1_detect', 'method') == 'cross_proj' and not cfg('metrics', 'cross_proj', 'enabled'):
-    logging.warning('N1 detection is set to use cross-projections but the cross-projection metric is disabled, the cross-projection metric will be enabled')
+if cfg('detection', 'method') == 'cross_proj' and not cfg('metrics', 'cross_proj', 'enabled'):
+    logging.warning('Evoked response detection is set to use cross-projections but the cross-projection metric is disabled, the cross-projection metric will be enabled')
     cfg_set(True, 'metrics', 'cross_proj', 'enabled')
-if cfg('n1_detect', 'method') == 'waveform' and not cfg('metrics', 'waveform', 'enabled'):
-    logging.warning('N1 detection is set to use waveforms but the waveform metric is disabled, the waveform metric will be enabled')
+if cfg('detection', 'method') == 'waveform' and not cfg('metrics', 'waveform', 'enabled'):
+    logging.warning('Evoked response detection is set to use waveforms but the waveform metric is disabled, the waveform metric will be enabled')
     cfg_set(True, 'metrics', 'waveform', 'enabled')
 
 # print configuration information
@@ -243,16 +243,16 @@ if cfg('metrics', 'waveform', 'enabled'):
     log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
     log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
 logging.info('')
-log_indented_line('Peak search window:', str(cfg('n1_detect', 'peak_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'peak_search_epoch')[1]) + 's')
-log_indented_line('N1 search window:', str(cfg('n1_detect', 'n1_search_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'n1_search_epoch')[1]) + 's')
-log_indented_line('N1 detection method:', str(cfg('n1_detect', 'method')))
-if cfg('n1_detect', 'method') == 'std_base':
-    log_indented_line('    Std baseline window:', str(cfg('n1_detect', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('n1_detect', 'std_base', 'baseline_epoch')[1]) + 's')
-    log_indented_line('    Std baseline threshold factor:', str(cfg('n1_detect', 'std_base', 'baseline_threshold_factor')))
-elif cfg('n1_detect', 'method') == 'cross_proj':
-    log_indented_line('    Cross-projection detection threshold:', str(cfg('n1_detect', 'cross_proj', 'threshold')))
-elif cfg('n1_detect', 'method') == 'waveform':
-    log_indented_line('    Waveform detection threshold:', str(cfg('n1_detect', 'waveform', 'threshold')))
+log_indented_line('Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
+log_indented_line('Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
+log_indented_line('Evoked response detection method:', str(cfg('detection', 'method')))
+if cfg('detection', 'method') == 'std_base':
+    log_indented_line('    Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
+    log_indented_line('    Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
+elif cfg('detection', 'method') == 'cross_proj':
+    log_indented_line('    Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
+elif cfg('detection', 'method') == 'waveform':
+    log_indented_line('    Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
 logging.info('')
 log_indented_line('Visualization x-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
 log_indented_line('Visualization blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
@@ -633,18 +633,18 @@ for subject in subjects_to_analyze:
             # perform the N1 detection
             #
 
-            # detect N1s
-            logging.info('- Detecting N1s...')
-            n1_peak_indices, n1_peak_amplitudes = ieeg_detect_n1(averages, onset_sample, int(sampling_rate),
+            # detect evoked responses
+            logging.info('- Detecting evoked responses...')
+            er_peak_indices, er_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
                                                                  cross_proj_metrics=cross_proj_metrics,
                                                                  waveform_metrics=waveform_metrics)
-            if n1_peak_indices is None or n1_peak_amplitudes is None:
-                logging.error('N1 detection failed, exiting...')
+            if er_peak_indices is None or er_peak_amplitudes is None:
+                logging.error('Evoked response detection failed, exiting...')
                 exit(1)
 
-            # intermediate saving of the data and N1 detection as .mat
-            saveDict['n1_peak_indices'] = n1_peak_indices
-            saveDict['n1_peak_amplitudes'] = n1_peak_amplitudes
+            # intermediate saving of the data and evoked response detection results as .mat
+            saveDict['neg_peak_indices'] = er_peak_indices
+            saveDict['neg_peak_amplitudes'] = er_peak_amplitudes
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
 
@@ -748,11 +748,11 @@ for subject in subjects_to_analyze:
                                 ax.plot(x, y, linewidth=signal_line_thickness)
 
                                 # if app is detected, plot it
-                                if not isnan(n1_peak_indices[iElec, iPair]):
-                                    xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                                    yN1 = n1_peak_amplitudes[iElec, iPair] / 500
-                                    yN1 += len(stim_pairs_onsets) - iPair
-                                    ax.plot(xN1, yN1, 'bo')
+                                if not isnan(er_peak_indices[iElec, iPair]):
+                                    xNeg = er_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                    yNeg = er_peak_amplitudes[iElec, iPair] / 500
+                                    yNeg += len(stim_pairs_onsets) - iPair
+                                    ax.plot(xNeg, yNeg, 'bo')
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
@@ -826,11 +826,11 @@ for subject in subjects_to_analyze:
                             ax.plot(x, y, linewidth=signal_line_thickness)
 
                             # if app is detected, plot it
-                            if not isnan(n1_peak_indices[iElec, iPair]):
-                                xN1 = n1_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                                yN1 = n1_peak_amplitudes[iElec, iPair] / 500
-                                yN1 += len(channels_incl_detect) - iElec
-                                ax.plot(xN1, yN1, 'bo')
+                            if not isnan(er_peak_indices[iElec, iPair]):
+                                xNeg = er_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                yNeg = er_peak_amplitudes[iElec, iPair] / 500
+                                yNeg += len(channels_incl_detect) - iElec
+                                ax.plot(xNeg, yNeg, 'bo')
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
@@ -901,7 +901,7 @@ for subject in subjects_to_analyze:
                     #
                     
                     #
-                    matrix_amplitudes = n1_peak_amplitudes
+                    matrix_amplitudes = er_peak_amplitudes
                     #matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
                     matrix_amplitudes *= -1
 
@@ -947,17 +947,17 @@ for subject in subjects_to_analyze:
                     ax = fig.gca()
 
                     # retrieve the latencies and convert the indices (in samples) to time units (ms)
-                    matrix_latencies = n1_peak_indices
+                    matrix_latencies = er_peak_indices
                     matrix_latencies -= onset_sample
                     matrix_latencies /= sampling_rate
                     matrix_latencies *= 1000
                     #matrix_latencies[np.isnan(matrix_latencies)] = 0
 
-                    # determine the latest
-                    latest_N1 = np.nanmax(matrix_latencies)
-                    if np.isnan(latest_N1):
-                        latest_N1 = 10
-                    latest_N1 = int(ceil(latest_N1 / 10)) * 10
+                    # determine the latest negative response
+                    latest_neg = np.nanmax(matrix_latencies)
+                    if np.isnan(latest_neg):
+                        latest_neg = 10
+                    latest_neg = int(ceil(latest_neg / 10)) * 10
 
                     # create a color map
                     cmap = cm.get_cmap('summer_r').copy()
@@ -981,7 +981,7 @@ for subject in subjects_to_analyze:
                     # generate the legend tick values
                     legend_tick_values = []
                     legend_tick_labels = []
-                    for latency in range(0, latest_N1 + 10, 10):
+                    for latency in range(0, latest_neg + 10, 10):
                         legend_tick_values.append(latency)
                         legend_tick_labels.append(str(latency) + ' ms')
 

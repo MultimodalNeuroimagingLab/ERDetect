@@ -23,10 +23,10 @@ OUTPUT_IMAGE_SIZE               = 2000                                          
 LOGGING_CAPTION_INDENT_LENGTH   = 50                                            # the indent length of the caption in a logging output string
 VALID_CHANNEL_TYPES             = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')
 
-CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT = (-1, -0.1)
-CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR = 3.4
-CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD = 3.5
-CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD = 1000
+CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT = (-1, -0.1)
+CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR = 3.4
+CONFIG_DETECTION_CROSS_PROJ_THRESHOLD = 3.5
+CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD = 1000
 
 
 def __create_default_config():
@@ -69,13 +69,13 @@ def __create_default_config():
     config['metrics']['waveform']['epoch']                          = (0.012, 0.09)
     config['metrics']['waveform']['bandpass']                       = (10, 30)
 
-    config['n1_detect'] = dict()
-    config['n1_detect']['peak_search_epoch']                        = (0, 0.5)
-    config['n1_detect']['n1_search_epoch']                          = (0.009, 0.09)
-    config['n1_detect']['method']                                   = 'std_base'
-    config['n1_detect']['std_base'] = dict()
-    config['n1_detect']['std_base']['baseline_epoch']               = CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT
-    config['n1_detect']['std_base']['baseline_threshold_factor']    = CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR
+    config['detection'] = dict()
+    config['detection']['peak_search_epoch']                        = (0, 0.5)
+    config['detection']['response_search_epoch']                    = (0.009, 0.09)
+    config['detection']['method']                                   = 'std_base'
+    config['detection']['std_base'] = dict()
+    config['detection']['std_base']['baseline_epoch']               = CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT
+    config['detection']['std_base']['baseline_threshold_factor']    = CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR
 
     config['visualization'] = dict()
     config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
@@ -402,33 +402,33 @@ def load_config(filepath):
         return False
 
     # n1 peak detection settings
-    if not retrieve_config_range(json_config, config, 'n1_detect', 'peak_search_epoch'):
+    if not retrieve_config_range(json_config, config, 'detection', 'peak_search_epoch'):
         return False
-    if not retrieve_config_range(json_config, config, 'n1_detect', 'n1_search_epoch'):
+    if not retrieve_config_range(json_config, config, 'detection', 'response_search_epoch'):
         return False
 
     # detection methods
-    if not retrieve_config_string(json_config, config, 'n1_detect', 'method', options=('std_base', 'cross_proj', 'waveform')):
+    if not retrieve_config_string(json_config, config, 'detection', 'method', options=('std_base', 'cross_proj', 'waveform')):
         return False
     # TODO: multiple options?
 
-    config['n1_detect'].pop('std_base', None)
-    config['n1_detect'].pop('cross_proj', None)
-    config['n1_detect'].pop('waveform', None)
+    config['detection'].pop('std_base', None)
+    config['detection'].pop('cross_proj', None)
+    config['detection'].pop('waveform', None)
 
-    if config['n1_detect']['method'] == 'std_base':
-        config['n1_detect']['std_base'] = dict()
-        if not retrieve_config_range(json_config, config, 'n1_detect', 'std_base', 'baseline_epoch'):
+    if config['detection']['method'] == 'std_base':
+        config['detection']['std_base'] = dict()
+        if not retrieve_config_range(json_config, config, 'detection', 'std_base', 'baseline_epoch'):
             return False
-        if not retrieve_config_number(json_config, config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
+        if not retrieve_config_number(json_config, config, 'detection', 'std_base', 'baseline_threshold_factor'):
             return False
-    elif config['n1_detect']['method'] == 'cross_proj':
-        config['n1_detect']['cross_proj'] = dict()
-        if not retrieve_config_number(json_config, config, 'n1_detect', 'cross_proj', 'threshold'):
+    elif config['detection']['method'] == 'cross_proj':
+        config['detection']['cross_proj'] = dict()
+        if not retrieve_config_number(json_config, config, 'detection', 'cross_proj', 'threshold'):
             return False
-    elif config['n1_detect']['method'] == 'waveform':
-        config['n1_detect']['waveform'] = dict()
-        if not retrieve_config_number(json_config, config, 'n1_detect', 'waveform', 'threshold'):
+    elif config['detection']['method'] == 'waveform':
+        config['detection']['waveform'] = dict()
+        if not retrieve_config_number(json_config, config, 'detection', 'waveform', 'threshold'):
             return False
 
     # visualization settings
@@ -498,23 +498,23 @@ def write_config(filepath):
                  '            "bandpass":                     [' + numbers_to_padded_string(_config['metrics']['waveform']['bandpass'], 16) + ']\n' \
                  '        }\n' \
                  '    },\n\n' \
-                 '    "n1_detect": {\n' \
-                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['peak_search_epoch'], 16) + '],\n' \
-                 '        "n1_search_epoch":                  [' + numbers_to_padded_string(_config['n1_detect']['n1_search_epoch'], 16) + '],\n' \
-                 '        "method":                           "' + _config['n1_detect']['method'] + '",\n'
+                 '    "detection": {\n' \
+                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['detection']['peak_search_epoch'], 16) + '],\n' \
+                 '        "response_search_epoch":            [' + numbers_to_padded_string(_config['detection']['response_search_epoch'], 16) + '],\n' \
+                 '        "method":                           "' + _config['detection']['method'] + '",\n'
 
-    if _config['n1_detect']['method'] == 'std_base':
+    if _config['detection']['method'] == 'std_base':
         config_str += '        "std_base": {\n' \
-                      '            "baseline_epoch":                [' + numbers_to_padded_string(_config['n1_detect']['std_base']['baseline_epoch'], 16) + '],\n' \
-                      '            "baseline_threshold_factor":     ' + str(_config['n1_detect']['std_base']['baseline_threshold_factor']) + '\n' \
+                      '            "baseline_epoch":               [' + numbers_to_padded_string(_config['detection']['std_base']['baseline_epoch'], 16) + '],\n' \
+                      '            "baseline_threshold_factor":    ' + str(_config['detection']['std_base']['baseline_threshold_factor']) + '\n' \
                       '        }\n'
-    elif _config['n1_detect']['method'] == 'cross_proj':
+    elif _config['detection']['method'] == 'cross_proj':
         config_str += '        "cross_proj": {\n' \
-                      '            "threshold":                     ' + str(_config['n1_detect']['cross_proj']['threshold']) + '\n' \
+                      '            "threshold":                    ' + str(_config['detection']['cross_proj']['threshold']) + '\n' \
                       '        }\n'
-    elif _config['n1_detect']['method'] == 'waveform':
+    elif _config['detection']['method'] == 'waveform':
         config_str += '        "waveform": {\n' \
-                      '            "threshold":                     ' + str(_config['n1_detect']['waveform']['threshold']) + '\n' \
+                      '            "threshold":                    ' + str(_config['detection']['waveform']['threshold']) + '\n' \
                       '        }\n'
 
     config_str += '    },\n\n' \
@@ -620,12 +620,12 @@ def __check_config(config):
         return False
     if not check_range_order(config, 'metrics', 'waveform', 'epoch'):
         return False
-    if not check_range_order(config, 'n1_detect', 'peak_search_epoch'):
+    if not check_range_order(config, 'detection', 'peak_search_epoch'):
         return False
-    if not check_range_order(config, 'n1_detect', 'n1_search_epoch'):
+    if not check_range_order(config, 'detection', 'response_search_epoch'):
         return False
-    if config['n1_detect']['method'] == 'std_base':
-        if not check_range_order(config, 'n1_detect', 'std_base', 'baseline_epoch'):
+    if config['detection']['method'] == 'std_base':
+        if not check_range_order(config, 'detection', 'std_base', 'baseline_epoch'):
             return False
     if not check_range_order(config, 'visualization', 'x_axis_epoch'):
         return False
@@ -637,12 +637,12 @@ def __check_config(config):
         return False
     if not check_epoch_within_trial(config, 'metrics', 'waveform', 'epoch'):
         return False
-    if not check_epoch_within_trial(config, 'n1_detect', 'peak_search_epoch'):
+    if not check_epoch_within_trial(config, 'detection', 'peak_search_epoch'):
         return False
-    if not check_epoch_within_trial(config, 'n1_detect', 'n1_search_epoch'):
+    if not check_epoch_within_trial(config, 'detection', 'response_search_epoch'):
         return False
-    if config['n1_detect']['method'] == 'std_base':
-        if not check_epoch_within_trial(config, 'n1_detect', 'std_base', 'baseline_epoch'):
+    if config['detection']['method'] == 'std_base':
+        if not check_epoch_within_trial(config, 'detection', 'std_base', 'baseline_epoch'):
             return False
 
     if not check_epoch_within_trial(config, 'visualization', 'x_axis_epoch'):
@@ -662,20 +662,20 @@ def __check_config(config):
         return False
 
     # detection peak search should be after stimulus onset
-    if not check_epoch_start_after_onset(config, 'n1_detect', 'peak_search_epoch'):
+    if not check_epoch_start_after_onset(config, 'detection', 'peak_search_epoch'):
         return False
-    if not check_epoch_start_after_onset(config, 'n1_detect', 'n1_search_epoch'):
+    if not check_epoch_start_after_onset(config, 'detection', 'response_search_epoch'):
         return False
 
     # the baseline threshold factor should be a positive number
-    if config['n1_detect']['method'] == 'std_base':
-        if not check_number_positive(config, 'n1_detect', 'std_base', 'baseline_threshold_factor'):
+    if config['detection']['method'] == 'std_base':
+        if not check_number_positive(config, 'detection', 'std_base', 'baseline_threshold_factor'):
             return False
-    elif config['n1_detect']['method'] == 'cross_proj':
-        if not check_number_positive(config, 'n1_detect', 'cross_proj', 'threshold'):
+    elif config['detection']['method'] == 'cross_proj':
+        if not check_number_positive(config, 'detection', 'cross_proj', 'threshold'):
             return False
-    elif config['n1_detect']['method'] == 'waveform':
-        if not check_number_positive(config, 'n1_detect', 'waveform', 'threshold'):
+    elif config['detection']['method'] == 'waveform':
+        if not check_number_positive(config, 'detection', 'waveform', 'threshold'):
             return False
 
     # the waveform bandpass limits
