@@ -1426,7 +1426,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 # check if channel data is available
                 # Note: during speed option the channel data is kept in memory, so no reloading is required when still in memory
                 if channel_data[channel] is None:
-                    print(channel + ": load")
+                    #print(channel + ": load")
 
                     # retrieve the channel data
                     try:
@@ -1438,7 +1438,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 # High-pass filtering
                 #
                 if high_pass and not channel_hp_applied[channel]:
-                    print(channel + ": HP")
+                    #print(channel + ": HP")
 
                     # Filter the data
                     channel_data[channel] = signal.filtfilt(hp_numerator, hp_denominator, channel_data[channel], padtype='odd', padlen=3 * (max(len(hp_numerator), len(hp_denominator)) - 1))
@@ -1470,7 +1470,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     # check if the data of this channel (at this point) is already collected for the early re-reference groups
                     if not channel_early_reref_collected[channel]:
                         # early not collected
-                        print(channel + ": Collecting early reref values from channel")
+                        #print(channel + ": Collecting early reref values from channel")
 
                         # loop over the early-reref groups
                         for group in early_req_groups:
@@ -1555,7 +1555,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                         if all(early_group_channels_collected[str(group)].values()):
                             # all required information is available, perform early re-referencing on the channel
 
-                            print(channel + ": performing early reref on channel")
+                            #print(channel + ": performing early reref on channel")
 
                             # perform early re-ref using reref_values
                             channel_data[channel] -= early_group_data[str(group)]
@@ -1574,7 +1574,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                             # check whether it is optimized for memory, if so, clear
                             if priority == 'mem':
 
-                                print(channel + ": clearing channel from mem")
+                                #print(channel + ": clearing channel from mem")
 
                                 # remove the reference to the numpy array, this way the memory should be available for collection
                                 channel_data[channel] = None
@@ -1591,7 +1591,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 #
                 if line_noise_removal is not None and not channel_lnr_applied[channel]:
 
-                    print(channel + ": LNR - " + str(line_noise_removal))
+                    #print(channel + ": LNR - " + str(line_noise_removal))
 
                     # Filter the data
                     channel_data[channel] = signal.filtfilt(lnr_numerator, lnr_denominator, channel_data[channel], padtype='odd', padlen=3 * (max(len(lnr_numerator), len(lnr_denominator)) - 1))
@@ -1613,7 +1613,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     # check if the data of this channel (at this point) is already collected for the late re-reference groups
                     if not channel_late_reref_collected[channel]:
                         # late not collected
-                        print(channel + ": Collecting late reref values from channel")
+                        #print(channel + ": Collecting late reref values from channel")
 
                         # loop over the late-reref groups
                         for group in late_req_groups:
@@ -1702,7 +1702,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     if all(late_group_channels_collected[str(group)].values()):
                         # all required information is available, perform late re-referencing on the channel
 
-                        print(channel + ": performing late reref on channel")
+                        #print(channel + ": performing late reref on channel")
 
                         # perform late re-ref using reref_values
                         channel_data[channel] -= late_group_data[str(group)]
@@ -1717,7 +1717,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                         # check whether it is optimized for memory, if so, clear
                         if priority == 'mem':
 
-                            print(channel + ": clearing channel from mem")
+                            #print(channel + ": clearing channel from mem")
 
                             # remove the reference to the numpy array, this way the memory should be available for collection
                             channel_data[channel] = None
@@ -1737,7 +1737,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 #
 
                 # epoch the channel data
-                print(channel + ": epoch")
+                #print(channel + ": epoch")
                 try:
 
                     # retrieve the index of the channel in the requested list (so it can be placed in the correct spot of the return matrix)
@@ -1770,7 +1770,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 except (MemoryError, RuntimeError):
                     raise RuntimeError('Error upon loading and epoching data')
 
-                print(channel + ": clearing channel from mem")
+                #print(channel + ": clearing channel from mem")
 
                 # clear channel data from the channel-data matrix
                 # (all we needed from this channel is either in the re-ref average arrays or in the epoch data-matrix now)
