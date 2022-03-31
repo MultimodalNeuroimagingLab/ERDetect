@@ -52,12 +52,12 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
     # the period from stimulus onset till 500ms after stimulation onset)
     peak_search_epoch = config('detection', 'peak_search_epoch')
 
-    # (tuple) The time-span in which a app will be searched, expressed as a tuple with the start- and end-point in seconds
+    # (tuple) The time-span in which an evoked response will be searched, expressed as a tuple with the start- and end-point in seconds
     # relative to stimulation onset (e.g. the standard tuple of '0.02, 0.09' will have the algorithm start the search
     # for an app at 20ms after stimulation onset up to 90ms after stimulation onset)
     er_search_epoch = config('detection', 'response_search_epoch')
 
-    # 
+    #
     method = config('detection', 'method')
 
     if method == 'std_base':
@@ -194,19 +194,19 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
                 continue
 
             #
-            # Determine whether peak can be considered a N1 (by the peak or by other metrics)
+            # Determine whether peak can be considered an evoked response (by the peak or by other metrics)
             #
 
             if method == 'cross_proj':
 
-                # classify as an N1 on threshold, store the peak (index and amplitude)
+                # classify as an evoked response on threshold, store the peak (index and amplitude)
                 if cross_proj_metrics[iElec, iPair] > cross_proj_threshold:
                     er_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
             elif method == 'waveform':
 
-                # classify as an N1 on threshold, store the peak (index and amplitude)
+                # classify as an evoked response on threshold, store the peak (index and amplitude)
                 if waveform_metrics[iElec, iPair] > waveform_threshold:
                     er_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
@@ -231,7 +231,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
                 # check if the peak value does not exceed the baseline standard deviation time a factor
                 if abs(neg_mags[max_ind]) >= baseline_threshold_factor * abs(baseline_std):
 
-                    # classify as an N1, store the peak (index and amplitude)
+                    # classify as an evoked response, store the peak (index and amplitude)
                     er_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
