@@ -570,7 +570,7 @@ for subject in subjects_to_analyze:
                                                                              early_reref=early_reref,
                                                                              line_noise_removal=line_noise_removal,
                                                                              late_reref=late_reref,
-                                                                             preproc_priority='speed')
+                                                                             preproc_priority=('speed' if preproc_prioritize_speed else 'mem'))
             except (ValueError, RuntimeError):
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
