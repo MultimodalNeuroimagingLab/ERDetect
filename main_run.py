@@ -127,8 +127,8 @@ parser.add_argument('--line_noise_removal',
                     nargs="?")
 parser.add_argument('--method',
                     help='The method that should be used to detect evoked responses. the options are:\n'
-                         '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold'
-                         '                     (multiplied by a factor) to determine whether the average evoked deflection'
+                         '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold\n'
+                         '                     (multiplied by a factor) to determine whether the average evoked deflection\n'
                          '                     is strong enough. (e.g. \'--method std_base\')\n'
                          '      - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
                          '                     similarity. A peak with a strong inter-trial similarity is\n'
