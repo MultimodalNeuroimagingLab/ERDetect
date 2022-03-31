@@ -28,7 +28,7 @@ from matplotlib import cm
 from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set, rem as cfg_rem,\
     OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_N1DETECT_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_N1DETECT_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_N1DETECT_CROSS_PROJ_THRESHOLD, CONFIG_N1DETECT_WAVEFORM_PROJ_THRESHOLD
-from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages
+from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages, RerefStruct
 from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
@@ -87,21 +87,54 @@ parser.add_argument('--format_extension',
 parser.add_argument('--config_filepath',
                     help='Configures the app according to the settings in the JSON configuration file')
 parser.add_argument('--skip_bids_validator',
-                    help='Whether or not to perform BIDS data-set validation',
+                    help='Skip the BIDS data-set validation',
                     action='store_true')
+parser.add_argument('--preproc_prioritize_speed',
+                    help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,'
+                         'priority is given to use as little memory as possible, which can require channel-data to be'
+                         'retrieved twice, taking longer. This flag allows the preprocessing to keep all channel-data'
+                         'in memory, requiring much more memory at its peak, but speeding up the process.'
+                         'Note: In particular the speed of processing for MEF3 data will be influenced by this setting'
+                         '      since it has the ability to read partial data from the disk, allowing for minimal memory'
+                         '      usage. In contrast, EDF and BrainVision are loaded by MNE which holds the entire dataset'
+                         '      in memory, so retrieval is already fast. As a result, with EDF and BrainVision, it might'
+                         '      be counterproductive to set priority to speed since there is little gain and the memory'
+                         '      use would double.',
+                    action='store_true')
+parser.add_argument('--high_pass',
+                    help='Perform high-pass filtering (with a cut-off at 0.50Hz) before detection and visualization.\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule\n'
+                         '      the high-pass setting in the configuration file',
+                    action='store_true')
+parser.add_argument('--early_reref',
+                    help='Perform early re-referencing before detection and visualization. The options are:\n'
+                         '    - CAR   = The standard deviation of a baseline-epoch is used as a\n'
+                         '                   threshold (times a factor) to determine whether the average evoked N1\n'
+                         '                   deflection is strong enough. (E.g. ''--method std_base'')\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule\n'
+                         '      the early re-referencing setting in the configuration file',
+                    nargs="?")
+parser.add_argument('--line_noise_removal',
+                    help='Perform line-noise removal before detection and visualization. Can be either:'
+                         '    - ''tsv'' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
+                         '      (E.g. ''--line_noise_removal tsv'')\n'
+                         '    - set to a specific line-noise frequency (e.g. ''--line_noise_removal 60'')\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule\n'
+                         '      the line-noise removal setting in the configuration file',
+                    nargs="?")
 parser.add_argument('--method',
                     help='The method that should be used to determine N1s. the options are:\n'
                          '    - std_base   = The standard deviation of a baseline-epoch is used as a\n'
                          '                   threshold (times a factor) to determine whether the average evoked N1\n'
-                         '                   deflection is strong enough. Usage example: ''--method std_base''\n'
+                         '                   deflection is strong enough. (E.g. ''--method std_base'')\n'
                          '    - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
                          '                   similarity. A peak with a strong inter-trial similarity is\n'
-                         '                   considered N1s. Usage example: ''--method cross-proj''\n'
+                         '                   considered N1s. (E.g. ''--method cross-proj'')\n'
                          '    - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
                          '                   to determine whether the peak that was found can be considered a N1.\n'
-                         '                   Usage example: ''--method waveform'''
-                         'Note: If a configuration file is provided, then the method set in this argument will\n'
-                         '      overrule the method set in the configuration file',
+                         '                   (E.g. ''--method waveform'')'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule\n'
+                         '      the method setting in the configuration file',
                     nargs="?")
 parser.add_argument('-v', '--version',
                     action='version',
@@ -112,7 +145,7 @@ args = parser.parse_args()
 #
 # display application information
 #
-log_indented_line('BIDS app:', ('Detect N1 - ' + __version__))
+log_indented_line('BIDS app:', ('Detect Evoked Responses - ' + __version__))
 log_indented_line('BIDS input path:', args.bids_dir)
 log_indented_line('Output path:', args.output_dir)
 if args.config_filepath:
@@ -128,6 +161,32 @@ logging.info('')
 if args.config_filepath:
     if not load_config(args.config_filepath):
         logging.error('Could not load the configuration file, exiting...')
+        exit(1)
+
+# check preprocessing arguments
+preproc_prioritize_speed = False
+if args.preproc_prioritize_speed:
+    preproc_prioritize_speed = True
+
+if args.high_pass:
+    cfg_set(True, 'preprocess', 'high_pass')
+
+if args.line_noise_removal:
+    if str(args.line_noise_removal).lower() == 'tsv':
+        cfg_set('tsv', 'preprocess', 'line_noise_removal')
+    elif is_number(args.line_noise_removal):
+        # TODO: valid number
+        cfg_set(str(args.line_noise_removal), 'preprocess', 'line_noise_removal')
+    else:
+        logging.error('Invalid line_noise_removal argument \'' + args.line_noise_removal + '\', either set to \'tsv\', or provide the line-noise frequency as a number.')
+        exit(1)
+
+if args.early_reref:
+    if str(args.early_reref).lower() == 'car':
+        cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
+        cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
+    else:
+        logging.error('Invalid early_reref argument \'' + args.early_reref + '\'')
         exit(1)
 
 # check for a method argument
@@ -158,6 +217,14 @@ if cfg('n1_detect', 'method') == 'waveform' and not cfg('metrics', 'waveform', '
     cfg_set(True, 'metrics', 'waveform', 'enabled')
 
 # print configuration information
+log_indented_line('Preprocessing priority:', ('Speed' if preproc_prioritize_speed else 'Memory'))
+log_indented_line('High-pass filtering:', ('Yes' if cfg('preprocess', 'high_pass') else 'No'))
+log_indented_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re_referencing', 'enabled') else 'No'))
+if cfg('preprocess', 'early_re_referencing', 'enabled'):
+    log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
+    log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
+log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
+logging.info('')
 log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
 log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
 log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's')
@@ -236,16 +303,13 @@ if not os.path.exists(args.output_dir):
 # list the subject to analyze (either based on the input parameter or list all in the BIDS_dir)
 subjects_to_analyze = []
 if args.participant_label:
-
     # user-specified subjects
     subjects_to_analyze = args.participant_label
 
 else:
-
     # all subjects
     subject_dirs = glob(os.path.join(args.bids_dir, 'sub-*'))
     subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
-
 
 #
 for subject in subjects_to_analyze:
@@ -454,6 +518,28 @@ for subject in subjects_to_analyze:
             # read and epoch the data
             #
 
+            # prepare some preprocessing variables
+            early_reref = None
+            line_noise_removal = None
+            late_reref = None
+
+            if cfg('preprocess', 'early_re_referencing', 'enabled'):
+                early_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be alle channels, not just channels_incl_detect
+                # TODO: implement different re-referencing methods
+                early_reref.set_exclude_reref_epochs(stim_pairs_onsets,
+                                                     (cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]),
+                                                     '-')
+
+            if str(cfg('preprocess', 'line_noise_removal')).lower() == 'tsv':
+                # TODO: implement from tsv, now just sets to 60
+                line_noise_removal = 60
+            if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
+                line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
+
+            #late_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be all channels, not just channels_incl_detect
+            #late_reref.set_exclude_reref_epochs(stim_pairs_onsets, (-.01, 1.0), '-')
+
+
             # determine the metrics that should be produced
             metric_callbacks = tuple()
             if cfg('metrics', 'cross_proj', 'enabled'):
@@ -461,13 +547,14 @@ for subject in subjects_to_analyze:
             if cfg('metrics', 'waveform', 'enabled'):
                 metric_callbacks += tuple([metric_waveform])
 
-            # read, normalize by median and average the trials within the condition
+            # read, normalize, epoch and average the trials within the condition
             # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
             #       efficient when only the averages are needed
             if len(metric_callbacks) == 0:
                 logging.info('- Reading data...')
             else:
                 logging.info('- Reading data and calculating metrics...')
+
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
             try:
@@ -476,7 +563,12 @@ for subject in subjects_to_analyze:
                                                                              baseline_norm=cfg('trials', 'baseline_norm'),
                                                                              baseline_epoch=cfg('trials', 'baseline_epoch'),
                                                                              out_of_bound_handling=cfg('trials', 'out_of_bounds_handling'),
-                                                                             metric_callbacks=metric_callbacks)
+                                                                             metric_callbacks=metric_callbacks,
+                                                                             high_pass=cfg('preprocess', 'high_pass'),
+                                                                             early_reref=early_reref,
+                                                                             line_noise_removal=line_noise_removal,
+                                                                             late_reref=late_reref,
+                                                                             preproc_priority='speed')
             except (ValueError, RuntimeError):
                 logging.error('Could not load data (' + subset + '), exiting...')
                 exit(1)
