@@ -57,37 +57,42 @@ def log_indented_line(caption, text):
 #
 # define and parse the input arguments
 #
-parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of early responses (N1) in CCEP data.',
-                                 formatter_class=argparse.RawTextHelpFormatter)
+parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of evoked responses in CCEP data.',
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 add_help=False)
+parser._positionals.title = 'Required (positional) arguments'
+parser._optionals.title = 'Optional arguments'
+parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
+                    help='Show this help message and exit\n\n')
 parser.add_argument('bids_dir',
-                    help='The directory with the input dataset formatted according to the BIDS standard.')
+                    help='The directory with the input dataset formatted according to the BIDS standard.\n\n')
 parser.add_argument('output_dir',
                     help='The directory where the output files should be stored. If you are running group\n'
                          'level analysis this folder should be prepopulated with the results of the\n'
-                         'participant level analysis.')
+                         'participant level analysis.\n\n')
 parser.add_argument('--participant_label',
                     help='The label(s) of the participant(s) that should be analyzed. The label corresponds\n'
                          'to sub-<participant_label> from the BIDS spec (so it does not include "sub-").\n'
                          'If this parameter is not provided all subjects will be analyzed. Multiple\n'
-                         'participants can be specified with a space separated list.',
+                         'participants can be specified with a space separated list.\n\n',
                     nargs="+")
 parser.add_argument('--subset_search_pattern',
                     help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS\n'
                          'compliant folder name (e.g. "task-ccep_run-01"). If this parameter is not provided\n'
                          'all the found subset(s) will be analyzed. Multiple subsets can be specified with\n'
-                         'a space separated list.',
+                         'a space separated list.\n\n',
                     nargs="+")
 parser.add_argument('--format_extension',
                     help='The data format(s) to include. The format(s) should be specified by their\n'
                          'extension (e.g. ".edf"). If this parameter is not provided, then by default\n'
                          'the European Data Format (''.edf''), BrainVision (''.vhdr'', ''.vmrk'', ''.eeg'')\n'
                          'and MEF3 (''.mefd'') formats will be included. Multiple formats can be specified\n'
-                         'with a space separated list.',
+                         'with a space separated list.\n\n',
                     nargs="+")
 parser.add_argument('--config_filepath',
-                    help='Configures the app according to the settings in the JSON configuration file')
+                    help='Configures the app according to the settings in the JSON configuration file\n\n')
 parser.add_argument('--skip_bids_validator',
-                    help='Skip the BIDS data-set validation',
+                    help='Skip the BIDS data-set validation\n\n',
                     action='store_true')
 parser.add_argument('--preproc_prioritize_speed',
                     help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,\n'
@@ -99,51 +104,50 @@ parser.add_argument('--preproc_prioritize_speed',
                          '      usage. In contrast, EDF and BrainVision are loaded by MNE which holds the entire dataset\n'
                          '      in memory, so retrieval is already fast. As a result, with EDF and BrainVision, it might\n'
                          '      be counterproductive to set priority to speed since there is little gain and the memory\n'
-                         '      use would double.',
+                         '      use would double.\n\n',
                     action='store_true')
 parser.add_argument('--high_pass',
                     help='Perform high-pass filtering (with a cut-off at 0.50Hz) before detection and visualization.\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
-                         '      the high-pass setting in the configuration file',
+                         '      the high-pass setting in the configuration file\n\n',
                     action='store_true')
 parser.add_argument('--early_reref',
                     help='Perform early re-referencing before detection and visualization. The options are:\n'
-                         '      - CAR   = Common Average Re-refrencing (E.g. ''--early_reref CAR'')\n'
+                         '      - CAR   = Common Average Re-refrencing (e.g. ''--early_reref CAR'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
-                         '      the early re-referencing setting in the configuration file',
+                         '      the early re-referencing setting in the configuration file\n\n',
                     nargs="?")
 parser.add_argument('--line_noise_removal',
                     help='Perform line-noise removal before detection and visualization. Can be either:\n'
                          '      - ''tsv'' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
-                         '        (E.g. ''--line_noise_removal tsv'')\n'
+                         '        (e.g. ''--line_noise_removal tsv'')\n'
                          '      - set to a specific line-noise frequency (e.g. ''--line_noise_removal 60'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
-                         '      the line-noise removal setting in the configuration file',
+                         '      the line-noise removal setting in the configuration file\n\n',
                     nargs="?")
 parser.add_argument('--method',
-                    help='The method that should be used to determine N1s. the options are:\n'
+                    help='The method that should be used to detect evoked responses. the options are:\n'
                          '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold (multiplied\n'
                          '                     by a factor) to determine whether the average evoked deflection is strong\n'
-                         '                     enough. (E.g. ''--method std_base'')\n'
+                         '                     enough. (e.g. ''--method std_base'')\n'
                          '      - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
                          '                     similarity. A peak with a strong inter-trial similarity is\n'
-                         '                     considered an evoked response. (E.g. ''--method cross-proj'')\n'
+                         '                     considered an evoked response. (e.g. ''--method cross-proj'')\n'
                          '      - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
-                         '                     to determine whether the peak that was found can be considered a N1.\n'
-                         '                     (E.g. ''--method waveform'')\n'
+                         '                     to determine whether the peak that was found can be considered an evoked.\n'
+                         '                     response (e.g. ''--method waveform'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
-                         '      the method setting in the configuration file',
+                         '      the method setting in the configuration file\n\n',
                     nargs="?")
 parser.add_argument('-v', '--version',
                     action='version',
-                    version='N1Detection BIDS-App version {}'.format(__version__))
-
+                    version='ER-Detect BIDS-App version {}'.format(__version__))
 args = parser.parse_args()
 
 #
 # display application information
 #
-log_indented_line('BIDS app:', ('Detect Evoked Responses - ' + __version__))
+log_indented_line('BIDS app:', ('Evoked Response Detection - ' + __version__))
 log_indented_line('BIDS input path:', args.bids_dir)
 log_indented_line('Output path:', args.output_dir)
 if args.config_filepath:
