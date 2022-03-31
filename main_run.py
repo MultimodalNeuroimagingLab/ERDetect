@@ -90,15 +90,15 @@ parser.add_argument('--skip_bids_validator',
                     help='Skip the BIDS data-set validation',
                     action='store_true')
 parser.add_argument('--preproc_prioritize_speed',
-                    help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,'
-                         'priority is given to use as little memory as possible, which can require channel-data to be'
-                         'retrieved twice, taking longer. This flag allows the preprocessing to keep all channel-data'
-                         'in memory, requiring much more memory at its peak, but speeding up the process.'
-                         'Note: In particular the speed of processing for MEF3 data will be influenced by this setting'
-                         '      since it has the ability to read partial data from the disk, allowing for minimal memory'
-                         '      usage. In contrast, EDF and BrainVision are loaded by MNE which holds the entire dataset'
-                         '      in memory, so retrieval is already fast. As a result, with EDF and BrainVision, it might'
-                         '      be counterproductive to set priority to speed since there is little gain and the memory'
+                    help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,\n'
+                         'priority is given to use as little memory as possible, which can require channel-data to be\n'
+                         'retrieved twice, taking longer. This flag allows the preprocessing to keep all channel-data\n'
+                         'in memory, requiring much more memory at its peak, but speeding up the process.\n'
+                         'Note: In particular the speed of processing for MEF3 data will be influenced by this setting\n'
+                         '      since it has the ability to read partial data from the disk, allowing for minimal memory\n'
+                         '      usage. In contrast, EDF and BrainVision are loaded by MNE which holds the entire dataset\n'
+                         '      in memory, so retrieval is already fast. As a result, with EDF and BrainVision, it might\n'
+                         '      be counterproductive to set priority to speed since there is little gain and the memory\n'
                          '      use would double.',
                     action='store_true')
 parser.add_argument('--high_pass',
@@ -108,31 +108,29 @@ parser.add_argument('--high_pass',
                     action='store_true')
 parser.add_argument('--early_reref',
                     help='Perform early re-referencing before detection and visualization. The options are:\n'
-                         '    - CAR   = The standard deviation of a baseline-epoch is used as a\n'
-                         '                   threshold (times a factor) to determine whether the average evoked N1\n'
-                         '                   deflection is strong enough. (E.g. ''--method std_base'')\n'
+                         '      - CAR   = Common Average Re-refrencing (E.g. ''--early_reref CAR'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
                          '      the early re-referencing setting in the configuration file',
                     nargs="?")
 parser.add_argument('--line_noise_removal',
-                    help='Perform line-noise removal before detection and visualization. Can be either:'
-                         '    - ''tsv'' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
-                         '      (E.g. ''--line_noise_removal tsv'')\n'
-                         '    - set to a specific line-noise frequency (e.g. ''--line_noise_removal 60'')\n'
+                    help='Perform line-noise removal before detection and visualization. Can be either:\n'
+                         '      - ''tsv'' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
+                         '        (E.g. ''--line_noise_removal tsv'')\n'
+                         '      - set to a specific line-noise frequency (e.g. ''--line_noise_removal 60'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
                          '      the line-noise removal setting in the configuration file',
                     nargs="?")
 parser.add_argument('--method',
                     help='The method that should be used to determine N1s. the options are:\n'
-                         '    - std_base   = The standard deviation of a baseline-epoch is used as a\n'
-                         '                   threshold (times a factor) to determine whether the average evoked N1\n'
-                         '                   deflection is strong enough. (E.g. ''--method std_base'')\n'
-                         '    - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
-                         '                   similarity. A peak with a strong inter-trial similarity is\n'
-                         '                   considered N1s. (E.g. ''--method cross-proj'')\n'
-                         '    - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
-                         '                   to determine whether the peak that was found can be considered a N1.\n'
-                         '                   (E.g. ''--method waveform'')'
+                         '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold (multiplied\n'
+                         '                     by a factor) to determine whether the average evoked deflection is strong\n'
+                         '                     enough. (E.g. ''--method std_base'')\n'
+                         '      - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
+                         '                     similarity. A peak with a strong inter-trial similarity is\n'
+                         '                     considered an evoked response. (E.g. ''--method cross-proj'')\n'
+                         '      - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
+                         '                     to determine whether the peak that was found can be considered a N1.\n'
+                         '                     (E.g. ''--method waveform'')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule\n'
                          '      the method setting in the configuration file',
                     nargs="?")
