@@ -116,7 +116,7 @@ parser.add_argument('--early_reref',
                          '      - CAR   = Common Average Re-refrencing (e.g. \'--early_reref CAR\')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                          '      early re-referencing setting in the configuration file\n\n',
-                    nargs="?")
+                    nargs="?", const='CAR')
 parser.add_argument('--line_noise_removal',
                     help='Perform line-noise removal before detection and visualization. Can be either:\n'
                          '      - \'tsv\' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
