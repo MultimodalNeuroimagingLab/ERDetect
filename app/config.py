@@ -70,6 +70,8 @@ def __create_default_config():
     config['metrics']['waveform']['bandpass']                       = (10, 30)
 
     config['detection'] = dict()
+    config['detection']['negative']                                 = True                  # whether to detect negative responses
+    config['detection']['positive']                                 = False                 # whether to detect positive responses
     config['detection']['peak_search_epoch']                        = (0, 0.5)
     config['detection']['response_search_epoch']                    = (0.009, 0.09)
     config['detection']['method']                                   = 'std_base'
@@ -78,6 +80,8 @@ def __create_default_config():
     config['detection']['std_base']['baseline_threshold_factor']    = CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR
 
     config['visualization'] = dict()
+    config['visualization']['negative']                             = True                  # whether to output negative responses
+    config['visualization']['positive']                             = False                 # whether to output positive responses
     config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
     config['visualization']['blank_stim_epoch']                     = (-0.015, 0.0025)      # the range
     config['visualization']['generate_electrode_images']            = True
@@ -401,7 +405,11 @@ def load_config(filepath):
     if not retrieve_config_range(json_config, config, 'metrics', 'waveform', 'bandpass'):
         return False
 
-    # n1 peak detection settings
+    # evoked response detection settings
+    if not retrieve_config_bool(json_config, config, 'detection', 'negative'):
+        return False
+    if not retrieve_config_bool(json_config, config, 'detection', 'positive'):
+        return False
     if not retrieve_config_range(json_config, config, 'detection', 'peak_search_epoch'):
         return False
     if not retrieve_config_range(json_config, config, 'detection', 'response_search_epoch'):
@@ -432,6 +440,10 @@ def load_config(filepath):
             return False
 
     # visualization settings
+    if not retrieve_config_bool(json_config, config, 'visualization', 'negative'):
+        return False
+    if not retrieve_config_bool(json_config, config, 'visualization', 'positive'):
+        return False
     if not retrieve_config_range(json_config, config, 'visualization', 'x_axis_epoch'):
         return False
     if not retrieve_config_range(json_config, config, 'visualization', 'blank_stim_epoch'):
@@ -499,6 +511,8 @@ def write_config(filepath):
                  '        }\n' \
                  '    },\n\n' \
                  '    "detection": {\n' \
+                 '        "negative":                         ' + ('true' if _config['detection']['negative'] else 'false') + ',\n' \
+                 '        "positive":                         ' + ('true' if _config['detection']['positive'] else 'false') + ',\n' \
                  '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['detection']['peak_search_epoch'], 16) + '],\n' \
                  '        "response_search_epoch":            [' + numbers_to_padded_string(_config['detection']['response_search_epoch'], 16) + '],\n' \
                  '        "method":                           "' + _config['detection']['method'] + '",\n'
@@ -519,6 +533,8 @@ def write_config(filepath):
 
     config_str += '    },\n\n' \
                   '    "visualization": {\n' \
+                  '        "negative":                         ' + ('true' if _config['visualization']['negative'] else 'false') + ',\n' \
+                  '        "positive":                         ' + ('true' if _config['visualization']['positive'] else 'false') + ',\n' \
                   '        "x_axis_epoch":                     [' + numbers_to_padded_string(_config['visualization']['x_axis_epoch'], 16) + '],\n' \
                   '        "blank_stim_epoch":                 [' + numbers_to_padded_string(_config['visualization']['blank_stim_epoch'], 16) + '],\n' \
                   '        "generate_electrode_images":        ' + ('true' if _config['visualization']['generate_electrode_images'] else 'false') + ',\n' \

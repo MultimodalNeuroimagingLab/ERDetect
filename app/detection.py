@@ -20,7 +20,7 @@ from app.config import get as config
 from app.peak_finder import peak_finder
 
 
-def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=None, waveform_metrics=None):
+def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=None, waveform_metrics=None, detect_positive=False):
     """
     Detect the evoked responses in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -32,6 +32,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
         sampling_rate (int or double):      The sampling rate at which the data was acquired
         cross_proj_metrics (ndarray):
         waveform_metrics (ndarray):
+        detect_positive (bool):             Whether to search for positive rather than negative evoked responses
 
 
     Returns:
@@ -145,7 +146,9 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
         for iPair in range(data.shape[1]):
 
             # retrieve the part of the signal to search for peaks in
-            signal = data[iElec, iPair, peak_search_start_sample + 1:peak_search_end_sample]
+            signal = data[iElec, iPair, peak_search_start_sample + 1:peak_search_end_sample].copy()
+            if detect_positive:
+                signal *= -1
 
             # continue if all are nan (the case when the stim-electrodes are nan-ed out on the electrode dimensions)
             if np.all(np.isnan(signal)):
@@ -239,4 +242,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
                     er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
 
     # pass results back
-    return er_peak_indices, er_peak_amplitudes
+    if detect_positive:
+        return er_peak_indices, er_peak_amplitudes * -1
+    else:
+        return er_peak_indices, er_peak_amplitudes

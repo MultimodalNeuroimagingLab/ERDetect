@@ -125,6 +125,9 @@ parser.add_argument('--line_noise_removal',
                          'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                          '      line-noise removal setting in the configuration file\n\n',
                     nargs="?")
+parser.add_argument('--detect_positive_responses',
+                    help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
+                    action='store_true')
 parser.add_argument('--method',
                     help='The method that should be used to detect evoked responses. the options are:\n'
                          '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold\n'
@@ -191,7 +194,11 @@ if args.early_reref:
         logging.error('Invalid early_reref argument \'' + args.early_reref + '\'')
         exit(1)
 
-# check for a method argument
+# check for methodological arguments
+if args.detect_positive_responses:
+    cfg_set(True, 'detection', 'positive')
+    cfg_set(True, 'visualization', 'positive')
+
 if args.method:
     cfg_rem('detection', 'std_base')
     cfg_rem('detection', 'cross_proj')
@@ -243,22 +250,28 @@ if cfg('metrics', 'waveform', 'enabled'):
     log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
     log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
 logging.info('')
-log_indented_line('Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
-log_indented_line('Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
-log_indented_line('Evoked response detection method:', str(cfg('detection', 'method')))
+logging.info('Detection')
+log_indented_line('    Negative responses:', ('Yes' if cfg('detection', 'negative') else 'No'))
+log_indented_line('    Positive responses:', ('Yes' if cfg('detection', 'positive') else 'No'))
+log_indented_line('    Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
+log_indented_line('    Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
+log_indented_line('    Evoked response detection method:', str(cfg('detection', 'method')))
 if cfg('detection', 'method') == 'std_base':
-    log_indented_line('    Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
-    log_indented_line('    Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
+    log_indented_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
+    log_indented_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
 elif cfg('detection', 'method') == 'cross_proj':
-    log_indented_line('    Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
+    log_indented_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
 elif cfg('detection', 'method') == 'waveform':
-    log_indented_line('    Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
+    log_indented_line('        Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
 logging.info('')
-log_indented_line('Visualization x-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
-log_indented_line('Visualization blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
-log_indented_line('Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
-log_indented_line('Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
-log_indented_line('Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
+logging.info('Visualization')
+log_indented_line('    Negative responses:', ('Yes' if cfg('visualization', 'negative') else 'No'))
+log_indented_line('    Positive responses:', ('Yes' if cfg('visualization', 'positive') else 'No'))
+log_indented_line('    X-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
+log_indented_line('    Blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
+log_indented_line('    Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
+log_indented_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
+log_indented_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
 logging.info('')
 
 
@@ -399,7 +412,7 @@ for subject in subjects_to_analyze:
 
             # print channel information
             logging.info(multi_line_list(channels_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 20, ' '))
-            logging.info(multi_line_list(channels_excl_detect_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded for detection by type:', 20, ' '))
+            logging.info(multi_line_list(channels_excl_detect_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded from detection by type:', 20, ' '))
             logging.info(multi_line_list(channels_incl_detect, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included for detection:', 20, ' ', str(len(channels_incl_detect))))
 
             # check if there are any channels
@@ -630,22 +643,33 @@ for subject in subjects_to_analyze:
 
 
             #
-            # perform the N1 detection
+            # perform the evoked response detection
             #
 
             # detect evoked responses
             logging.info('- Detecting evoked responses...')
             try:
-                er_peak_indices, er_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
-                                                                     cross_proj_metrics=cross_proj_metrics,
-                                                                     waveform_metrics=waveform_metrics)
+                if cfg('detection', 'negative'):
+                    er_neg_peak_indices, er_neg_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
+                                                                                 cross_proj_metrics=cross_proj_metrics,
+                                                                                 waveform_metrics=waveform_metrics)
+                if cfg('detection', 'positive'):
+                    er_pos_peak_indices, er_pos_peak_amplitudes = ieeg_detect_er(averages, onset_sample,
+                                                                                 int(sampling_rate),
+                                                                                 cross_proj_metrics=cross_proj_metrics,
+                                                                                 waveform_metrics=waveform_metrics,
+                                                                                 detect_positive=True)
             except (ValueError, RuntimeError):
                 logging.error('Evoked response detection failed, exiting...')
                 exit(1)
 
             # intermediate saving of the data and evoked response detection results as .mat
-            saveDict['neg_peak_indices'] = er_peak_indices
-            saveDict['neg_peak_amplitudes'] = er_peak_amplitudes
+            if cfg('detection', 'negative'):
+                saveDict['neg_peak_indices'] = er_neg_peak_indices
+                saveDict['neg_peak_amplitudes'] = er_neg_peak_amplitudes
+            if cfg('detection', 'positive'):
+                saveDict['pos_peak_indices'] = er_pos_peak_indices
+                saveDict['pos_peak_amplitudes'] = er_pos_peak_amplitudes
             sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
 
@@ -748,12 +772,19 @@ for subject in subjects_to_analyze:
                                 # plot the signal
                                 ax.plot(x, y, linewidth=signal_line_thickness)
 
-                                # if app is detected, plot it
-                                if not isnan(er_peak_indices[iElec, iPair]):
-                                    xNeg = er_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                                    yNeg = er_peak_amplitudes[iElec, iPair] / 500
+                                # if negative evoked potential is detected, plot it
+                                if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
+                                    xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                    yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                                     yNeg += len(stim_pairs_onsets) - iPair
-                                    ax.plot(xNeg, yNeg, 'bo')
+                                    ax.plot(xNeg, yNeg, marker='o', color='blue')
+
+                                # if positive evoked potential is detected, plot it
+                                if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
+                                    xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                    yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
+                                    yPos += len(stim_pairs_onsets) - iPair
+                                    ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
@@ -826,12 +857,18 @@ for subject in subjects_to_analyze:
                             # plot the signal
                             ax.plot(x, y, linewidth=signal_line_thickness)
 
-                            # if app is detected, plot it
-                            if not isnan(er_peak_indices[iElec, iPair]):
-                                xNeg = er_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                                yNeg = er_peak_amplitudes[iElec, iPair] / 500
+                            # if evoked potential is detected, plot it
+                            if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
+                                xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                                 yNeg += len(channels_incl_detect) - iElec
-                                ax.plot(xNeg, yNeg, 'bo')
+                                ax.plot(xNeg, yNeg, marker='o', color='blue')
+
+                            if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
+                                xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                                yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
+                                yPos += len(channels_incl_detect) - iElec
+                                ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
@@ -902,7 +939,7 @@ for subject in subjects_to_analyze:
                     #
                     
                     #
-                    matrix_amplitudes = er_peak_amplitudes
+                    matrix_amplitudes = er_neg_peak_amplitudes
                     #matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
                     matrix_amplitudes *= -1
 
@@ -948,7 +985,7 @@ for subject in subjects_to_analyze:
                     ax = fig.gca()
 
                     # retrieve the latencies and convert the indices (in samples) to time units (ms)
-                    matrix_latencies = er_peak_indices
+                    matrix_latencies = er_neg_peak_indices
                     matrix_latencies -= onset_sample
                     matrix_latencies /= sampling_rate
                     matrix_latencies *= 1000
