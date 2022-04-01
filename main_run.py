@@ -635,10 +635,11 @@ for subject in subjects_to_analyze:
 
             # detect evoked responses
             logging.info('- Detecting evoked responses...')
-            er_peak_indices, er_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
-                                                                 cross_proj_metrics=cross_proj_metrics,
-                                                                 waveform_metrics=waveform_metrics)
-            if er_peak_indices is None or er_peak_amplitudes is None:
+            try:
+                er_peak_indices, er_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
+                                                                     cross_proj_metrics=cross_proj_metrics,
+                                                                     waveform_metrics=waveform_metrics)
+            except (ValueError, RuntimeError):
                 logging.error('Evoked response detection failed, exiting...')
                 exit(1)
 

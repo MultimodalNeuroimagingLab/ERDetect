@@ -95,17 +95,17 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
     peak_search_end_sample = int(round(peak_search_epoch[1] * sampling_rate)) + stim_onset_index
     if peak_search_end_sample < peak_search_start_sample:
         logging.error('Invalid \'peak_search_epoch\' parameter, the given end-point (at ' + str(peak_search_epoch[1]) + ') lies before the start-point (at t = ' + str(peak_search_epoch[0]) + ')')
-        return None, None
+        raise ValueError('Invalid \'peak_search_epoch\' parameter')
     if peak_search_end_sample > num_samples:
         logging.error('The data epoch is not big enough, the peak window requires at least ' + str(stim_onset_index + abs(peak_search_start_sample)) + ' samples after stimulation onset')
-        return None, None
+        raise ValueError('The data epoch is not big enough')
 
     # determine the start- and end-point (in samples) of the time-span in which to search for an evoked response
     er_search_start_sample = int(round(er_search_epoch[0] * sampling_rate)) + stim_onset_index
     er_search_end_sample = int(round(er_search_epoch[1] * sampling_rate)) + stim_onset_index
     if er_search_end_sample < er_search_start_sample:
         logging.error('Invalid \'er_search_epoch\' parameter, the given end-point (at ' + str(er_search_epoch[1]) + ') lies before the start-point (at t = ' + str(er_search_epoch[0]) + ')')
-        return None, None
+        raise ValueError('Invalid \'er_search_epoch\' parameter')
 
     # initialize an output buffer (electrode x stimulation-pair)
     er_peak_indices = np.empty((data.shape[0], data.shape[1]))
@@ -124,19 +124,19 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
 
         if waveform_metrics is None:
             logging.error('Method is set to \'waveform\' but no waveform-metrics were passed to the detection function')
-            return None, None
+            raise ValueError('No waveform-metrics were passed')
         elif not waveform_metrics.shape == er_peak_indices.shape:
             logging.error('Size of the waveform-metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
-            return None, None
+            raise ValueError('Waveform-metrics and output buffer size mismatch')
 
     elif method == 'cross_proj':
 
         if waveform_metrics is None:
             logging.error('Method is set to \'cross_proj\' but no cross-projection metrics were passed to the detection function')
-            return None, None
+            raise ValueError('No cross-projection were passed')
         elif not waveform_metrics.shape == er_peak_indices.shape:
             logging.error('Size of the cross-projection metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
-            return None, None
+            raise ValueError('Cross-projection and output buffer size mismatch')
 
     # for every electrode
     for iElec in range(data.shape[0]):
@@ -155,12 +155,15 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
             signal[np.isnan(signal)] = 0
 
             # use peak_finder function to find the negative peak indices and their amplitude
-            (neg_inds, neg_mags) = peak_finder(signal,
-                                               sel=20,  # num of samples around a peak not considered as another peak
-                                               thresh=None,
-                                               extrema=-1,
-                                               include_endpoints=True,
-                                               interpolate=False)
+            try:
+                (neg_inds, neg_mags) = peak_finder(signal,
+                                                   sel=20,  # num of samples around a peak not considered as another peak
+                                                   thresh=None,
+                                                   extrema=-1,
+                                                   include_endpoints=True,
+                                                   interpolate=False)
+            except ValueError:
+                raise RuntimeError('Error in peak detection input')
 
             # if a peak is found on the first sample, then that is not an actual peak, remove
             if neg_inds is not None and len(neg_inds) > 0 and neg_inds[0] == 0:

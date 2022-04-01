@@ -45,7 +45,7 @@ def __create_default_config():
     config['preprocess']['early_re_referencing'] = dict()
     config['preprocess']['early_re_referencing']['enabled']         = False                 #
     config['preprocess']['early_re_referencing']['method']          = 'CAR'                 #
-    config['preprocess']['early_re_referencing']['stim_excl_epoch'] = (-.01, 1.0)
+    config['preprocess']['early_re_referencing']['stim_excl_epoch'] = (-1.0, 2.0)
 
     config['trials'] = dict()
     config['trials']['trial_epoch']                                 = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial

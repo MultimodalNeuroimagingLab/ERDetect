@@ -28,7 +28,7 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
         data = np.array(data)
     if not isinstance(data, np.ndarray) or not data.ndim == 1 or len(data) < 2:
         logging.error('The input data must be a one-dimensional array (list, tuple, ndarray) of at least 2 values')
-        return None, None
+        raise ValueError('Invalid input data')
     if np.any(~np.isreal(data)):
         logging.warning('Absolute values of data will be used')
         data = np.abs(data)
@@ -54,16 +54,16 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
     # extrema parameter
     if not extrema == -1 and not extrema == 1:
         logging.error('The \'extrema\' argument has to be either 1 (for maxima) or -1 (for minima)')
-        return None, None
+        raise ValueError('Invalid extrema argument')
 
     # include endpoints parameter
     if not isinstance(include_endpoints, bool):
         logging.error('The \'include_endpoints\' argument should be a boolean value')
-        return None, None
+        raise ValueError('Invalid include_endpoints argument')
 
     if not isinstance(interpolate, bool):
         logging.error('The \'interpolate\' argument should be a boolean value')
-        return None, None
+        raise ValueError('Invalid interpolate argument')
 
     #
     #
