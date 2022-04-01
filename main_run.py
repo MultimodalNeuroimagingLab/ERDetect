@@ -99,12 +99,12 @@ parser.add_argument('--preproc_prioritize_speed',
                          'priority is given to use as little memory as possible, which can require channel-data to be\n'
                          'retrieved twice, taking longer. This flag allows the preprocessing to keep all channel-data\n'
                          'in memory, requiring much more memory at its peak, but speeding up the process.\n'
-                         'Note: In particular the speed of processing for MEF3 data will be influenced by this setting\n'
-                         '      since it has the ability to read partial data from the disk, allowing for minimal memory\n'
-                         '      usage. In contrast, EDF and BrainVision are loaded by MNE which holds the entire dataset\n'
-                         '      in memory, so retrieval is already fast. As a result, with EDF and BrainVision, it might\n'
-                         '      be counterproductive to set priority to speed since there is little gain and the memory\n'
-                         '      use would double.\n\n',
+                         'Note: In particular the speed processing when re-referencing MEF3 data will be influenced by\n'
+                         '      this setting since MEF3 has the ability to read partial data from the disk, allowing for\n'
+                         '      minimal memory usage. In contrast, EDF and BrainVision are loaded by MNE which holds the\n'
+                         '      entire dataset in memory, so retrieval is already fast. As a result, with EDF and BrainVision,\n'
+                         '      it might be counterproductive to set priority to speed since there is little gain and the\n'
+                         '      memory use would double.\n\n',
                     action='store_true')
 parser.add_argument('--high_pass',
                     help='Perform high-pass filtering (with a cut-off at 0.50Hz) before detection and visualization.\n'
