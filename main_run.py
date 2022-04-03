@@ -126,7 +126,7 @@ parser.add_argument('--line_noise_removal',
                          'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                          '      line-noise removal setting in the configuration file\n\n',
                     nargs="?")
-parser.add_argument('--detect_positive_responses',
+parser.add_argument('--include_positive_responses',
                     help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
                     action='store_true')
 parser.add_argument('--method',
@@ -196,7 +196,7 @@ if args.early_reref:
         exit(1)
 
 # check for methodological arguments
-if args.detect_positive_responses:
+if args.include_positive_responses:
     cfg_set(True, 'detection', 'positive')
     cfg_set(True, 'visualization', 'positive')
 
