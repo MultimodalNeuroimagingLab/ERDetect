@@ -23,16 +23,17 @@ from glob import glob
 from bids_validator import BIDSValidator
 import numpy as np
 import scipy.io as sio
-from matplotlib import cm
 
 from app.config import load_config, write_config, get as cfg, get_config_dict, set as cfg_set, rem as cfg_rem,\
     OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
+from app.detection import ieeg_detect_er
+from app.views import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
 from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages, RerefStruct
 from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
-from app.detection import ieeg_detect_er
+
 
 
 #
@@ -698,36 +699,10 @@ for subject in subjects_to_analyze:
                 # calculate the legend x position
                 legend_x = cfg('visualization', 'x_axis_epoch')[1] - .13
 
-                # adjust line and font sizes to resolution
-                zero_line_thickness = OUTPUT_IMAGE_SIZE / 2000
-                signal_line_thickness = OUTPUT_IMAGE_SIZE / 2000
-                legend_line_thickness = OUTPUT_IMAGE_SIZE / 500
-                title_font_size = round(OUTPUT_IMAGE_SIZE / 80)
-                axis_label_font_size = round(OUTPUT_IMAGE_SIZE / 85)
-                axis_ticks_font_size = round(OUTPUT_IMAGE_SIZE / 100)
-                legend_font_size = round(OUTPUT_IMAGE_SIZE / 90)
-
-                # Adjust the font sizes of the tick according to the number of items (minimum font-size remains 4)
-                if len(stim_pairs_onsets) > 36 and axis_ticks_font_size > 4:
-                    stimpair_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(stim_pairs_onsets))
-                else:
-                    stimpair_axis_ticks_font_size = axis_ticks_font_size
-                if len(channels_incl_detect) > 36 and axis_ticks_font_size > 4:
-                    electrode_axis_ticks_font_size = 4 + (axis_ticks_font_size - 4) * (36.0 / len(channels_incl_detect))
-                else:
-                    electrode_axis_ticks_font_size = axis_ticks_font_size
-
-                # account for the situation where there are only a small number of stimulation-pairs.
-                if len(stim_pairs_onsets) < 10:
-                    stimpair_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(stim_pairs_onsets) / 10)
-                else:
-                    stimpair_y_image_height = OUTPUT_IMAGE_SIZE
-
-                # account for a high number of electrodes
-                if len(channels_incl_detect) > 50:
-                    electrode_y_image_height = 500 + (OUTPUT_IMAGE_SIZE - 500) * (len(channels_incl_detect) / 50)
-                else:
-                    electrode_y_image_height = OUTPUT_IMAGE_SIZE
+                # determine the drawing properties
+                plot_props = calc_sizes_and_fonts(OUTPUT_IMAGE_SIZE,
+                                                  len(stim_pairs_onsets),
+                                                  len(channels_incl_detect))
 
                 #
                 # generate the electrodes plot
@@ -737,18 +712,18 @@ for subject in subjects_to_analyze:
                     #
                     logging.info('- Generating electrode plots...')
 
-                    # create a progress bar
+                    # create progress bar
                     print_progressbar(0, len(channels_incl_detect), prefix='Progress:', suffix='Complete', length=50)
 
                     # loop through electrodes
                     for iElec in range(len(channels_incl_detect)):
 
                         # create a figure and retrieve the axis
-                        fig = create_figure(OUTPUT_IMAGE_SIZE, stimpair_y_image_height, False)
+                        fig = create_figure(OUTPUT_IMAGE_SIZE, plot_props['stimpair_y_image_height'], False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(channels_incl_detect[iElec] + '\n', fontsize=title_font_size, fontweight='bold')
+                        ax.set_title(channels_incl_detect[iElec] + '\n', fontsize=plot_props['title_font_size'], fontweight='bold')
 
                         # loop through the stimulation-pairs
                         for iPair in range(len(stim_pairs_onsets)):
@@ -756,7 +731,7 @@ for subject in subjects_to_analyze:
                             # draw 0 line
                             y = np.empty((averages.shape[2], 1))
                             y.fill(len(stim_pairs_onsets) - iPair)
-                            ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
+                            ax.plot(x, y, linewidth=plot_props['zero_line_thickness'], color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = averages[iElec, iPair, :] / 500
@@ -770,7 +745,7 @@ for subject in subjects_to_analyze:
                             if not np.isnan(y).all():
 
                                 # plot the signal
-                                ax.plot(x, y, linewidth=signal_line_thickness)
+                                ax.plot(x, y, linewidth=plot_props['signal_line_thickness'])
 
                                 # if negative evoked potential is detected, plot it
                                 if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
@@ -787,23 +762,23 @@ for subject in subjects_to_analyze:
                                     ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
 
                         # set the x-axis
-                        ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
+                        ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
                         ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
-                            label.set_fontsize(axis_ticks_font_size)
+                            label.set_fontsize(plot_props['axis_ticks_font_size'])
 
                         # set the y-axis
-                        ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
+                        ax.set_ylabel('Stimulated electrode-pair\n', fontsize=plot_props['axis_label_font_size'])
                         ax.set_ylim((0, len(stim_pairs_onsets) + 1))
                         ax.set_yticks(np.arange(1, len(stim_pairs_onsets) + 1, 1))
-                        ax.set_yticklabels(np.flip(list(stim_pairs_onsets.keys())), fontsize=stimpair_axis_ticks_font_size)
+                        ax.set_yticklabels(np.flip(list(stim_pairs_onsets.keys())), fontsize=plot_props['stimpair_axis_ticks_font_size'])
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
                         legend_y = 2 if len(stim_pairs_onsets) > 4 else (1 if len(stim_pairs_onsets) > 1 else 0)
-                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
+                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=plot_props['legend_line_thickness'], color=(0, 0, 0))
+                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=plot_props['legend_font_size'])
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -832,11 +807,11 @@ for subject in subjects_to_analyze:
                     for stim_pair in stim_pairs_onsets.keys():
 
                         # create a figure and retrieve the axis
-                        fig = create_figure(OUTPUT_IMAGE_SIZE, electrode_y_image_height, False)
+                        fig = create_figure(OUTPUT_IMAGE_SIZE, plot_props['electrode_y_image_height'], False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(stim_pair + '\n', fontsize=title_font_size, fontweight='bold')
+                        ax.set_title(stim_pair + '\n', fontsize=plot_props['title_font_size'], fontweight='bold')
 
                         # loop through the electrodes
                         for iElec in range(len(channels_incl_detect)):
@@ -844,7 +819,7 @@ for subject in subjects_to_analyze:
                             # draw 0 line
                             y = np.empty((averages.shape[2], 1))
                             y.fill(len(channels_incl_detect) - iElec)
-                            ax.plot(x, y, linewidth=zero_line_thickness, color=(0.8, 0.8, 0.8))
+                            ax.plot(x, y, linewidth=plot_props['zero_line_thickness'], color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = averages[iElec, iPair, :] / 500
@@ -855,7 +830,7 @@ for subject in subjects_to_analyze:
                             y[stim_start_x:stim_end_x] = np.nan
 
                             # plot the signal
-                            ax.plot(x, y, linewidth=signal_line_thickness)
+                            ax.plot(x, y, linewidth=plot_props['signal_line_thickness'])
 
                             # if evoked potential is detected, plot it
                             if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
@@ -871,23 +846,23 @@ for subject in subjects_to_analyze:
                                 ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
 
                         # set the x-axis
-                        ax.set_xlabel('\ntime (s)', fontsize=axis_label_font_size)
+                        ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
                         ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                         for label in ax.get_xticklabels():
-                            label.set_fontsize(axis_ticks_font_size)
+                            label.set_fontsize(plot_props['axis_ticks_font_size'])
 
                         # set the y-axis
-                        ax.set_ylabel('Measured electrodes\n', fontsize=axis_label_font_size)
+                        ax.set_ylabel('Measured electrodes\n', fontsize=plot_props['axis_label_font_size'])
                         ax.set_ylim((0, len(channels_incl_detect) + 1))
                         ax.set_yticks(np.arange(1, len(channels_incl_detect) + 1, 1))
-                        ax.set_yticklabels(np.flip(channels_incl_detect), fontsize=electrode_axis_ticks_font_size)
+                        ax.set_yticklabels(np.flip(channels_incl_detect), fontsize=plot_props['electrode_axis_ticks_font_size'])
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
                         # draw legend
                         legend_y = 2 if len(stim_pairs_onsets) > 4 else (1 if len(stim_pairs_onsets) > 1 else 0)
-                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=legend_line_thickness, color=(0, 0, 0))
-                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=legend_font_size)
+                        ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=plot_props['legend_line_thickness'], color=(0, 0, 0))
+                        ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=plot_props['legend_font_size'])
 
                         # Hide the right and top spines
                         ax.spines['right'].set_visible(False)
@@ -911,131 +886,39 @@ for subject in subjects_to_analyze:
                     #
                     logging.info('- Generating matrices...')
 
-                    # calculate the image width based on the number of stim-pair and electrodes
-                    image_width = stimpair_y_image_height / len(stim_pairs_onsets) * len(channels_incl_detect)
-                    image_width += 800
+                    image_width, image_height = calc_matrix_image_size(plot_props['stimpair_y_image_height'],
+                                                                       len(stim_pairs_onsets),
+                                                                       len(channels_incl_detect))
 
-                    # make sure the image width does not exceed the matplotlib limit of 2**16
-                    if image_width >= 2 ** 16:
-                        factor = (2 ** 16 - 50) / image_width
-                        image_width = int(round(image_width * factor))
-                        image_height = int(round(stimpair_y_image_height * factor))
-                    else:
-                        image_height = stimpair_y_image_height
+                    # generate negative matrices and save
+                    if cfg('visualization', 'negative'):
 
-                    # adjust the padding between the matrix and the colorbar based on the image width
-                    colorbar_padding = 0.01 if image_width < 2000 else (0.01 * (2000 / image_width))
+                        # amplitude
+                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                                                   plot_props, image_width, image_height,
+                                                   er_neg_peak_amplitudes.copy() * -1, False)
+                        fig.savefig(os.path.join(output_root, 'matrix_amplitude_neg.png'), bbox_inches='tight')
 
-                    # if there are 10 times more electrodes than stimulation-pairs, then allow
-                    # the matrix to squeeze horizontally
-                    matrix_aspect = 1
-                    element_ratio = len(channels_incl_detect) / len(stim_pairs_onsets)
-                    if element_ratio > 10:
-                        matrix_aspect = element_ratio / 8
+                        # latency
+                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                                                 plot_props, image_width, image_height,
+                                                 (er_neg_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
+                        fig.savefig(os.path.join(output_root, 'matrix_latency_neg.png'), bbox_inches='tight')
 
+                    # generate positive matrices and save
+                    if cfg('visualization', 'positive'):
 
-                    #
-                    # Amplitude matrix
-                    #
-                    
-                    #
-                    matrix_amplitudes = er_neg_peak_amplitudes
-                    #matrix_amplitudes[np.isnan(matrix_amplitudes)] = 0
-                    matrix_amplitudes *= -1
+                        # amplitude
+                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                                                   plot_props, image_width, image_height,
+                                                   er_pos_peak_amplitudes.copy(), True)
+                        fig.savefig(os.path.join(output_root, 'matrix_amplitude_pos.png'), bbox_inches='tight')
 
-                    # create a figure and retrieve the axis
-                    fig = create_figure(image_width, image_height, False)
-                    ax = fig.gca()
-
-                    # create a color map
-                    cmap = cm.get_cmap("autumn").copy()
-                    cmap.set_bad((.7, .7, .7, 1))
-
-                    # draw the matrix
-                    im = ax.imshow(np.transpose(matrix_amplitudes), origin='upper', vmin=0, vmax=500, cmap=cmap, aspect=matrix_aspect)
-
-                    # set labels and ticks
-                    ax.set_yticks(np.arange(0, len(stim_pairs_onsets), 1))
-                    ax.set_yticklabels(list(stim_pairs_onsets.keys()), fontsize=stimpair_axis_ticks_font_size)
-                    ax.set_xticks(np.arange(0, len(channels_incl_detect), 1))
-                    ax.set_xticklabels(channels_incl_detect,
-                                       rotation=90,
-                                       fontsize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
-                    ax.set_xlabel('\nMeasured electrode', fontsize=axis_label_font_size)
-                    ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
-                    for axis in ['top', 'bottom', 'left', 'right']:
-                        ax.spines[axis].set_linewidth(1.5)
-
-                    # set a color-bar
-                    cbar = fig.colorbar(im, pad=colorbar_padding)
-                    cbar.set_ticks([0, 100, 200, 300, 400, 500])
-                    cbar.ax.set_yticklabels(['0', '-100 \u03bcV', '-200 \u03bcV', '-300 \u03bcV', '-400 \u03bcV', '-500 \u03bcV'], fontsize=legend_font_size - 4)
-                    cbar.outline.set_linewidth(1.5)
-
-                    # save figure
-                    fig.savefig(os.path.join(output_root, 'matrix_amplitude.png'), bbox_inches='tight')
-
-
-                    #
-                    # Latency matrix
-                    #
-
-                    # create a figure and retrieve the axis
-                    fig = create_figure(image_width, image_height, False)
-                    ax = fig.gca()
-
-                    # retrieve the latencies and convert the indices (in samples) to time units (ms)
-                    matrix_latencies = er_neg_peak_indices
-                    matrix_latencies -= onset_sample
-                    matrix_latencies /= sampling_rate
-                    matrix_latencies *= 1000
-                    #matrix_latencies[np.isnan(matrix_latencies)] = 0
-
-                    # determine the latest negative response
-                    latest_neg = np.nanmax(matrix_latencies)
-                    if np.isnan(latest_neg):
-                        latest_neg = 10
-                    latest_neg = int(ceil(latest_neg / 10)) * 10
-
-                    # create a color map
-                    cmap = cm.get_cmap('summer_r').copy()
-                    cmap.set_bad((.7, .7, .7, 1))
-
-                    # draw the matrix
-                    im = ax.imshow(np.transpose(matrix_latencies), origin='upper', vmin=0, cmap=cmap, aspect=matrix_aspect)
-
-                    # set labels and ticks
-                    ax.set_yticks(np.arange(0, len(stim_pairs_onsets), 1))
-                    ax.set_yticklabels(list(stim_pairs_onsets.keys()), fontsize=stimpair_axis_ticks_font_size)
-                    ax.set_xticks(np.arange(0, len(channels_incl_detect), 1))
-                    ax.set_xticklabels(channels_incl_detect,
-                                       rotation=90,
-                                       fontsize=stimpair_axis_ticks_font_size)  # deliberately using stimpair-fs here
-                    ax.set_xlabel('\nMeasured electrode', fontsize=axis_label_font_size)
-                    ax.set_ylabel('Stimulated electrode-pair\n', fontsize=axis_label_font_size)
-                    for axis in ['top', 'bottom', 'left', 'right']:
-                        ax.spines[axis].set_linewidth(1.5)
-
-                    # generate the legend tick values
-                    legend_tick_values = []
-                    legend_tick_labels = []
-                    for latency in range(0, latest_neg + 10, 10):
-                        legend_tick_values.append(latency)
-                        legend_tick_labels.append(str(latency) + ' ms')
-
-                    # set the color limits for the image based on the range display in the legend
-                    im.set_clim([legend_tick_values[0], legend_tick_values[-1]])
-
-                    # set a color-bar
-                    cbar = fig.colorbar(im, pad=colorbar_padding)
-                    cbar.set_ticks(legend_tick_values)
-                    cbar.ax.set_yticklabels(legend_tick_labels, fontsize=legend_font_size - 4)
-                    cbar.ax.invert_yaxis()
-                    cbar.outline.set_linewidth(1.5)
-
-                    # save figure
-                    fig.savefig(os.path.join(output_root, 'matrix_latency.png'), bbox_inches='tight')
-
+                        # latency
+                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                                                 plot_props, image_width, image_height,
+                                                 (er_pos_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
+                        fig.savefig(os.path.join(output_root, 'matrix_latency_pos.png'), bbox_inches='tight')
 
             #
             logging.info('- Finished subset')
