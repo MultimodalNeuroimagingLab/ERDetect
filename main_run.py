@@ -200,6 +200,14 @@ if args.detect_positive_responses:
     cfg_set(True, 'detection', 'positive')
     cfg_set(True, 'visualization', 'positive')
 
+# if negative or positive response visualization is enabled, make sure detection is as well
+if cfg('visualization', 'negative') and not cfg('detection', 'negative'):
+    logging.warning('Visualization of negative evoked responses is enabled, but the detection is set to disabled, detection of negative responses will be enabled')
+    cfg_set(True, 'detection', 'negative')
+if cfg('visualization', 'positive') and not cfg('detection', 'positive'):
+    logging.warning('Visualization of positive evoked responses is enabled, but the detection is set to disabled, detection of positive responses will be enabled')
+    cfg_set(True, 'detection', 'positive')
+
 if args.method:
     cfg_rem('detection', 'std_base')
     cfg_rem('detection', 'cross_proj')
