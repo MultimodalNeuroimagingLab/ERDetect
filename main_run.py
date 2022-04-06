@@ -557,8 +557,9 @@ for subject in subjects_to_analyze:
             if str(cfg('preprocess', 'line_noise_removal')).lower() == 'tsv':
                 # TODO: implement from tsv, now just sets to 60
                 line_noise_removal = 60
-            if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
-                line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
+            else:
+                if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
+                    line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
 
             #late_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be all channels, not just channels_incl_detect
             #late_reref.set_exclude_reref_epochs(stim_pairs_onsets, (-.01, 1.0), '-')
