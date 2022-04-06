@@ -140,9 +140,11 @@ class IeegDataReader:
             del self.mef_session
 
 
-    def retrieve_channel_data(self, channel_name):
+    def retrieve_channel_data(self, channel_name, ensure_own_data=True):
         """
         Retrieve the channel data (mef = numpy data-array, mne = numpy data-view)
+
+        ensure_own_data (bool):           Makes sure that the returned numpy array has its own data (is not a view)
         """
 
         # if not initialized, try to initialize first
@@ -153,7 +155,7 @@ class IeegDataReader:
         # retrieve the channel data
         try:
             if self.data_format == 0 or self.data_format == 1:
-                return IeegDataReader.__retrieve_channel_data_mne(self.mne_raw, channel_name)
+                return IeegDataReader.__retrieve_channel_data_mne(self.mne_raw, channel_name, ensure_own_data)
             elif self.data_format == 2:
                 return IeegDataReader.__retrieve_channel_data_mef(self.mef_session, channel_name)
 
@@ -222,9 +224,11 @@ class IeegDataReader:
 
 
     @staticmethod
-    def __retrieve_channel_data_mne(mne_raw, channel_name):
+    def __retrieve_channel_data_mne(mne_raw, channel_name, ensure_own_data):
         """
-        Retrieve the channel data by channel name (retrieve numpy slice from mne_raw)
+        Retrieve the channel data by channel name
+
+        ensure_own_data (bool):           Makes sure that the returned numpy array has its own data (is not a view)
         """
 
         # retrieve the index of the channel
@@ -232,15 +236,19 @@ class IeegDataReader:
         if channel_idx is None:
             raise LookupError('Could not find channel')
 
-        # return the channel data (numpy view)
-        return mne_raw._data[channel_idx, :]
+        # return the channel data
+        if ensure_own_data:
+            return mne_raw._data[channel_idx, :].copy()
+        else:
+            return mne_raw._data[channel_idx, :]
 
 
-
-    def retrieve_sample_range_data(self, channels, sample_start, sample_end):
+    def retrieve_sample_range_data(self, channels, sample_start, sample_end, ensure_own_data=True):
         """
         Retrieve a specific range of samples of data of the indicated channels (mef = numpy data-array, mne = numpy data-view)
         Returns a list with the channel data, format <list of channels> x <requested samples>
+
+        ensure_own_data (bool):           Makes sure that the returned numpy array has its own data (is not a view)
         """
 
         # make sure the input is a list
@@ -267,7 +275,10 @@ class IeegDataReader:
                     raise LookupError('Could not find channel')
 
                 # pick (slice) a channel data-range (numpy view)
-                sample_data[channel_counter] = self.mne_raw._data[channel_idx, sample_start:sample_end]
+                if ensure_own_data:
+                    sample_data[channel_counter] = self.mne_raw._data[channel_idx, sample_start:sample_end].copy()
+                else:
+                    sample_data[channel_counter] = self.mne_raw._data[channel_idx, sample_start:sample_end]
 
             return sample_data
         

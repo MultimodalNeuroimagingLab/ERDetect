@@ -600,9 +600,13 @@ def __epoch_data__from_channel_data__by_trials(ref_data, channel_idx, channel_da
 
         # extract the trial data and perform baseline normalization on the trial if needed
         if baseline_method == 0:
-            # TODO: check if owndata, only copy if not (maybe move to IEEGDataReader with parameter)
-            #data[channel_idx, trial_idx, local_start:local_end] = channel_data[trial_sample_start:trial_sample_end]
+
+            # Note: since we are not manipulating the data (which in the other cases converts a view to data), always
+            #       make a copy. Even if the channel input is a data array (and not a view), it might be possible that
+            #       epochs overlap; in addition, avoiding views ensures there are no remaining references to the source
+            #       numpy-array, allowing it to be cleared from memory
             ref_data[channel_idx, trial_idx, local_start:local_end] = channel_data[trial_sample_start:trial_sample_end].copy()
+
         elif baseline_method == 1:
             baseline_mean = np.nanmean(channel_data[baseline_start_sample:baseline_end_sample])
             ref_data[channel_idx, trial_idx, local_start:local_end] = channel_data[trial_sample_start:trial_sample_end] - baseline_mean
@@ -646,7 +650,7 @@ def __load_data_epochs__by_channels(data_reader, retrieve_channels, onsets, tria
         try:
 
             # retrieve the channel data
-            channel_data = data_reader.retrieve_channel_data(retrieve_channels[channel_idx])
+            channel_data = data_reader.retrieve_channel_data(retrieve_channels[channel_idx], False)
 
             # epoch the channel data
             __epoch_data__from_channel_data__by_trials(data,
@@ -750,7 +754,7 @@ def __load_data_epochs__by_trial(data_reader, retrieve_channels, onsets, trial_e
 
         # load the trial data
         try:
-            trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end)
+            trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end, False)
         except (RuntimeError, LookupError):
             raise RuntimeError('Could not load data')
 
@@ -759,9 +763,14 @@ def __load_data_epochs__by_trial(data_reader, retrieve_channels, onsets, trial_e
 
             # extract the trial data and perform baseline normalization on the trial if needed
             if baseline_method == 0:
-                # TODO: check if owndata, only copy if not (maybe move to IEEGDataReader with parameter)
-                #data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx]
-                data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx].copy()
+                # Note: since we are not manipulating the data (which in the other cases converts a view to data), ensure
+                #       the epoch has its own data (not a view). Avoiding views prevents trouble with overlapping
+                #       epochs; in addition, avoiding views ensures there are no remaining references to the source
+                #       numpy-array, allowing it to be cleared from memory
+                if trial_data[channel_idx].base is None:
+                    data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx]
+                else:
+                    data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx].copy()
             elif baseline_method == 1:
                 baseline_mean = np.nanmean(trial_data[channel_idx][baseline_start_sample:baseline_end_sample])
                 data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx] - baseline_mean
@@ -894,7 +903,7 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channel
 
             # load the trial data
             try:
-                trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end)
+                trial_data = data_reader.retrieve_sample_range_data(retrieve_channels, trial_sample_start, trial_sample_end, False)
             except (RuntimeError, LookupError):
                 raise RuntimeError('Could not load data')
 
@@ -908,7 +917,9 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channel
                 # the baseline values in a separate array, so they can be applied later
                 #
                 if baseline_method == 0 or metric_callbacks is not None:
-                    # Note: not relevant whether this is a numpy-view or not, since we will average over the trials later
+
+                    # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                    #       later. Assume metric_callback does not manipulate the data it is given
                     condition_data[channel_idx, trial_idx, local_start:local_end] = trial_data[channel_idx]
 
                 if baseline_method == 1:
@@ -919,6 +930,8 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channel
 
                     else:
                         # callback, store the baseline values for later use
+                        # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                        #       later. Assume metric_callback does not manipulate the data it is given
                         baseline_data[channel_idx, trial_idx, :] = trial_data[channel_idx][baseline_start_sample:baseline_end_sample]
 
                 elif baseline_method == 2:
@@ -929,6 +942,8 @@ def __load_data_epoch_averages__by_condition_trial(data_reader, retrieve_channel
 
                     else:
                         # callback, store the baseline values for later use
+                        # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                        #       later. Assume metric_callback does not manipulate the data it is given
                         baseline_data[channel_idx, trial_idx, :] = trial_data[channel_idx][baseline_start_sample:baseline_end_sample]
 
         # check if a pre-averaging callback function is defined
@@ -1084,8 +1099,8 @@ def __subload_data_epoch_averages__from_channel__by_condition_trials(ref_data, r
                 # retrieve using reader
 
                 try:
-                    trial_baseline_data = data_reader.retrieve_sample_range_data(channel_name, baseline_start_sample, baseline_end_sample)[0]
-                    trial_trial_data = data_reader.retrieve_sample_range_data(channel_name, trial_sample_start, trial_sample_end)[0]
+                    trial_baseline_data = data_reader.retrieve_sample_range_data(channel_name, baseline_start_sample, baseline_end_sample, False)[0]
+                    trial_trial_data = data_reader.retrieve_sample_range_data(channel_name, trial_sample_start, trial_sample_end, False)[0]
                 except (RuntimeError, LookupError):
                     raise RuntimeError('Could not load data')
 
@@ -1103,6 +1118,9 @@ def __subload_data_epoch_averages__from_channel__by_condition_trials(ref_data, r
             # the baseline values in a separate array, so they can be applied later
             #
             if baseline_method == 0 or metric_callbacks is not None:
+
+                # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                #       later. Assume metric_callback does not manipulate the data it is given
                 condition_channel_data[trial_idx, local_start:local_end] = trial_trial_data
 
             if baseline_method == 1:
@@ -1113,6 +1131,8 @@ def __subload_data_epoch_averages__from_channel__by_condition_trials(ref_data, r
 
                 else:
                     # callback, store the baseline values for later use
+                    # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                    #       later. Assume metric_callback does not manipulate the data it is given
                     baseline_data[trial_idx, :] = trial_baseline_data
 
             elif baseline_method == 2:
@@ -1123,6 +1143,8 @@ def __subload_data_epoch_averages__from_channel__by_condition_trials(ref_data, r
 
                 else:
                     # callback, store the baseline values for later use
+                    # Note: not relevant whether this is a numpy-view or not, since we will average over the trials
+                    #       later. Assume metric_callback does not manipulate the data it is given
                     baseline_data[trial_idx, :] = trial_baseline_data
 
         # check if a pre-averaging callback function is defined
@@ -1429,8 +1451,9 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     #print(channel + ": load")
 
                     # retrieve the channel data
+                    # Note: ensure it is not a view, elsewise manipulations further on might adjust the source data
                     try:
-                        channel_data[channel] = data_reader.retrieve_channel_data(channel)
+                        channel_data[channel] = data_reader.retrieve_channel_data(channel, True)
                     except RuntimeError:
                         raise RuntimeError('Error upon retrieving data')
 
