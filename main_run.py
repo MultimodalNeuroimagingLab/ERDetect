@@ -125,7 +125,7 @@ parser.add_argument('--line_noise_removal',
                          '      - set to a specific line-noise frequency (e.g. \'--line_noise_removal 60\')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                          '      line-noise removal setting in the configuration file\n\n',
-                    nargs="?")
+                    nargs="?", const='tsv')
 parser.add_argument('--include_positive_responses',
                     help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
                     action='store_true')
