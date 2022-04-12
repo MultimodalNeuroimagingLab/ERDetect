@@ -1383,19 +1383,19 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
 
         order = 2
         fs = data_reader.sampling_rate
-        passFreq = 0.50     # Hz <<<<
-        stopFreq = 0.05     # Hz
-        passRipple = 3      # dB
-        stopAtten = 30      # dB
+        pass_freq = 0.50     # Hz <<<<
+        stop_freq = 0.05     # Hz
+        pass_ripple = 3      # dB
+        stop_atten = 30      # dB
 
         # TODO: matlab also allows passing of stopband (buttord), however getting the same values out of python buttord is difficult
         #       settling for standard python ways for now (direct use of butter)
         """
         # normalize the passband and stopband to the Nyquist frequency
-        normPassFreq = passFreq / (fs / 2)  # pass band freq in radian
-        normStopFreq = stopFreq / (fs / 2)  # stop band freq in radian
+        norm_pass_freq = pass_freq / (fs / 2)  # pass band freq in radian
+        norm_stop_freq = stop_freq / (fs / 2)  # stop band freq in radian
     
-        filtOrder, cutFreq = signal.buttord(normPassFreq, normStopFreq, passRipple, stopAtten, True)
+        filtOrder, cut_freq = signal.buttord(norm_pass_freq, norm_stop_freq, pass_ripple, stop_atten, True)
     
         # sos = signal.butter(order, normal_cutoff, btype='highpass', analog=False, output='sos', fs=fs)
         #[filtZeros, filtPoles, filtGains] = signal.butter(2, 2.745120377767732e-04, 'high', output='zpk')
@@ -1406,10 +1406,10 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
         """
 
         # normalize the high-pass cut-off frequency using the nyquist frequency (srate / 2)
-        cutFreq = passFreq / (data_reader.sampling_rate / 2)
+        cut_freq = pass_freq / (data_reader.sampling_rate / 2)
 
         # design a butterworth filter and get the filter coefficients (numerator / denominator (‘ba’)
-        hp_numerator, hp_denominator = signal.butter(order, cutFreq, btype='highpass', analog=False, output='ba', fs=fs)
+        hp_numerator, hp_denominator = signal.butter(order, cut_freq, btype='highpass', analog=False, output='ba', fs=fs)
         # TODO: the 'ba' or 'sos' returned by butter differ from what matlab gives
 
         #sos = signal.butter(order, normal_cutoff, btype='highpass', analog=False, output='sos', fs=fs)
