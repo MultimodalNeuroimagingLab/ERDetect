@@ -1272,16 +1272,6 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                                             the onsets of the trials that belong to each condition. (format: conditions x condition onsets)
     """
 
-
-    #hp = True
-    #early_reref = RerefStruct.generate_car(retrieve_channels) # TODO: should be alle channels, not just retrieve_channels
-    #lnr = 60            # None is no line noise removal
-    #late_reref = RerefStruct.generate_car(retrieve_channels) # TODO: should be all channels, not just retrieve_channels
-    #optimized = 'mem'
-
-
-
-
     # calculate the size of the time dimension (in samples)
     trial_num_samples = int(round(abs(trial_epoch[1] - trial_epoch[0]) * data_reader.sampling_rate))
     baseline_num_samples = int(round(abs(baseline_epoch[1] - baseline_epoch[0]) * data_reader.sampling_rate))
@@ -1303,7 +1293,6 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     metric_values = allocate_array((len(retrieve_channels), len(onsets), len(metric_callbacks)))
         except MemoryError:
             raise MemoryError('Not enough memory create a metric output matrix')
-
 
     # create a list of all channels that we need, most with the purpose of reading and returning (e.g. only ECoG) but some only to be used for re-referencing (e.g. both ECoG and SEEG)
     all_channels = retrieve_channels.copy()
@@ -1481,7 +1470,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
         for channel in all_channels:
 
             # check if we need this channel, which is the case when:
-            #   - it still needs to be epoched
+            #   - it still needs to be epoch-ed
             #   - when it is needed for early re-ref but not collected
             #   - when it is needed for late re-ref but not collected
             if (channel in channel_epoched.keys() and not channel_epoched[channel]) or \
@@ -1763,7 +1752,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                     #
 
                     # since late re-referencing and epoching are the last steps, there is no storing of the channel data
-                    # with late re-referening applied. The channel data either stays as it arrived at this point (when
+                    # with late re-referencing applied. The channel data either stays as it arrived at this point (when
                     # optimized for speed; waiting for being able to perform the late re-ref) or is reprocessed from the start
                     # to the same state (when optimized for memory, then the late re-ref will be applied) or it is immediately
                     # late re-referenced and epoched (and the channel-data cleared)
@@ -1806,7 +1795,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                         continue
 
                 #
-                # Epoching
+                # Epoch-ing
                 #
 
                 # epoch the channel data
