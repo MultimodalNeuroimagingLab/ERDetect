@@ -1422,14 +1422,58 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
         # design a notch filter and get the filter coefficients (numerator / denominator (‘ba’)
         lnr_numerator, lnr_denominator = signal.iirnotch(line_noise_removal, 30.0, data_reader.sampling_rate)
 
+
+    #
+    # Progress bar subscript
+    #
+
+    def update_progressbar():
+
+        # set how much each step contributes to the total progress
+        prop_early_collected = 0
+        prop_late_collected = 0
+        if early_reref is None and late_reref is None:
+            prop_channel_epoched = 1
+
+        else:
+            prop_channel_epoched = .4
+
+            if early_reref is not None and late_reref is None:
+                prop_early_collected = .6
+
+            elif early_reref is None and late_reref is not None:
+                prop_late_collected = .6
+
+            else:
+                if priority == 'mem':
+                    prop_early_collected = .3
+                    prop_late_collected = .3
+                else:
+                    prop_early_collected = .5
+                    prop_late_collected = .1
+
+        # retrieve proportions
+        progression_channel_epoched = sum(channel_epoched.values()) / len(channel_epoched)
+        progression_early_collected = 0
+        progression_late_collected = 0
+        if early_reref is not None:
+            progression_early_collected = sum([sum(v.values()) for v in early_group_channels_collected.values()]) / sum([len(v) for v in early_group_channels_collected.values()])
+        if late_reref is not None:
+            progression_late_collected = sum([sum(v.values()) for v in late_group_channels_collected.values()]) / sum([len(v) for v in late_group_channels_collected.values()])
+
+        # update the progress bar
+        prop = prop_channel_epoched * progression_channel_epoched + prop_early_collected * progression_early_collected + prop_late_collected * progression_late_collected
+        print_progressbar(prop, 1, prefix='Progress:', suffix='Complete', length=50)
+
+    # create progress bar
+    update_progressbar()
+
+
     #
     # Process
     #
 
-    # create progress bar
-    print_progressbar(0, len(channel_epoched), prefix='Progress:', suffix='Complete', length=50)
-
-    # until all channels are epoched (fully processed)
+    # until all channels are epoch-ed (fully processed)
     while not all(channel_epoched.values()):
 
         # loop over all the required channels
@@ -1552,7 +1596,10 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                         # flag that for this channel the re-ref values have been collected
                         channel_early_reref_collected[channel] = True
 
-                        # check if channel is no longer needed after this (for epoching or for late re-ref)
+                        # update the progress bar
+                        update_progressbar()
+
+                        # check if channel is no longer needed after this (for epoch-ing or for late re-ref)
                         # Note: this also means the channel was only loaded for early re-referencing
                         if channel not in channel_epoched.keys() and (late_reref is None or channel not in channel_late_reref_collected):
                             # channel-data is no longer needed at all
@@ -1695,6 +1742,9 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                         # flag that for this channel the late re-ref values have been collected
                         channel_late_reref_collected[channel] = True
 
+                        # update the progress bar
+                        update_progressbar()
+
                         # check if channel is no longer needed after this (for epoching)
                         # Note: this also means the channel was only loaded for early or late re-referencing
                         if channel not in channel_epoched.keys():
@@ -1802,6 +1852,9 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
 
                 # mark channel as epoch-ed (fully processed)
                 channel_epoched[channel] = True
+
+                # update the progress bar
+                update_progressbar()
 
     #
     if average:
