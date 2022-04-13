@@ -29,7 +29,7 @@ from app.config import load_config, write_config, get as cfg, get_config_dict, s
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
 from app.detection import ieeg_detect_er
 from app.views import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
-from utils.bids import load_channel_info, load_event_info, load_data_epochs_averages, RerefStruct
+from utils.bids import load_channel_info, load_event_info, load_ieeg_sidecar, load_data_epochs_averages, RerefStruct
 from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import print_progressbar, is_number, CustomLoggingFormatter, multi_line_list, create_figure
 from metric_callbacks import metric_cross_proj, metric_waveform
@@ -120,12 +120,12 @@ parser.add_argument('--early_reref',
                     nargs="?", const='CAR')
 parser.add_argument('--line_noise_removal',
                     help='Perform line-noise removal before detection and visualization. Can be either:\n'
-                         '      - \'tsv\' to lookup the line-noise frequency in the BIDS channels.tsv file\n'
-                         '        (e.g. \'--line_noise_removal tsv\')\n'
+                         '      - \'json\' or \'sidecar\' to lookup the line-noise frequency in the BIDS *_ieeg.json file\n'
+                         '        (e.g. \'--line_noise_removal json\')\n'
                          '      - set to a specific line-noise frequency (e.g. \'--line_noise_removal 60\')\n'
                          'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                          '      line-noise removal setting in the configuration file\n\n',
-                    nargs="?", const='tsv')
+                    nargs="?", const='json')
 parser.add_argument('--include_positive_responses',
                     help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
                     action='store_true')
@@ -178,13 +178,13 @@ if args.high_pass:
     cfg_set(True, 'preprocess', 'high_pass')
 
 if args.line_noise_removal:
-    if str(args.line_noise_removal).lower() == 'tsv':
-        cfg_set('tsv', 'preprocess', 'line_noise_removal')
+    if str(args.line_noise_removal).lower() == 'json' or str(args.line_noise_removal).lower() == 'sidecar':
+        cfg_set('json', 'preprocess', 'line_noise_removal')
     elif is_number(args.line_noise_removal):
         # TODO: valid number
         cfg_set(str(args.line_noise_removal), 'preprocess', 'line_noise_removal')
     else:
-        logging.error('Invalid line_noise_removal argument \'' + args.line_noise_removal + '\', either set to \'tsv\', or provide the line-noise frequency as a number.')
+        logging.error('Invalid line_noise_removal argument \'' + args.line_noise_removal + '\', either set to \'json\' or \'sidecar\' to retrieve the line-noise frequency from the *_ieeg.json file, or provide the line-noise frequency as a number.')
         exit(1)
 
 if args.early_reref:
@@ -383,15 +383,51 @@ for subject in subjects_to_analyze:
             bids_subset_root = subset[:subset.rindex('_')]
 
 
+
+            #
+            # Line noise removal and IEEG JSON sidecar
+            #
+
+            if str(cfg('preprocess', 'line_noise_removal')).lower() == 'json':
+                try:
+                    ieeg_json = load_ieeg_sidecar(bids_subset_root + '_ieeg.json')
+
+                    # check if the field exists
+                    if 'PowerLineFrequency' not in ieeg_json:
+                        logging.error('Could not find the \'PowerLineFrequency\' field in the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') this is required to perform line-noise removal, exiting...')
+                        exit(1)
+
+                    # check if the field is a number and higher than 0
+                    if not is_number(ieeg_json['PowerLineFrequency']) or ieeg_json['PowerLineFrequency'] <= 0:
+                        logging.error('Invalid value for the \'PowerLineFrequency\' field in the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\'), positive integer is required to perform line-noise removal, exiting...')
+                        exit(1)
+
+                    # use the PowerLineFrequency value
+                    line_noise_removal = float(ieeg_json['PowerLineFrequency'])
+                    log_indented_line('Powerline frequency from IEEG JSON sidecar:', str(line_noise_removal))
+
+                except (IOError, RuntimeError):
+                    logging.error('Could not load the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') that is required to perform line-noise removal, exiting...')
+                    exit(1)
+                
+            else:
+                # not from JSON
+
+                # check if there is a number in the config, if so, use it
+                if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
+                    line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
+
+
+
             #
             # retrieve channel metadata
             #
 
             # retrieve the channel metadata from the channels.tsv file
             try:
-                csv = load_channel_info(bids_subset_root + '_channels.tsv')
+                channel_tsv = load_channel_info(bids_subset_root + '_channels.tsv')
             except (FileNotFoundError, LookupError):
-                logging.error('Could not load the channel metadata, exiting...')
+                logging.error('Could not load the channel metadata (\'' + bids_subset_root + '_channels.tsv\'), exiting...')
                 exit(1)
 
             # sort out the good, the bad and the... non-ieeg
@@ -399,8 +435,8 @@ for subject in subjects_to_analyze:
             channels_incl_detect = []                               # the channel that are needed for detection
             channels_incl_early_reref = []                          # TODO: channel that are included for re-referencing
             channels_excl_detect_by_type = []
-            channels_have_status = 'status' in csv.columns
-            for index, row in csv.iterrows():
+            channels_have_status = 'status' in channel_tsv.columns
+            for index, row in channel_tsv.iterrows():
                 excluded_for_detection = False
 
                 # check if bad channel
@@ -437,17 +473,17 @@ for subject in subjects_to_analyze:
 
             # retrieve the stimulation events (onsets and pairs) from the events.tsv file
             try:
-                csv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
+                events_tsv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
             except (FileNotFoundError, LookupError):
-                logging.error('Could not load the stimulation event metadata, exiting...')
+                logging.error('Could not load the stimulation event metadata (\'' + bids_subset_root + '_events.tsv\'), exiting...')
                 exit(1)
 
             # acquire the onset and electrode-pair for each stimulation
             trial_onsets = []
             trial_pairs = []
             trials_bad_onsets = []
-            trials_have_status = 'status' in csv.columns
-            for index, row in csv.iterrows():
+            trials_have_status = 'status' in events_tsv.columns
+            for index, row in events_tsv.iterrows():
                 if row['trial_type'].lower() == 'electrical_stimulation':
                     if not is_number(row['onset']) or isnan(float(row['onset'])) or float(row['onset']) < 0:
                         logging.warning('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0. Discarding trial...')
@@ -538,13 +574,8 @@ for subject in subjects_to_analyze:
                 exit(1)
 
 
-            #
-            # read and epoch the data
-            #
-
             # prepare some preprocessing variables
             early_reref = None
-            line_noise_removal = None
             late_reref = None
 
             if cfg('preprocess', 'early_re_referencing', 'enabled'):
@@ -554,16 +585,13 @@ for subject in subjects_to_analyze:
                                                      (cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]),
                                                      '-')
 
-            if str(cfg('preprocess', 'line_noise_removal')).lower() == 'tsv':
-                # TODO: implement from tsv, now just sets to 60
-                line_noise_removal = 60
-            else:
-                if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
-                    line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
-
             #late_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be all channels, not just channels_incl_detect
             #late_reref.set_exclude_reref_epochs(stim_pairs_onsets, (-.01, 1.0), '-')
 
+
+            #
+            # read and epoch the data
+            #
 
             # determine the metrics that should be produced
             metric_callbacks = tuple()

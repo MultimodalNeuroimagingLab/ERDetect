@@ -13,6 +13,7 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import gc
+import json
 import logging
 import numpy as np
 import pandas as pd
@@ -66,6 +67,32 @@ def load_event_info(tsv_filepath, addition_required_columns=None):
 
     #
     return csv
+
+
+def load_ieeg_sidecar(filepath):
+    """
+    Load and set the configuration based on a configuration file
+
+    Args:
+        filepath (str):                       The path to the configuration file to load
+
+    Returns:
+        bool:                                 True for success, False otherwise
+    """
+
+    # try to read the JSON configuration file
+    try:
+        with open(filepath) as json_file:
+            ieeg_json = json.load(json_file)
+    except IOError:
+        logging.error('Could not access the IEEG JSON sidecar file at \'' + filepath + '\'')
+        raise IOError('Could not access the IEEG JSON sidecar file')
+    except json.decoder.JSONDecodeError as e:
+        logging.error('Could not interpret the IEEG JSON sidecar file at \'' + filepath + '\', make sure the JSON syntax is valid: \'' + str(e) + '\'')
+        raise RuntimeError('Could not interpret the IEEG JSON sidecar file')
+
+    #
+    return ieeg_json
 
 
 class RerefStruct:
