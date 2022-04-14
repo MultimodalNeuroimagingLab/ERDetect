@@ -387,7 +387,7 @@ for subject in subjects_to_analyze:
             #
             # Line noise removal and IEEG JSON sidecar
             #
-
+            line_noise_removal = None
             if str(cfg('preprocess', 'line_noise_removal')).lower() == 'json':
                 try:
                     ieeg_json = load_ieeg_sidecar(bids_subset_root + '_ieeg.json')
@@ -409,14 +409,13 @@ for subject in subjects_to_analyze:
                 except (IOError, RuntimeError):
                     logging.error('Could not load the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') that is required to perform line-noise removal, exiting...')
                     exit(1)
-                
+
             else:
                 # not from JSON
 
                 # check if there is a number in the config, if so, use it
                 if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
                     line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
-
 
 
             #
