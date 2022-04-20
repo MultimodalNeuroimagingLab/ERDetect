@@ -188,7 +188,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
             else:
                 continue
 
-            # find the index of the first peak maximum
+            # find the index of the highest peak
             max_ind = np.where(abs(neg_mags) == np.max(abs(neg_mags)))[0][0]
 
             # make sure the peak is negative, else wise continue to next

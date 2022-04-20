@@ -129,7 +129,6 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
                     ind = np.delete(ind, 0)
                     len_x -= 1
 
-
         # set initial parameters for loop
         temp_mag = min_mag
         found_peak = False
@@ -148,7 +147,6 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
             if found_peak:
                 temp_mag = min_mag
                 found_peak = False
-
 
             # Found new peak that was lower than temp mag and selectivity larger than the minimum to its left.
             if x[ii] > temp_mag and x[ii] > left_min + sel:
@@ -169,7 +167,6 @@ def peak_finder(data, sel=None, thresh=None, extrema=1, include_endpoints=True, 
             elif x[ii] < left_min:
                 # New left minima
                 left_min = x[ii]
-
 
         # Check end point
         if include_endpoints:

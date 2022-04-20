@@ -134,7 +134,7 @@ def set(value, level1, level2, level3=None):
     """
     global _config
 
-    if not level1 in _config:
+    if level1 not in_config:
         _config[level1] = dict()
 
     if level3 is None:
