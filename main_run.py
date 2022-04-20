@@ -749,6 +749,15 @@ for subject in subjects_to_analyze:
                 #
                 if cfg('visualization', 'generate_electrode_images'):
 
+                    # make sure an electrode output directory exists
+                    electrodes_output = os.path.join(output_root, 'electrodes')
+                    if not os.path.exists(electrodes_output):
+                        try:
+                            os.makedirs(electrodes_output)
+                        except OSError as e:
+                            logging.error("Could not create subset electrode image output directory (\'" + electrodes_output + "\'), exiting...")
+                            exit(1)
+
                     #
                     logging.info('- Generating electrode plots...')
 
@@ -825,7 +834,7 @@ for subject in subjects_to_analyze:
                         ax.spines['top'].set_visible(False)
 
                         # save figure
-                        fig.savefig(os.path.join(output_root, 'electrode_' + str(channels_incl_detect[iElec]) + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(electrodes_output, 'electrode_' + str(channels_incl_detect[iElec]) + '.png'), bbox_inches='tight')
 
                         # update progress bar
                         print_progressbar(iElec + 1, len(channels_incl_detect), prefix='Progress:', suffix='Complete', length=50)
@@ -834,6 +843,15 @@ for subject in subjects_to_analyze:
                 # generate the stimulation-pair plots
                 #
                 if cfg('visualization', 'generate_stimpair_images'):
+
+                    # make sure a stim-pair output directory exists
+                    stimpairs_output = os.path.join(output_root, 'stimpairs')
+                    if not os.path.exists(stimpairs_output):
+                        try:
+                            os.makedirs(stimpairs_output)
+                        except OSError as e:
+                            logging.error("Could not create subset stim-pair image output directory (\'" + stimpairs_output + "\'), exiting...")
+                            exit(1)
 
                     #
                     logging.info('- Generating stimulation-pair plots...')
@@ -909,7 +927,7 @@ for subject in subjects_to_analyze:
                         ax.spines['top'].set_visible(False)
 
                         # save figure
-                        fig.savefig(os.path.join(output_root, 'stimpair_' + stim_pair + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(stimpairs_output, 'stimpair_' + stim_pair + '.png'), bbox_inches='tight')
 
                         # update progress bar
                         print_progressbar(iPair + 1, len(stim_pairs_onsets), prefix='Progress:', suffix='Complete', length=50)
