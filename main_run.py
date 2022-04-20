@@ -338,8 +338,12 @@ else:
 #
 for subject in subjects_to_analyze:
 
+    # remove the sub part from the subject
+    if len(subject) > 4 and subject[0:4] == 'sub-':
+        subject = subject[4:]
+
     # see if the subject is exists (in case the user specified the labels)
-    if os.path.isdir(os.path.join(args.bids_dir, subject)):
+    if os.path.isdir(os.path.join(args.bids_dir, ('sub-' + subject))):
 
         # retrieve the data formats to include
         if args.format_extension:
@@ -358,8 +362,8 @@ for subject in subjects_to_analyze:
         for extension in extensions:
             for modality in modalities:
                 for subset_pattern in subset_patterns:
-                    subsets += glob(os.path.join(args.bids_dir, subject, modality, '*' + subset_pattern + '*' + extension)) + \
-                               glob(os.path.join(args.bids_dir, subject, '*', modality, '*' + subset_pattern + '*' + extension))
+                    subsets += glob(os.path.join(args.bids_dir, ('sub-' + subject), modality, '*' + subset_pattern + '*' + extension)) + \
+                               glob(os.path.join(args.bids_dir, ('sub-' + subject), '*', modality, '*' + subset_pattern + '*' + extension))
 
         # bring subsets with multiple formats down to one format (prioritized to occurrence in the extension var)
         for subset in subsets:
