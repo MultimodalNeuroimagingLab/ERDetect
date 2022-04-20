@@ -788,14 +788,14 @@ for subject in subjects_to_analyze:
                                     xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                     yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                                     yNeg += len(stim_pairs_onsets) - iPair
-                                    ax.plot(xNeg, yNeg, marker='o', color='blue')
+                                    ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
 
                                 # if positive evoked potential is detected, plot it
                                 if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
                                     xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                     yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
                                     yPos += len(stim_pairs_onsets) - iPair
-                                    ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
+                                    ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
@@ -873,13 +873,13 @@ for subject in subjects_to_analyze:
                                 xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                                 yNeg += len(channels_incl_detect) - iElec
-                                ax.plot(xNeg, yNeg, marker='o', color='blue')
+                                ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
 
                             if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
                                 xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
                                 yPos += len(channels_incl_detect) - iElec
-                                ax.plot(xPos, yPos, marker='o', color=(0, 0, .6))
+                                ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
 
                         # set the x-axis
                         ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
