@@ -1,4 +1,4 @@
-FROM python:3.9-slim-bullseye
+FROM python:3.10-slim-bullseye
 LABEL MAINTAINER="Max van den Boom <m.a.vandenboom84@gmail.com>"
 
 # ensure local python is preferred over distribution python
@@ -15,19 +15,15 @@ ENV PYTHONUNBUFFERED=1
 
 # build and install numpy, scipy, mne, bids_validator and pymef
 RUN pip3 install --upgrade pip \
-	&& pip3 install numpy==1.21.1 \
-	&& pip3 install scipy==1.7.1 \
-	&& pip3 install pandas==1.3.0 \
-	&& pip3 install kiwisolver==1.3.2 \
-	&& pip3 install matplotlib==3.4.2 \
-	&& pip3 install mne==0.23.4 \
-        && pip3 install bids_validator==1.8.4 \
-        && pip3 install psutil==5.8.0 \
+	&& pip3 install numpy==1.22.3 \
+	&& pip3 install scipy==1.8.0 \
+	&& pip3 install pandas==1.4.2 \
+	&& pip3 install matplotlib==3.5.1 \
+	&& pip3 install mne==1.0.2 \
+        && pip3 install bids_validator==1.9.3 \
+        && pip3 install psutil==5.9.0 \
 	&& pip3 install pymef \
 	&& rm -r /root/.cache
-
-#RUN apk add --update npm
-#	&& npm install -g bids-validator
 
 # 
 ENV PYTHONPATH=""
