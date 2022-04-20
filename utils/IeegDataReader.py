@@ -94,10 +94,10 @@ class IeegDataReader:
                 if self.data_format == 0:
                     self.mne_raw = read_raw_edf(self.data_path, eog=[], misc=[], stim_channel=[], preload=True, verbose=None)
                     #self.mne_raw = read_raw_edf(data_path, eog=None, misc=None, stim_channel=[], exclude=channels_non_ieeg, preload=True, verbose=None)
-                    self.mne_raw._data = np.multiply(self.mne_raw._data, 1000000)
+                    self.mne_raw._data *= 1000000
                 if self.data_format == 1:
                     self.mne_raw = read_raw_brainvision(self.data_path[:self.data_path.rindex(".")] + '.vhdr', preload=True)
-                    self.mne_raw._data = np.multiply(self.mne_raw._data, 1000000)
+                    self.mne_raw._data *= 1000000
 
             except RuntimeError as e:
                 logging.error('MNE could not read data, message: ' + str(e))
@@ -202,10 +202,10 @@ class IeegDataReader:
 
         # return and apply a conversion factor if needed
         channel_conversion_factor = channel_metadata['section_2']['units_conversion_factor'].item(0)
+
         if channel_conversion_factor != 0 and channel_conversion_factor != 1:
-            return channel_data[0] * channel_conversion_factor
-        else:
-            return channel_data[0]
+            channel_data[0] *= channel_conversion_factor
+        return channel_data[0]
 
 
     @staticmethod
@@ -301,7 +301,7 @@ class IeegDataReader:
                     # apply a conversion factor if needed
                     channel_conversion_factor = channel_metadata['section_2']['units_conversion_factor'].item(0)
                     if channel_conversion_factor != 0 and channel_conversion_factor != 1:
-                        sample_data[channel_counter] = np.multiply(sample_data[channel_counter], channel_conversion_factor)
+                        sample_data[channel_counter] *= channel_conversion_factor
 
             except Exception:
                 logging.error('PyMef could not read data, either a password is needed or the data is corrupt')
