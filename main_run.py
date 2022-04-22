@@ -241,6 +241,7 @@ log_indented_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re
 if cfg('preprocess', 'early_re_referencing', 'enabled'):
     log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
     log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
+    logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 25, ' '))
 log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
 logging.info('')
 log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
@@ -249,7 +250,8 @@ log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[
 log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
 log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
 log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
-logging.info(multi_line_list(cfg('channels', 'types'), LOGGING_CAPTION_INDENT_LENGTH, 'Channels types:', 20, ' '))
+logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 25, ' '))
+logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel type for stimulation:', 25, ' '))
 logging.info('')
 log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
 if cfg('metrics', 'cross_proj', 'enabled'):
@@ -434,39 +436,80 @@ for subject in subjects_to_analyze:
                 exit(1)
 
             # sort out the good, the bad and the... non-ieeg
-            channels_bad = []                                       # channels excluded because they are marked as bad
-            channels_incl_detect = []                               # the channel that are needed for detection
-            channels_incl_early_reref = []                          # TODO: channel that are included for re-referencing
-            channels_excl_detect_by_type = []
+            channels_excl_bad = []                                  # channels excluded because they are marked as bad
+            channels_incl = []                                      # channels that need to be loaded (either to be used as measured electrode or for re-referencing)
+
+            channels_measured_incl = []                             # the channels that are used as measured electrodes
+            channels_stim_incl = []                                 # the channels which stim-pairs should be included (actual filtering of stim-pairs happens at the reading of the events)
+            channels_early_reref_incl = []                          #
+
+            channels_measured_excl_by_type = []                     # channels that were excluded as measured electrodes (by type)
+            channels_stim_excl_by_type = []                         # channels that were excluded (and as a result exclude stim-pairs)
+            channels_early_reref_excl_by_type = []                  #
+
             channels_have_status = 'status' in channel_tsv.columns
             for index, row in channel_tsv.iterrows():
-                excluded_for_detection = False
 
                 # check if bad channel
-                if channels_have_status:
-                    if row['status'].lower() == 'bad':
-                        channels_bad.append(row['name'])
+                if channels_have_status and row['status'].lower() == 'bad':
+                    channels_excl_bad.append(row['name'])
 
-                        # continue to the next channel
-                        continue
+                    # continue to the next channel
+                    continue
 
-                #
-                if not row['type'].upper() in cfg('channels', 'types'):
-                    channels_excl_detect_by_type.append(row['name'])
-                    excluded_for_detection = True
+                # determine if included or excluded from measured electrodes (by type)
+                if row['type'].upper() in cfg('channels', 'measured_types'):
 
-                if not excluded_for_detection:
-                    channels_incl_detect.append(row['name'])
+                    channels_measured_incl.append(row['name'])          # save for log output and plotting
+                    channels_incl.append(row['name'])                   # save for data reading
+
+                else:
+                    channels_measured_excl_by_type.append(row['name'])  # save for log output
+
+                # determine if included or excluded from stimulated electrodes (by type)
+                if row['type'].upper() in cfg('channels', 'stim_types'):
+                    channels_stim_incl.append(row['name'])              # save for log output and stim-pair event selection
+                else:
+                    channels_stim_excl_by_type.append(row['name'])      # save for log output and stim-pair event selection
+
+                # determine if included or excluded from early re-referencing electrodes (by type)
+                if cfg('preprocess', 'early_re_referencing', 'enabled'):
+                    if row['type'].upper() in cfg('preprocess', 'early_re_referencing', 'types'):
+
+                        # save for log output and the early-referencing (structure)
+                        channels_early_reref_incl.append(row['name'])
+
+                        # save for data reading (no duplicates)
+                        if not row['name'] in channels_incl:
+                            channels_incl.append(row['name'])
+
+                    else:
+                        channels_early_reref_excl_by_type.append(row['name'])   # save for log output
 
             # print channel information
-            logging.info(multi_line_list(channels_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 20, ' '))
-            logging.info(multi_line_list(channels_excl_detect_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded from detection by type:', 20, ' '))
-            logging.info(multi_line_list(channels_incl_detect, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included for detection:', 20, ' ', str(len(channels_incl_detect))))
+            logging.info(multi_line_list(channels_excl_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 25, ' '))
+            if channels_measured_excl_by_type == channels_stim_excl_by_type:
+                logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type:', 25, ' '))
+            else:
+                logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as measured electrodes:', 25, ' '))
+                logging.info(multi_line_list(channels_stim_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as stim electrodes:', 25, ' '))
+            logging.info('')
+            if channels_measured_incl == channels_stim_incl:
+                logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included as electrodes:', 25, ' ', str(len(channels_measured_incl))))
+            else:
+                logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as measured electrodes:', 25, ' ', str(len(channels_measured_incl))))
+                logging.info(multi_line_list(channels_stim_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. to be used as stim electrodes:', 25, ' ', str(len(channels_stim_incl))))
 
-            # check if there are any channels
-            if len(channels_incl_detect) == 0:
-                logging.error('No channels were found, exiting...')
+            # check if there are any channels (as measured electrodes, or to re-reference on)
+            if len(channels_measured_incl) == 0:
+                logging.error('No channels were found (after filtering by type), exiting...')
                 exit(1)
+            if cfg('preprocess', 'early_re_referencing', 'enabled'):
+                if len(channels_early_reref_incl) == 0:
+                    logging.info(multi_line_list(channels_early_reref_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 25, ' '))
+                    logging.info(multi_line_list(channels_early_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for early re-ref:', 25, ' '))
+                    logging.error('Early re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
+                    exit(1)
             logging.info('')
 
 
@@ -523,10 +566,12 @@ for subject in subjects_to_analyze:
             stim_pairs_onsets = dict()              # for each pair, the onsets of the trials that were involved
             stim_pairs_electrode_indices = dict()   # for each pair, the indices of the electrodes that were stimulated
 
+            # TODO: there might be a difference in the type of channels included for stimulation and those for recording
+
             # loop over all the combinations of channels
             # Note:     only the combinations of stim-pairs that actually have events/trials end up in the output
-            for iChannel0 in range(len(channels_incl_detect)):
-                for iChannel1 in range(len(channels_incl_detect)):
+            for iChannel0 in range(len(channels_stim_incl)):
+                for iChannel1 in range(len(channels_stim_incl)):
 
                     # retrieve the indices of all the trials that concern this stim-pair
                     indices = []
@@ -535,17 +580,17 @@ for subject in subjects_to_analyze:
                         if not iChannel1 < iChannel0:
                             # unique pairs while ignoring pair order
                             indices = [i for i, x in enumerate(trial_pairs) if
-                                       (x[0] == channels_incl_detect[iChannel0] and x[1] == channels_incl_detect[iChannel1]) or (x[0] == channels_incl_detect[iChannel1] and x[1] == channels_incl_detect[iChannel0])]
+                                       (x[0] == channels_stim_incl[iChannel0] and x[1] == channels_stim_incl[iChannel1]) or (x[0] == channels_stim_incl[iChannel1] and x[1] == channels_stim_incl[iChannel0])]
 
                     else:
                         # do not concatenate bidirectional pairs, pair order matters
                         indices = [i for i, x in enumerate(trial_pairs) if
-                                   x[0] == channels_incl_detect[iChannel0] and x[1] == channels_incl_detect[iChannel1]]
+                                   x[0] == channels_stim_incl[iChannel0] and x[1] == channels_stim_incl[iChannel1]]
 
                     # add the pair if there are trials for it
                     if len(indices) > 0:
-                        stim_pairs_onsets[channels_incl_detect[iChannel0] + '-' + channels_incl_detect[iChannel1]] = [trial_onsets[i] for i in indices]
-                        stim_pairs_electrode_indices[channels_incl_detect[iChannel0] + '-' + channels_incl_detect[iChannel1]] = (iChannel0, iChannel1)
+                        stim_pairs_onsets[channels_stim_incl[iChannel0] + '-' + channels_stim_incl[iChannel1]] = [trial_onsets[i] for i in indices]
+                        stim_pairs_electrode_indices[channels_stim_incl[iChannel0] + '-' + channels_stim_incl[iChannel1]] = (iChannel0, iChannel1)
 
             # search for stimulus-pairs with too little trials
             stimpair_remove_indices = []
@@ -582,14 +627,14 @@ for subject in subjects_to_analyze:
             late_reref = None
 
             if cfg('preprocess', 'early_re_referencing', 'enabled'):
-                early_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be alle channels, not just channels_incl_detect
-                # TODO: implement different re-referencing methods
+
+                # set referencing
+                early_reref = RerefStruct.generate_car(channels_early_reref_incl)
+
+                # set the parts of stimulation (of specific channels) to exclude
                 early_reref.set_exclude_reref_epochs(stim_pairs_onsets,
                                                      (cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]),
                                                      '-')
-
-            #late_reref = RerefStruct.generate_car(channels_incl_detect)  # TODO: should be all channels, not just channels_incl_detect
-            #late_reref.set_exclude_reref_epochs(stim_pairs_onsets, (-.01, 1.0), '-')
 
 
             #
@@ -614,7 +659,7 @@ for subject in subjects_to_analyze:
             # TODO: normalize to raw or to Z-values (return both raw and z?)
             #       z-might be needed for detection
             try:
-                sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_incl_detect, list(stim_pairs_onsets.values()),
+                sampling_rate, averages, metrics = load_data_epochs_averages(subset, channels_measured_incl, list(stim_pairs_onsets.values()),
                                                                              trial_epoch=cfg('trials', 'trial_epoch'),
                                                                              baseline_norm=cfg('trials', 'baseline_norm'),
                                                                              baseline_epoch=cfg('trials', 'baseline_epoch'),
@@ -671,7 +716,7 @@ for subject in subjects_to_analyze:
             saveDict['onset_sample'] = onset_sample
             saveDict['ccep_average'] = averages
             saveDict['stimpair_labels'] = np.asarray(list(stim_pairs_onsets.keys()), dtype='object')
-            saveDict['channel_labels'] = np.asarray(channels_incl_detect, dtype='object')
+            saveDict['channel_labels'] = np.asarray(channels_measured_incl, dtype='object')
             saveDict['config'] = get_config_dict()
             if cfg('metrics', 'cross_proj', 'enabled'):
                 saveDict['cross_proj_metrics'] = cross_proj_metrics
@@ -742,7 +787,7 @@ for subject in subjects_to_analyze:
                 # determine the drawing properties
                 plot_props = calc_sizes_and_fonts(OUTPUT_IMAGE_SIZE,
                                                   len(stim_pairs_onsets),
-                                                  len(channels_incl_detect))
+                                                  len(channels_measured_incl))
 
                 #
                 # generate the electrodes plot
@@ -762,17 +807,17 @@ for subject in subjects_to_analyze:
                     logging.info('- Generating electrode plots...')
 
                     # create progress bar
-                    print_progressbar(0, len(channels_incl_detect), prefix='Progress:', suffix='Complete', length=50)
+                    print_progressbar(0, len(channels_measured_incl), prefix='Progress:', suffix='Complete', length=50)
 
                     # loop through electrodes
-                    for iElec in range(len(channels_incl_detect)):
+                    for iElec in range(len(channels_measured_incl)):
 
                         # create a figure and retrieve the axis
                         fig = create_figure(OUTPUT_IMAGE_SIZE, plot_props['stimpair_y_image_height'], False)
                         ax = fig.gca()
 
                         # set the title
-                        ax.set_title(channels_incl_detect[iElec] + '\n', fontsize=plot_props['title_font_size'], fontweight='bold')
+                        ax.set_title(channels_measured_incl[iElec] + '\n', fontsize=plot_props['title_font_size'], fontweight='bold')
 
                         # loop through the stimulation-pairs
                         for iPair in range(len(stim_pairs_onsets)):
@@ -834,10 +879,10 @@ for subject in subjects_to_analyze:
                         ax.spines['top'].set_visible(False)
 
                         # save figure
-                        fig.savefig(os.path.join(electrodes_output, 'electrode_' + str(channels_incl_detect[iElec]) + '.png'), bbox_inches='tight')
+                        fig.savefig(os.path.join(electrodes_output, 'electrode_' + str(channels_measured_incl[iElec]) + '.png'), bbox_inches='tight')
 
                         # update progress bar
-                        print_progressbar(iElec + 1, len(channels_incl_detect), prefix='Progress:', suffix='Complete', length=50)
+                        print_progressbar(iElec + 1, len(channels_measured_incl), prefix='Progress:', suffix='Complete', length=50)
 
                 #
                 # generate the stimulation-pair plots
@@ -872,16 +917,16 @@ for subject in subjects_to_analyze:
                         ax.set_title(stim_pair + '\n', fontsize=plot_props['title_font_size'], fontweight='bold')
 
                         # loop through the electrodes
-                        for iElec in range(len(channels_incl_detect)):
+                        for iElec in range(len(channels_measured_incl)):
 
                             # draw 0 line
                             y = np.empty((averages.shape[2], 1))
-                            y.fill(len(channels_incl_detect) - iElec)
+                            y.fill(len(channels_measured_incl) - iElec)
                             ax.plot(x, y, linewidth=plot_props['zero_line_thickness'], color=(0.8, 0.8, 0.8))
 
                             # retrieve the signal
                             y = averages[iElec, iPair, :] / 500
-                            y += len(channels_incl_detect) - iElec
+                            y += len(channels_measured_incl) - iElec
 
                             # nan out the stimulation
                             #TODO, only nan if within display range
@@ -894,13 +939,13 @@ for subject in subjects_to_analyze:
                             if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
                                 xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
-                                yNeg += len(channels_incl_detect) - iElec
+                                yNeg += len(channels_measured_incl) - iElec
                                 ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
 
                             if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
                                 xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                                 yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
-                                yPos += len(channels_incl_detect) - iElec
+                                yPos += len(channels_measured_incl) - iElec
                                 ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
 
                         # set the x-axis
@@ -911,9 +956,9 @@ for subject in subjects_to_analyze:
 
                         # set the y-axis
                         ax.set_ylabel('Measured electrodes\n', fontsize=plot_props['axis_label_font_size'])
-                        ax.set_ylim((0, len(channels_incl_detect) + 1))
-                        ax.set_yticks(np.arange(1, len(channels_incl_detect) + 1, 1))
-                        ax.set_yticklabels(np.flip(channels_incl_detect), fontsize=plot_props['electrode_axis_ticks_font_size'])
+                        ax.set_ylim((0, len(channels_measured_incl) + 1))
+                        ax.set_yticks(np.arange(1, len(channels_measured_incl) + 1, 1))
+                        ax.set_yticklabels(np.flip(channels_measured_incl), fontsize=plot_props['electrode_axis_ticks_font_size'])
                         ax.spines['bottom'].set_linewidth(1.5)
                         ax.spines['left'].set_linewidth(1.5)
 
@@ -946,19 +991,19 @@ for subject in subjects_to_analyze:
 
                     image_width, image_height = calc_matrix_image_size(plot_props['stimpair_y_image_height'],
                                                                        len(stim_pairs_onsets),
-                                                                       len(channels_incl_detect))
+                                                                       len(channels_measured_incl))
 
                     # generate negative matrices and save
                     if cfg('visualization', 'negative'):
 
                         # amplitude
-                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                                    plot_props, image_width, image_height,
                                                    er_neg_peak_amplitudes.copy() * -1, False)
                         fig.savefig(os.path.join(output_root, 'matrix_amplitude_neg.png'), bbox_inches='tight')
 
                         # latency
-                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                                  plot_props, image_width, image_height,
                                                  (er_neg_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
                         fig.savefig(os.path.join(output_root, 'matrix_latency_neg.png'), bbox_inches='tight')
@@ -967,13 +1012,13 @@ for subject in subjects_to_analyze:
                     if cfg('visualization', 'positive'):
 
                         # amplitude
-                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                        fig = gen_amplitude_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                                    plot_props, image_width, image_height,
                                                    er_pos_peak_amplitudes.copy(), True)
                         fig.savefig(os.path.join(output_root, 'matrix_amplitude_pos.png'), bbox_inches='tight')
 
                         # latency
-                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_incl_detect,
+                        fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                                  plot_props, image_width, image_height,
                                                  (er_pos_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
                         fig.savefig(os.path.join(output_root, 'matrix_latency_pos.png'), bbox_inches='tight')

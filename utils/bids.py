@@ -1290,6 +1290,7 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                                             epoch-averages should be returned (True)
         data_reader (IeegDataReader):       An instance of the IeegDataReader to retrieve metadata and channel data
         retrieve_channels (list or tuple):  The channels (by name) of which the data should be retrieved, the output will be sorted accordingly
+                                            Note: that this does not have to include the channels that are required for re-referencing
 
         onsets (1d/2d list or tuple):       If only the epochs need to be extracted and returned (average=False) then this
                                             argument should be a 1d list or tuple that holds the onsets of the trials around

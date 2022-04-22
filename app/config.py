@@ -40,25 +40,25 @@ def __create_default_config():
     config = dict()
 
     config['preprocess'] = dict()
-    config['preprocess']['high_pass']                               = False                 #
-    config['preprocess']['line_noise_removal']                      = 'off'                 #
+    config['preprocess']['high_pass']                               = False                     #
+    config['preprocess']['line_noise_removal']                      = 'off'                     #
     config['preprocess']['early_re_referencing'] = dict()
-    config['preprocess']['early_re_referencing']['enabled']         = False                 #
-    config['preprocess']['early_re_referencing']['method']          = 'CAR'                 #
+    config['preprocess']['early_re_referencing']['enabled']         = False                     #
+    config['preprocess']['early_re_referencing']['method']          = 'CAR'                     #
     config['preprocess']['early_re_referencing']['stim_excl_epoch'] = (-1.0, 2.0)
+    config['preprocess']['early_re_referencing']['types']           = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included for early re-referencing
 
     config['trials'] = dict()
-    config['trials']['trial_epoch']                                 = (-1.0, 2.0)           # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
-    config['trials']['out_of_bounds_handling']                      = 'first_last_only'     #
-    # TODO: for comparison now set to -.1s. Should check metric results in matlab if I change those to -.02
-    #config['trials']['baseline_epoch']                             = (-0.5, -0.02)  # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
-    config['trials']['baseline_epoch']                              = (-0.5, -0.1)         # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
+    config['trials']['trial_epoch']                                 = (-1.0, 2.0)               # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
+    config['trials']['out_of_bounds_handling']                      = 'first_last_only'         #
+    config['trials']['baseline_epoch']                             = (-0.5, -0.02)              # the time-span (in seconds) relative to the stimulus onset that will be considered as the start and end of the baseline epoch within each trial
     config['trials']['baseline_norm']                               = 'median'
-    config['trials']['concat_bidirectional_pairs']                  = True                  # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
-    config['trials']['minimum_stimpair_trials']                     = 5                     # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
+    config['trials']['concat_bidirectional_pairs']                  = True                      # concatenate electrode pairs that were stimulated in both directions (e.g. CH01-CH02 and CH02-CH01)
+    config['trials']['minimum_stimpair_trials']                     = 5                         # the minimum number of stimulation trials that are needed for a stimulus-pair to be included
 
     config['channels'] = dict()
-    config['channels']['types']                                     = ('ECOG', 'SEEG', 'DBS')
+    config['channels']['measured_types']                            = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included as measured electrodes
+    config['channels']['stim_types']                                = ('ECOG', 'SEEG', 'DBS')   # the type of channels that are allowed to be included as part of the stim-pairs
 
     config['metrics'] = dict()
     config['metrics']['cross_proj'] = dict()
@@ -70,8 +70,8 @@ def __create_default_config():
     config['metrics']['waveform']['bandpass']                       = (10, 30)
 
     config['detection'] = dict()
-    config['detection']['negative']                                 = True                  # whether to detect negative responses
-    config['detection']['positive']                                 = False                 # whether to detect positive responses
+    config['detection']['negative']                                 = True                      # whether to detect negative responses
+    config['detection']['positive']                                 = False                     # whether to detect positive responses
     config['detection']['peak_search_epoch']                        = (0, 0.5)
     config['detection']['response_search_epoch']                    = (0.009, 0.09)
     config['detection']['method']                                   = 'std_base'
@@ -80,10 +80,10 @@ def __create_default_config():
     config['detection']['std_base']['baseline_threshold_factor']    = CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR
 
     config['visualization'] = dict()
-    config['visualization']['negative']                             = True                  # whether to output negative responses
-    config['visualization']['positive']                             = False                 # whether to output positive responses
-    config['visualization']['x_axis_epoch']                         = (-0.2, 1)             # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
-    config['visualization']['blank_stim_epoch']                     = (-0.015, 0.0025)      # the range
+    config['visualization']['negative']                             = True                      # whether to output negative responses
+    config['visualization']['positive']                             = False                     # whether to output positive responses
+    config['visualization']['x_axis_epoch']                         = (-0.2, 1)                 # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+    config['visualization']['blank_stim_epoch']                     = (-0.015, 0.0025)          # the range
     config['visualization']['generate_electrode_images']            = True
     config['visualization']['generate_stimpair_images']             = True
     config['visualization']['generate_matrix_images']               = True
@@ -121,7 +121,6 @@ def get_config_dict():
     return _config
 
 
-
 def set(value, level1, level2, level3=None):
     """
     Set a configuration value
@@ -134,7 +133,7 @@ def set(value, level1, level2, level3=None):
     """
     global _config
 
-    if level1 not in_config:
+    if level1 not in _config:
         _config[level1] = dict()
 
     if level3 is None:
@@ -384,12 +383,18 @@ def load_config(filepath):
     config['trials']['minimum_stimpair_trials'] = int(config['trials']['minimum_stimpair_trials'])
 
     # channel settings
-    if not retrieve_config_tuple(json_config, config, 'channels', 'types', options=VALID_CHANNEL_TYPES):
+    if not retrieve_config_tuple(json_config, config, 'channels', 'measured_types', options=VALID_CHANNEL_TYPES):
         return False
-    if len(config['channels']['types']) == 0:
-        logging.error('Invalid value in the configuration file for channels->types, at least one channel type should be given')
+    if len(config['channels']['measured_types']) == 0:
+        logging.error('Invalid value in the configuration file for channels->measured_types, at least one channel type should be given')
         return False
-    config['channels']['types'] = [value.upper() for value in config['channels']['types']]
+    config['channels']['measured_types'] = [value.upper() for value in config['channels']['measured_types']]
+    if not retrieve_config_tuple(json_config, config, 'channels', 'stim_types', options=VALID_CHANNEL_TYPES):
+        return False
+    if len(config['channels']['stim_types']) == 0:
+        logging.error('Invalid value in the configuration file for channels->stim_types, at least one channel type should be given')
+        return False
+    config['channels']['stim_types'] = [value.upper() for value in config['channels']['stim_types']]
 
     # cross-projection metric settings
     if not retrieve_config_bool(json_config, config, 'metrics', 'cross_proj', 'enabled'):
@@ -497,7 +502,8 @@ def write_config(filepath):
                  '        "minimum_stimpair_trials":          ' + str(_config['trials']['minimum_stimpair_trials']) + '\n' \
                  '    },\n\n' \
                  '    "channels": {\n' \
-                 '        "types":                            ' + json.dumps(_config['channels']['types']) + '\n' \
+                 '        "measured_types":                   ' + json.dumps(_config['channels']['measured_types']) + ',\n' \
+                 '        "stim_types":                       ' + json.dumps(_config['channels']['stim_types']) + '\n' \
                  '    },\n\n' \
                  '    "metrics": {\n' \
                  '        "cross_proj": {\n' \
