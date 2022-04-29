@@ -1390,7 +1390,6 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
         channel_early_applied[channel] = False
         channel_lnr_applied[channel] = False
 
-    #channel_late_average_values = [None] * len(retrieve_channels)    # tracks for each channel the late-reref average (None if the average is not calculated for a specific channel yet)
 
     #
     # Prepare filters
@@ -1831,6 +1830,8 @@ def __load_data_epochs__by_channels__withPrep(average, data_reader, retrieve_cha
                 try:
 
                     # retrieve the index of the channel in the requested list (so it can be placed in the correct spot of the return matrix)
+                    # Note: Channels that are needed for re-referencing but not for epoch-ing should not get this far due
+                    #       to the check/continue statements in the re-referencing collects sections above
                     try:
                         channel_idx = retrieve_channels.index(channel)
                     except ValueError:
