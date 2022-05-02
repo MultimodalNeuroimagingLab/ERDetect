@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import logging
 import json
-from utils.misc import is_number, is_valid_numeric_range, numbers_to_padded_string
+from erdetect.utils.misc import is_number, is_valid_numeric_range, numbers_to_padded_string
 
 
 #

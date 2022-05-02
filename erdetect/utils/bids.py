@@ -3,7 +3,6 @@ Functions to load BIDS data
 =====================================================
 
 
-
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
@@ -18,8 +17,9 @@ import logging
 import numpy as np
 import pandas as pd
 from scipy import signal
-from utils.IeegDataReader import IeegDataReader, VALID_FORMAT_EXTENSIONS
-from utils.misc import print_progressbar, allocate_array
+
+from erdetect.utils.IeegDataReader import IeegDataReader, VALID_FORMAT_EXTENSIONS
+from erdetect.utils.misc import print_progressbar, allocate_array
 
 
 def load_channel_info(tsv_filepath):

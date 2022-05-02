@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""
+Evoked response detection - command-line entry-point
+=====================================================
+Command-line entry-point python script for the automatic detection of evoked responses in CCEP data.
+
+
+Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+import sys
+import argparse
+import os
+import logging
+from glob import glob
+
+from bids_validator import BIDSValidator
+from erdetect.app.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
+    LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
+    CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
+from erdetect import process_subset
+from erdetect.utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
+from erdetect.utils.misc import is_number, CustomLoggingFormatter, multi_line_list
+
+
+#
+# version and logging
+#
+
+#
+__version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'version')).read()
+
+#
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger_ch = logging.StreamHandler(stream=sys.stdout)
+logger_ch.setFormatter(CustomLoggingFormatter())
+logger.addHandler(logger_ch)
+
+
+def log_indented_line(caption, text):
+    logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+
+
+#
+# define and parse the input arguments
+#
+parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of evoked responses in CCEP data.',
+                                 formatter_class=argparse.RawTextHelpFormatter,
+                                 add_help=False)
+parser._positionals.title = 'Required (positional) arguments'
+parser._optionals.title = 'Optional arguments'
+parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
+                    help='Show this help message and exit\n\n')
+parser.add_argument('bids_dir',
+                    help='The directory with the input dataset formatted according to the BIDS standard.\n\n')
+parser.add_argument('output_dir',
+                    help='The directory where the output files should be stored. If you are running group\n'
+                         'level analysis this folder should be prepopulated with the results of the\n'
+                         'participant level analysis.\n\n')
+parser.add_argument('--participant_label',
+                    help='The label(s) of the participant(s) that should be analyzed. The label corresponds\n'
+                         'to sub-<participant_label> from the BIDS spec (so it does not include \'sub-\').\n'
+                         'If this parameter is not provided all subjects will be analyzed. Multiple\n'
+                         'participants can be specified with a space separated list.\n\n',
+                    nargs="+")
+parser.add_argument('--subset_search_pattern',
+                    help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS\n'
+                         'compliant folder name (e.g. \'task-ccep_run-01\'). If this parameter is not provided\n'
+                         'all the found subset(s) will be analyzed. Multiple subsets can be specified with\n'
+                         'a space separated list.\n\n',
+                    nargs="+")
+parser.add_argument('--format_extension',
+                    help='The data format(s) to include. The format(s) should be specified by their\n'
+                         'extension (e.g. \'.edf\'). If this parameter is not provided, then by default\n'
+                         'the European Data Format (\'.edf\'), BrainVision (\'.vhdr\', \'.vmrk\', \'.eeg\')\n'
+                         'and MEF3 (\'.mefd\') formats will be included. Multiple formats can be specified\n'
+                         'with a space separated list.\n\n',
+                    nargs="+")
+parser.add_argument('--config_filepath',
+                    help='Configures the app according to the settings in the JSON configuration file\n\n')
+parser.add_argument('--skip_bids_validator',
+                    help='Skip the BIDS data-set validation\n\n',
+                    action='store_true')
+parser.add_argument('--preproc_prioritize_speed',
+                    help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,\n'
+                         'priority is given to use as little memory as possible, which can require channel-data to be\n'
+                         'retrieved twice, taking longer. This flag allows the preprocessing to keep all channel-data\n'
+                         'in memory, requiring much more memory at its peak, but speeding up the process.\n'
+                         'Note: In particular the speed processing when re-referencing MEF3 data will be influenced by\n'
+                         '      this setting since MEF3 has the ability to read partial data from the disk, allowing for\n'
+                         '      minimal memory usage. In contrast, EDF and BrainVision are loaded by MNE which holds the\n'
+                         '      entire dataset in memory, so retrieval is already fast. As a result, with EDF and BrainVision,\n'
+                         '      it might be counterproductive to set priority to speed since there is little gain and the\n'
+                         '      memory use would double.\n\n',
+                    action='store_true')
+parser.add_argument('--high_pass',
+                    help='Perform high-pass filtering (with a cut-off at 0.50Hz) before detection and visualization.\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                         '      high-pass setting in the configuration file\n\n',
+                    action='store_true')
+parser.add_argument('--early_reref',
+                    help='Perform early re-referencing before detection and visualization. The options are:\n'
+                         '      - CAR   = Common Average Re-refrencing (e.g. \'--early_reref CAR\')\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                         '      early re-referencing setting in the configuration file\n\n',
+                    nargs="?", const='CAR')
+parser.add_argument('--line_noise_removal',
+                    help='Perform line-noise removal before detection and visualization. Can be either:\n'
+                         '      - \'json\' or \'sidecar\' to lookup the line-noise frequency in the BIDS *_ieeg.json file\n'
+                         '        (e.g. \'--line_noise_removal json\')\n'
+                         '      - set to a specific line-noise frequency (e.g. \'--line_noise_removal 60\')\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                         '      line-noise removal setting in the configuration file\n\n',
+                    nargs="?", const='json')
+parser.add_argument('--include_positive_responses',
+                    help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
+                    action='store_true')
+parser.add_argument('--method',
+                    help='The method that should be used to detect evoked responses. the options are:\n'
+                         '      - std_base   = The standard deviation of a baseline-epoch is used as a threshold\n'
+                         '                     (multiplied by a factor) to determine whether the average evoked deflection\n'
+                         '                     is strong enough. (e.g. \'--method std_base\')\n'
+                         '      - cross-proj = Cross-projection of the trials is used to determine the inter-trial\n'
+                         '                     similarity. A peak with a strong inter-trial similarity is\n'
+                         '                     considered an evoked response. (e.g. \'--method cross-proj\')\n'
+                         '      - waveform   = Searches for the typical (20Hz oscillation) shape of the average response\n'
+                         '                     to determine whether the peak that was found can be considered an evoked.\n'
+                         '                     response (e.g. \'--method waveform\')\n'
+                         'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                         '      method setting in the configuration file\n\n',
+                    nargs="?")
+parser.add_argument('-v', '--version',
+                    action='version',
+                    version='ER-Detect BIDS-App version {}'.format(__version__))
+args = parser.parse_args()
+
+#
+# display application information
+#
+log_indented_line('BIDS app:', ('Evoked Response Detection - ' + __version__))
+log_indented_line('BIDS input path:', args.bids_dir)
+log_indented_line('Output path:', args.output_dir)
+if args.config_filepath:
+    log_indented_line('Configuration file:', args.config_filepath)
+logging.info('')
+
+
+#
+# configure
+#
+
+#  read the configuration file (if passed)
+if args.config_filepath:
+    if not load_config(args.config_filepath):
+        logging.error('Could not load the configuration file, exiting...')
+        exit(1)
+
+# check preprocessing arguments
+preproc_prioritize_speed = False
+if args.preproc_prioritize_speed:
+    preproc_prioritize_speed = True
+
+if args.high_pass:
+    cfg_set(True, 'preprocess', 'high_pass')
+
+if args.line_noise_removal:
+    if str(args.line_noise_removal).lower() == 'json' or str(args.line_noise_removal).lower() == 'sidecar':
+        cfg_set('json', 'preprocess', 'line_noise_removal')
+    elif is_number(args.line_noise_removal):
+        # TODO: valid number
+        cfg_set(str(args.line_noise_removal), 'preprocess', 'line_noise_removal')
+    else:
+        logging.error('Invalid line_noise_removal argument \'' + args.line_noise_removal + '\', either set to \'json\' or \'sidecar\' to retrieve the line-noise frequency from the *_ieeg.json file, or provide the line-noise frequency as a number.')
+        exit(1)
+
+if args.early_reref:
+    if str(args.early_reref).lower() == 'car':
+        cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
+        cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
+    else:
+        logging.error('Invalid early_reref argument \'' + args.early_reref + '\'')
+        exit(1)
+
+# check for methodological arguments
+if args.include_positive_responses:
+    cfg_set(True, 'detection', 'positive')
+    cfg_set(True, 'visualization', 'positive')
+
+# if negative or positive response visualization is enabled, make sure detection is as well
+if cfg('visualization', 'negative') and not cfg('detection', 'negative'):
+    logging.warning('Visualization of negative evoked responses is enabled, but the detection is set to disabled, detection of negative responses will be enabled')
+    cfg_set(True, 'detection', 'negative')
+if cfg('visualization', 'positive') and not cfg('detection', 'positive'):
+    logging.warning('Visualization of positive evoked responses is enabled, but the detection is set to disabled, detection of positive responses will be enabled')
+    cfg_set(True, 'detection', 'positive')
+
+if args.method:
+    cfg_rem('detection', 'std_base')
+    cfg_rem('detection', 'cross_proj')
+    cfg_rem('detection', 'waveform')
+    if args.method == "std_base":
+        cfg_set('std_base', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, 'detection', 'std_base', 'baseline_epoch')
+        cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, 'detection', 'std_base', 'baseline_threshold_factor')
+    elif args.method == "cross_proj":
+        cfg_set('cross_proj', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, 'detection', 'cross_proj', 'threshold')
+    elif args.method == "waveform":
+        cfg_set('waveform', 'detection', 'method')
+        cfg_set(CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD, 'detection', 'waveform', 'threshold')
+    else:
+        logging.error('Invalid method argument \'' + args.method + '\', pick one of the following: \'std_base\', \'cross_proj\' or \'waveform\'')
+        exit(1)
+
+# if a metric is used for detection, enable them
+if cfg('detection', 'method') == 'cross_proj' and not cfg('metrics', 'cross_proj', 'enabled'):
+    logging.warning('Evoked response detection is set to use cross-projections but the cross-projection metric is disabled, the cross-projection metric will be enabled')
+    cfg_set(True, 'metrics', 'cross_proj', 'enabled')
+if cfg('detection', 'method') == 'waveform' and not cfg('metrics', 'waveform', 'enabled'):
+    logging.warning('Evoked response detection is set to use waveforms but the waveform metric is disabled, the waveform metric will be enabled')
+    cfg_set(True, 'metrics', 'waveform', 'enabled')
+
+# print configuration information
+log_indented_line('Preprocessing priority:', ('Speed' if preproc_prioritize_speed else 'Memory'))
+log_indented_line('High-pass filtering:', ('Yes' if cfg('preprocess', 'high_pass') else 'No'))
+log_indented_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re_referencing', 'enabled') else 'No'))
+if cfg('preprocess', 'early_re_referencing', 'enabled'):
+    log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
+    log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
+    logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 25, ' '))
+log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
+logging.info('')
+log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
+log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
+log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's')
+log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
+log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
+log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
+logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 25, ' '))
+logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel type for stimulation:', 25, ' '))
+logging.info('')
+log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
+if cfg('metrics', 'cross_proj', 'enabled'):
+    log_indented_line('    Cross-projection epoch:', str(cfg('metrics', 'cross_proj', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'cross_proj', 'epoch')[1]) + 's')
+log_indented_line('Waveform metric:', ('Enabled' if cfg('metrics', 'waveform', 'enabled') else 'Disabled'))
+if cfg('metrics', 'waveform', 'enabled'):
+    log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
+    log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
+logging.info('')
+logging.info('Detection')
+log_indented_line('    Negative responses:', ('Yes' if cfg('detection', 'negative') else 'No'))
+log_indented_line('    Positive responses:', ('Yes' if cfg('detection', 'positive') else 'No'))
+log_indented_line('    Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
+log_indented_line('    Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
+log_indented_line('    Evoked response detection method:', str(cfg('detection', 'method')))
+if cfg('detection', 'method') == 'std_base':
+    log_indented_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
+    log_indented_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
+elif cfg('detection', 'method') == 'cross_proj':
+    log_indented_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
+elif cfg('detection', 'method') == 'waveform':
+    log_indented_line('        Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
+logging.info('')
+logging.info('Visualization')
+log_indented_line('    Negative responses:', ('Yes' if cfg('visualization', 'negative') else 'No'))
+log_indented_line('    Positive responses:', ('Yes' if cfg('visualization', 'positive') else 'No'))
+log_indented_line('    X-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
+log_indented_line('    Blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
+log_indented_line('    Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
+log_indented_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
+log_indented_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
+logging.info('')
+
+
+#
+# check if the input is a valid BIDS dataset
+#
+
+if not args.skip_bids_validator:
+    #process = run_cmd('bids-validator %s' % args.bids_dir)
+    #logging.info(process.stdout)
+    #if process.returncode != 0:
+    #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+    #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+    #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+    #    exit(1)
+    bids_error = False
+    for dir_, d, files in os.walk(args.bids_dir):
+        for file in files:
+            rel_file = os.path.relpath(dir_, args.bids_dir)
+            if rel_file[0] == '.':
+                rel_file = rel_file[1:]
+            rel_file = os.path.join(rel_file, file)
+            if not BIDSValidator().is_bids('/' + rel_file):
+                logging.error('Invalid BIDS-file: ' + rel_file)
+                bids_error = True
+    if bids_error:
+        logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+                      'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
+                      '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+        exit(1)
+
+#
+# process per subject and subset
+#
+
+# make sure the output directory exists
+if not os.path.exists(args.output_dir):
+    try:
+        os.makedirs(args.output_dir)
+    except OSError as e:
+        logging.error('Could not create output directory (\'' + args.output_dir + '\'), exiting...')
+        exit(1)
+
+# list the subject to analyze (either based on the input parameter or list all in the BIDS_dir)
+subjects_to_analyze = []
+if args.participant_label:
+    # user-specified subjects
+    subjects_to_analyze = args.participant_label
+
+else:
+    # all subjects
+    subject_dirs = glob(os.path.join(args.bids_dir, 'sub-*'))
+    subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
+
+#
+for subject in subjects_to_analyze:
+
+    # remove the sub part from the subject
+    if len(subject) > 4 and subject[0:4] == 'sub-':
+        subject = subject[4:]
+
+    # see if the subject is exists (in case the user specified the labels)
+    if os.path.isdir(os.path.join(args.bids_dir, ('sub-' + subject))):
+
+        # retrieve the data formats to include
+        if args.format_extension:
+            extensions = args.format_extension
+            for extension in extensions:
+                if not any(extension in x for x in VALID_FORMAT_EXTENSIONS):
+                    logging.error('Invalid data format extension \'' + extension + '\', exiting...')
+                    exit(1)
+        else:
+            extensions = VALID_FORMAT_EXTENSIONS
+
+        # build path patterns for the search of subsets
+        subset_patterns = args.subset_search_pattern if args.subset_search_pattern else ('',)
+        subsets = []
+        modalities = ('*eeg',)                    # ieeg and eeg
+        for extension in extensions:
+            for modality in modalities:
+                for subset_pattern in subset_patterns:
+                    subsets += glob(os.path.join(args.bids_dir, ('sub-' + subject), modality, '*' + subset_pattern + '*' + extension)) + \
+                               glob(os.path.join(args.bids_dir, ('sub-' + subject), '*', modality, '*' + subset_pattern + '*' + extension))
+
+        # bring subsets with multiple formats down to one format (prioritized to occurrence in the extension var)
+        for subset in subsets:
+            subset_name = subset[:subset.rindex(".")]
+            for subset_other in reversed(subsets):
+                if not subset == subset_other:
+                    subset_other_name = subset_other[:subset_other.rindex(".")]
+                    if subset_name == subset_other_name:
+                        subsets.remove(subset_other)
+
+        # loop through the participant's subsets for analysis
+        for subset in subsets:
+
+            # print subset information
+            logging.info('------------------------')
+            log_indented_line('Subset:', subset)
+            logging.info('')
+
+            #
+            process_subset(subset, args.output_dir, preproc_prioritize_speed)
+
+    else:
+        #
+        logging.warning('Participant \'' + subject + '\' could not be found, skipping')
+
+
+logging.info('- Finished running')

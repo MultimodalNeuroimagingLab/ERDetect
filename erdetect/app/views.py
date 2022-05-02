@@ -11,9 +11,10 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 from math import ceil
-from utils.misc import create_figure
+from erdetect.utils.misc import create_figure
 import numpy as np
 from matplotlib import cm
+
 
 def calc_sizes_and_fonts(image_size, num_stim_pairs, num_channels):
     """

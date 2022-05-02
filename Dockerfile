@@ -29,15 +29,13 @@ RUN pip3 install --upgrade pip \
 ENV PYTHONPATH=""
 
 #
-RUN mkdir -p /scripts
-COPY main_run.py /scripts/main_run.py
-COPY metric_callbacks.py /scripts/metric_callbacks.py
-COPY version /scripts/version
-COPY ./app /scripts/app
-COPY ./utils /scripts/utils
+RUN mkdir -p /app
+COPY main_command.py /app/main_command.py
+COPY version /app/version
+COPY ./erdetect /app/erdetect
 
 #
-RUN chmod +x /scripts/main_run.py
+RUN chmod +x /app/main_command.py
 
 # 
-ENTRYPOINT ["/scripts/main_run.py"]
+ENTRYPOINT ["/app/main_command.py"]

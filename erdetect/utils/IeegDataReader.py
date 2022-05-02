@@ -11,14 +11,10 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import gc
 import logging
 from mne.io import read_raw_edf, read_raw_brainvision
 from pymef.mef_session import MefSession
-import numpy as np
-import pandas as pd
-from utils.misc import print_progressbar, allocate_array
-import sys
+
 
 #
 # constants

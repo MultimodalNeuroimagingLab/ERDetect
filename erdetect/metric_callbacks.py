@@ -13,7 +13,7 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import numpy as np
 from scipy import stats, signal
-from app.config import get as config
+from erdetect.app.config import get as config
 
 
 def metric_cross_proj(sampling_rate, data, baseline):

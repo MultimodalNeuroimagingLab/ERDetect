@@ -16,8 +16,8 @@ You should have received a copy of the GNU General Public License along with thi
 """
 import logging
 import numpy as np
-from app.config import get as config
-from app.peak_finder import peak_finder
+from .config import get as config
+from .peak_finder import peak_finder
 
 
 def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=None, waveform_metrics=None, detect_positive=False):
@@ -160,7 +160,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
             # use peak_finder function to find the negative peak indices and their amplitude
             try:
                 (neg_inds, neg_mags) = peak_finder(signal,
-                                                   sel=20,  # num of samples around a peak not considered as another peak
+                                                   sel=20 / 2048 * sampling_rate,  # num of samples around a peak not considered as another peak
                                                    thresh=None,
                                                    extrema=-1,
                                                    include_endpoints=True,
