@@ -370,6 +370,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     saveDict['ccep_average'] = averages
     saveDict['stimpair_labels'] = np.asarray(list(stim_pairs_onsets.keys()), dtype='object')
     saveDict['channel_labels'] = np.asarray(channels_measured_incl, dtype='object')
+    saveDict['epoch_time_s'] = (np.arange(averages.shape[2]) - onset_sample) / sampling_rate
     saveDict['config'] = get_config_dict()
     if cfg('metrics', 'cross_proj', 'enabled'):
         saveDict['cross_proj_metrics'] = cross_proj_metrics
@@ -389,11 +390,11 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     logging.info('- Detecting evoked responses...')
     try:
         if cfg('detection', 'negative'):
-            er_neg_peak_indices, er_neg_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
+            neg_peak_latency, er_neg_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
                                                                          cross_proj_metrics=cross_proj_metrics,
                                                                          waveform_metrics=waveform_metrics)
         if cfg('detection', 'positive'):
-            er_pos_peak_indices, er_pos_peak_amplitudes = ieeg_detect_er(averages, onset_sample,
+            pos_peak_latency, er_pos_peak_amplitudes = ieeg_detect_er(averages, onset_sample,
                                                                          int(sampling_rate),
                                                                          cross_proj_metrics=cross_proj_metrics,
                                                                          waveform_metrics=waveform_metrics,
@@ -404,10 +405,12 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
     # intermediate saving of the data and evoked response detection results as .mat
     if cfg('detection', 'negative'):
-        saveDict['neg_peak_indices'] = er_neg_peak_indices
+        saveDict['neg_peak_latency_samples'] = neg_peak_latency
+        saveDict['neg_peak_latency_ms'] = (neg_peak_latency - onset_sample) / sampling_rate * 1000
         saveDict['neg_peak_amplitudes'] = er_neg_peak_amplitudes
     if cfg('detection', 'positive'):
-        saveDict['pos_peak_indices'] = er_pos_peak_indices
+        saveDict['pos_peak_latency_samples'] = pos_peak_latency
+        saveDict['pos_peak_latency_ms'] = (pos_peak_latency - onset_sample) / sampling_rate * 1000
         saveDict['pos_peak_amplitudes'] = er_pos_peak_amplitudes
     sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
 
@@ -495,15 +498,15 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                         ax.plot(x, y, linewidth=plot_props['signal_line_thickness'])
 
                         # if negative evoked potential is detected, plot it
-                        if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
-                            xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                        if cfg('visualization', 'negative') and not isnan(neg_peak_latency[iElec, iPair]):
+                            xNeg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                             yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                             yNeg += len(stim_pairs_onsets) - iPair
                             ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
 
                         # if positive evoked potential is detected, plot it
-                        if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
-                            xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                        if cfg('visualization', 'positive') and not isnan(pos_peak_latency[iElec, iPair]):
+                            xPos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                             yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
                             yPos += len(stim_pairs_onsets) - iPair
                             ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
@@ -589,14 +592,14 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                     ax.plot(x, y, linewidth=plot_props['signal_line_thickness'])
 
                     # if evoked potential is detected, plot it
-                    if cfg('visualization', 'negative') and not isnan(er_neg_peak_indices[iElec, iPair]):
-                        xNeg = er_neg_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                    if cfg('visualization', 'negative') and not isnan(neg_peak_latency[iElec, iPair]):
+                        xNeg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                         yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
                         yNeg += len(channels_measured_incl) - iElec
                         ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
 
-                    if cfg('visualization', 'positive') and not isnan(er_pos_peak_indices[iElec, iPair]):
-                        xPos = er_pos_peak_indices[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                    if cfg('visualization', 'positive') and not isnan(pos_peak_latency[iElec, iPair]):
+                        xPos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
                         yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
                         yPos += len(channels_measured_incl) - iElec
                         ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
@@ -658,7 +661,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                 # latency
                 fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                          plot_props, image_width, image_height,
-                                         (er_neg_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
+                                         (neg_peak_latency.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
                 fig.savefig(os.path.join(output_root, 'matrix_latency_neg.png'), bbox_inches='tight')
 
             # generate positive matrices and save
@@ -673,7 +676,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                 # latency
                 fig = gen_latency_matrix(list(stim_pairs_onsets.keys()), channels_measured_incl,
                                          plot_props, image_width, image_height,
-                                         (er_pos_peak_indices.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
+                                         (pos_peak_latency.copy() - onset_sample) / sampling_rate * 1000)     # convert the indices (in samples) to time units (ms)
                 fig.savefig(os.path.join(output_root, 'matrix_latency_pos.png'), bbox_inches='tight')
 
     #

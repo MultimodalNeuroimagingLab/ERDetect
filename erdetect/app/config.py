@@ -486,12 +486,12 @@ def write_config(filepath):
     config_str = '{\n' \
                  '    "preprocess": {\n' \
                  '        "high_pass":                        ' + ('true' if _config['preprocess']['high_pass'] else 'false') + ',\n' \
-                 '        "line_noise_removal":               "' + _config['preprocess']['line_noise_removal'] + '"\n' \
+                 '        "line_noise_removal":               "' + _config['preprocess']['line_noise_removal'] + '",\n' \
                  '        "early_re_referencing": {\n' \
                  '            "enabled":                      ' + ('true' if _config['preprocess']['early_re_referencing']['enabled'] else 'false') + ',\n' \
                  '            "method":                       "' + _config['preprocess']['early_re_referencing']['method'] + '",\n' \
                  '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['early_re_referencing']['stim_excl_epoch'], 16) + ']\n' \
-                 '        },\n' \
+                 '        }\n' \
                  '    },\n\n' \
                  '    "trials": {\n' \
                  '        "trial_epoch":                      [' + numbers_to_padded_string(_config['trials']['trial_epoch'], 16) + '],\n' \
