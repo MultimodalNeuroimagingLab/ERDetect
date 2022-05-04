@@ -44,12 +44,12 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             # check if the field exists
             if 'PowerLineFrequency' not in ieeg_json:
                 logging.error('Could not find the \'PowerLineFrequency\' field in the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') this is required to perform line-noise removal, exiting...')
-                exit(1)
+                raise RuntimeError('Could not find field in the IEEG JSON sidecar')
 
             # check if the field is a number and higher than 0
             if not is_number(ieeg_json['PowerLineFrequency']) or ieeg_json['PowerLineFrequency'] <= 0:
                 logging.error('Invalid value for the \'PowerLineFrequency\' field in the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\'), positive integer is required to perform line-noise removal, exiting...')
-                exit(1)
+                raise RuntimeError('Invalid value in the IEEG JSON sidecar')
 
             # use the PowerLineFrequency value
             line_noise_removal = float(ieeg_json['PowerLineFrequency'])
@@ -57,7 +57,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
         except (IOError, RuntimeError):
             logging.error('Could not load the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') that is required to perform line-noise removal, exiting...')
-            exit(1)
+            raise RuntimeError('Could not load the IEEG JSON sidecar')
 
     else:
         # not from JSON
@@ -76,7 +76,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         channel_tsv = load_channel_info(bids_subset_root + '_channels.tsv')
     except (FileNotFoundError, LookupError):
         logging.error('Could not load the channel metadata (\'' + bids_subset_root + '_channels.tsv\'), exiting...')
-        exit(1)
+        raise RuntimeError('Could not load the channel metadata')
 
     # sort out the good, the bad and the... non-ieeg
     channels_excl_bad = []                                  # channels excluded because they are marked as bad
@@ -146,13 +146,13 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # check if there are any channels (as measured electrodes, or to re-reference on)
     if len(channels_measured_incl) == 0:
         logging.error('No channels were found (after filtering by type), exiting...')
-        exit(1)
+        raise RuntimeError('No channels were found')
     if cfg('preprocess', 'early_re_referencing', 'enabled'):
         if len(channels_early_reref_incl) == 0:
             logging.info(multi_line_list(channels_early_reref_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 25, ' '))
             logging.info(multi_line_list(channels_early_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for early re-ref:', 25, ' '))
             logging.error('Early re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
-            exit(1)
+            raise RuntimeError('No channels were found for early re-referencing')
     logging.info('')
 
 
@@ -165,7 +165,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         events_tsv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
     except (FileNotFoundError, LookupError):
         logging.error('Could not load the stimulation event metadata (\'' + bids_subset_root + '_events.tsv\'), exiting...')
-        exit(1)
+        raise RuntimeError('Could not load the stimulation event metadata')
 
     # acquire the onset and electrode-pair for each stimulation
     trial_onsets = []
@@ -186,7 +186,8 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             pair = row['electrical_stimulation_site'].split('-')
             if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
                 logging.error('Electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values separated by a dash (e.g. CH01-CH02), exiting...')
-                exit(1)
+                raise RuntimeError('Electrical stimulation site invalid')
+
             trial_onsets.append(float(row['onset']))
             trial_pairs.append(pair)
 
@@ -196,7 +197,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # check if there are trials
     if len(trial_onsets) == 0:
         logging.error('No trials were found, exiting...')
-        exit(1)
+        raise RuntimeError('No trials found')
 
 
     #
@@ -262,8 +263,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # check if there are stimulus-pairs
     if len(stim_pairs_onsets) == 0:
         logging.error('No stimulus-pairs were found, exiting...')
-        exit(1)
-
+        raise RuntimeError('No stimulus-pairs found')
 
     # prepare some preprocessing variables
     early_reref = None
@@ -314,7 +314,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                                                                      preproc_priority=('speed' if preproc_prioritize_speed else 'mem'))
     except (ValueError, RuntimeError):
         logging.error('Could not load data (' + bids_subset_data_path + '), exiting...')
-        exit(1)
+        raise RuntimeError('Could not load data')
 
     # for each stimulation pair condition, NaN out the values of the measured electrodes that were stimulated
     iPair = 0
@@ -361,22 +361,22 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             os.makedirs(output_root)
         except OSError as e:
             logging.error("Could not create subset output directory (\'" + output_root + "\'), exiting...")
-            exit(1)
+            raise RuntimeError('Could not create subset output directory')
 
-    # intermediate saving of the ccep data as .mat
-    saveDict = dict()
-    saveDict['sampling_rate'] = sampling_rate
-    saveDict['onset_sample'] = onset_sample
-    saveDict['ccep_average'] = averages
-    saveDict['stimpair_labels'] = np.asarray(list(stim_pairs_onsets.keys()), dtype='object')
-    saveDict['channel_labels'] = np.asarray(channels_measured_incl, dtype='object')
-    saveDict['epoch_time_s'] = (np.arange(averages.shape[2]) - onset_sample) / sampling_rate
-    saveDict['config'] = get_config_dict()
+    # intermediate saving of the CCEP data as .mat
+    output_dict = dict()
+    output_dict['sampling_rate'] = sampling_rate
+    output_dict['onset_sample'] = onset_sample
+    output_dict['ccep_average'] = averages
+    output_dict['stimpair_labels'] = np.asarray(list(stim_pairs_onsets.keys()), dtype='object')
+    output_dict['channel_labels'] = np.asarray(channels_measured_incl, dtype='object')
+    output_dict['epoch_time_s'] = (np.arange(averages.shape[2]) - onset_sample) / sampling_rate
+    output_dict['config'] = get_config_dict()
     if cfg('metrics', 'cross_proj', 'enabled'):
-        saveDict['cross_proj_metrics'] = cross_proj_metrics
+        output_dict['cross_proj_metrics'] = cross_proj_metrics
     if cfg('metrics', 'waveform', 'enabled'):
-        saveDict['waveform_metrics'] = waveform_metrics
-    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
+        output_dict['waveform_metrics'] = waveform_metrics
+    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), output_dict)
 
     # write the configuration
     write_config(os.path.join(output_root, 'ccep_config.json'))
@@ -401,18 +401,18 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                                                                          detect_positive=True)
     except (ValueError, RuntimeError):
         logging.error('Evoked response detection failed, exiting...')
-        exit(1)
+        raise RuntimeError('Evoked response detection failed')
 
     # intermediate saving of the data and evoked response detection results as .mat
     if cfg('detection', 'negative'):
-        saveDict['neg_peak_latency_samples'] = neg_peak_latency
-        saveDict['neg_peak_latency_ms'] = (neg_peak_latency - onset_sample) / sampling_rate * 1000
-        saveDict['neg_peak_amplitudes'] = er_neg_peak_amplitudes
+        output_dict['neg_peak_latency_samples'] = neg_peak_latency
+        output_dict['neg_peak_latency_ms'] = (neg_peak_latency - onset_sample) / sampling_rate * 1000
+        output_dict['neg_peak_amplitudes'] = er_neg_peak_amplitudes
     if cfg('detection', 'positive'):
-        saveDict['pos_peak_latency_samples'] = pos_peak_latency
-        saveDict['pos_peak_latency_ms'] = (pos_peak_latency - onset_sample) / sampling_rate * 1000
-        saveDict['pos_peak_amplitudes'] = er_pos_peak_amplitudes
-    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), saveDict)
+        output_dict['pos_peak_latency_samples'] = pos_peak_latency
+        output_dict['pos_peak_latency_ms'] = (pos_peak_latency - onset_sample) / sampling_rate * 1000
+        output_dict['pos_peak_amplitudes'] = er_pos_peak_amplitudes
+    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), output_dict)
 
 
     #
@@ -457,7 +457,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                     os.makedirs(electrodes_output)
                 except OSError as e:
                     logging.error("Could not create subset electrode image output directory (\'" + electrodes_output + "\'), exiting...")
-                    exit(1)
+                    raise RuntimeError('Could not create electrode image output directory')
 
             #
             logging.info('- Generating electrode plots...')
@@ -499,17 +499,17 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
                         # if negative evoked potential is detected, plot it
                         if cfg('visualization', 'negative') and not isnan(neg_peak_latency[iElec, iPair]):
-                            xNeg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                            yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
-                            yNeg += len(stim_pairs_onsets) - iPair
-                            ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
+                            x_neg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                            y_neg = er_neg_peak_amplitudes[iElec, iPair] / 500
+                            y_neg += len(stim_pairs_onsets) - iPair
+                            ax.plot(x_neg, y_neg, marker='o', markersize=6, color='blue')
 
                         # if positive evoked potential is detected, plot it
                         if cfg('visualization', 'positive') and not isnan(pos_peak_latency[iElec, iPair]):
-                            xPos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                            yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
-                            yPos += len(stim_pairs_onsets) - iPair
-                            ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
+                            x_pos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                            y_pos = er_pos_peak_amplitudes[iElec, iPair] / 500
+                            y_pos += len(stim_pairs_onsets) - iPair
+                            ax.plot(x_pos, y_pos, marker='^', markersize=7, color=(0, 0, .6))
 
                 # set the x-axis
                 ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
@@ -552,7 +552,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                     os.makedirs(stimpairs_output)
                 except OSError as e:
                     logging.error("Could not create subset stim-pair image output directory (\'" + stimpairs_output + "\'), exiting...")
-                    exit(1)
+                    raise RuntimeError('Could not create stim-pair image output directory')
 
             #
             logging.info('- Generating stimulation-pair plots...')
@@ -593,16 +593,16 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
                     # if evoked potential is detected, plot it
                     if cfg('visualization', 'negative') and not isnan(neg_peak_latency[iElec, iPair]):
-                        xNeg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                        yNeg = er_neg_peak_amplitudes[iElec, iPair] / 500
-                        yNeg += len(channels_measured_incl) - iElec
-                        ax.plot(xNeg, yNeg, marker='o', markersize=6, color='blue')
+                        x_neg = neg_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                        y_neg = er_neg_peak_amplitudes[iElec, iPair] / 500
+                        y_neg += len(channels_measured_incl) - iElec
+                        ax.plot(x_neg, y_neg, marker='o', markersize=6, color='blue')
 
                     if cfg('visualization', 'positive') and not isnan(pos_peak_latency[iElec, iPair]):
-                        xPos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
-                        yPos = er_pos_peak_amplitudes[iElec, iPair] / 500
-                        yPos += len(channels_measured_incl) - iElec
-                        ax.plot(xPos, yPos, marker='^', markersize=7, color=(0, 0, .6))
+                        x_pos = pos_peak_latency[iElec, iPair] / sampling_rate + cfg('trials', 'trial_epoch')[0]
+                        y_pos = er_pos_peak_amplitudes[iElec, iPair] / 500
+                        y_pos += len(channels_measured_incl) - iElec
+                        ax.plot(x_pos, y_pos, marker='^', markersize=7, color=(0, 0, .6))
 
                 # set the x-axis
                 ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
@@ -682,6 +682,8 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     #
     logging.info('- Finished subset')
 
+    # on success, return output
+    return output_dict
 
 def open_gui():
     """
