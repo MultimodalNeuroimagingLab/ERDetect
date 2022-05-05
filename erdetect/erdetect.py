@@ -3,8 +3,6 @@ import logging
 from math import isnan, ceil
 import numpy as np
 import scipy.io as sio
-import tkinter as tk
-from tkinter import filedialog
 
 from .app.config import write_config, get as cfg, get_config_dict, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from .app.detection import ieeg_detect_er
@@ -689,10 +687,15 @@ def open_gui():
     """
 
     """
+
+    # Python might not be configured for tk, so by importing it only here, the
+    # rest (functions and command-line wrapper) can run without trouble
+    import tkinter as tk
+    from tkinter import filedialog
+
+    # defaults
     window_height = 500
-    window_width = 600
-
-
+    window_width = 640
 
 
     # open window

@@ -33,8 +33,6 @@ RUN mkdir -p /app
 COPY main_command.py /app/main_command.py
 COPY version /app/version
 COPY ./erdetect /app/erdetect
-
-#
 RUN chmod +x /app/main_command.py
 
 # 

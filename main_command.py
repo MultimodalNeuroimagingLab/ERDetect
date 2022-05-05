@@ -379,10 +379,9 @@ for subject in subjects_to_analyze:
             #
             try:
                 process_subset(subset, args.output_dir, preproc_prioritize_speed)
-            except (RuntimeError):
+            except RuntimeError:
                 logging.error('Error while processing dataset, exiting...')
                 exit(1)
-
 
     else:
         #
