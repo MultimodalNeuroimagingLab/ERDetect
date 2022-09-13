@@ -1,8 +1,10 @@
 import logging
 import sys
+from erdetect.utils.misc import CustomLoggingFormatter
 from version import __version__
-__all__ = ['__version__']
-#__all__ = ['process_subset', 'open_gui', '__version__']
+from erdetect._erdetect import process_subset
+from erdetect.views.gui import open_gui
+__all__ = ['process_subset', 'open_gui', '__version__']
 
 #
 # logging
