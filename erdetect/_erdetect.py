@@ -9,7 +9,8 @@ from core.detection import ieeg_detect_er
 from views.output_images import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
 from utils.bids import load_channel_info, load_event_info, load_ieeg_sidecar, load_data_epochs_averages, RerefStruct
 from utils.misc import print_progressbar, is_number, multi_line_list, create_figure
-from metric_callbacks import metric_cross_proj, metric_waveform
+from erdetect.core.metrics.metric_cross_proj import metric_cross_proj
+from erdetect.core.metrics.metric_waveform import metric_waveform
 
 
 def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
