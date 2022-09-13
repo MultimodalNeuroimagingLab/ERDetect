@@ -1,0 +1,33 @@
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "numpy"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "erdetect"
+description = "A package for the automatic detection of evoked responses in CCEP data"
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.7"
+keywords = ["evoked response", "detection", "ieeg", "n1"]
+authors = [{ name="Max van den Boom", email="m.a.vandenboom84@gmail.com" }]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {file = ["version"]}
+
+[project.urls]
+homepage = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
+documentation = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
+repository = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
