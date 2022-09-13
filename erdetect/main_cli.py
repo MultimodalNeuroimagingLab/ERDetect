@@ -27,22 +27,7 @@ from core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,
 from _erdetect import process_subset
 from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from utils.misc import is_number, CustomLoggingFormatter, multi_line_list
-
-
-#
-# version and logging
-#
-
-#
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-logger_ch = logging.StreamHandler(stream=sys.stdout)
-logger_ch.setFormatter(CustomLoggingFormatter())
-logger.addHandler(logger_ch)
-
-
-def log_indented_line(caption, text):
-    logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+from erdetect._erdetect import log_indented_line
 
 
 #

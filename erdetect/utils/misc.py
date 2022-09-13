@@ -261,6 +261,7 @@ def print_progressbar(iteration, total, prefix='', suffix='', decimals=1, length
     if iteration == total:
         print()
 
+
 #
 class CustomLoggingFormatter(logging.Formatter):
     black = "\033[0;30m"

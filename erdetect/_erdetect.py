@@ -24,9 +24,6 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
     """
 
-    def log_indented_line(caption, text):
-        logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
-
     # derive the bids subset root from the full path
     bids_subset_root = bids_subset_data_path[:bids_subset_data_path.rindex('_')]
 
@@ -683,6 +680,10 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # on success, return output
     return output_dict
 
+
+def log_indented_line(caption, text):
+    logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+    
 def open_gui():
     """
 
