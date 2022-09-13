@@ -21,12 +21,12 @@ from glob import glob
 
 from version import __version__
 from bids_validator import BIDSValidator
-from erdetect.app.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
+from core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
     LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
-from erdetect import process_subset
-from erdetect.utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
-from erdetect.utils.misc import is_number, CustomLoggingFormatter, multi_line_list
+from _erdetect import process_subset
+from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
+from utils.misc import is_number, CustomLoggingFormatter, multi_line_list
 
 
 #
