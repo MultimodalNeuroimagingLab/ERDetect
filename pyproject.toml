@@ -17,12 +17,11 @@ build-backend = "setuptools.build_meta"
 name = "erdetect"
 description = "A package for the automatic detection of evoked responses in SPES/CCEP data"
 readme = "README.md"
-license = "GNU General Public License v3 (GPLv3)"
+license = { text="GPLv3" }
 requires-python = ">=3.8"
-keywords = ["evoked response", "detection", "ieeg", "n1"]
+keywords = ["evoked response", "detection", "ieeg", "n1", "SPES", "CCEP"]
 authors = [{ name="Max van den Boom", email="m.a.vandenboom84@gmail.com" }]
 classifiers = [
-    "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Operating System :: OS Independent",
@@ -33,7 +32,6 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.8",
     "Topic :: Scientific/Engineering",
-    "Topic :: Software Development",
 ]
 dynamic = ["version"]
 
