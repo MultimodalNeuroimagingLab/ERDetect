@@ -13,20 +13,19 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import sys
 import argparse
 import os
 import logging
 from glob import glob
 
-from version import __version__
+from erdetect.version import __version__
 from bids_validator import BIDSValidator
-from core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
+from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
     LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
-from _erdetect import process_subset
-from utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
-from utils.misc import is_number, CustomLoggingFormatter, multi_line_list
+from erdetect._erdetect import process
+from erdetect.utils.IeegDataReader import VALID_FORMAT_EXTENSIONS
+from erdetect.utils.misc import is_number, multi_line_list
 from erdetect._erdetect import log_indented_line
 
 
