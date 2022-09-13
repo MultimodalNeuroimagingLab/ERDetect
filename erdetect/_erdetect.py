@@ -28,6 +28,15 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
     # derive the bids subset root from the full path
     bids_subset_root = bids_subset_data_path[:bids_subset_data_path.rindex('_')]
 
+    # determine a subset specific output path
+    output_root = os.path.join(output_dir, os.path.basename(os.path.normpath(bids_subset_root)))
+
+    # print subset information
+    logging.info('------------------------ Processing subset ------------------------')
+    log_indented_line('Subset input:', bids_subset_root + '.*')
+    log_indented_line('Subset output path:', output_root + os.path.sep)
+    logging.info('')
+
 
     #
     # Line noise removal and IEEG JSON sidecar
@@ -351,7 +360,6 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
     #
 
     # make sure a subject directory exists
-    output_root = os.path.join(output_dir, os.path.basename(os.path.normpath(bids_subset_root)))
     if not os.path.exists(output_root):
         try:
             os.makedirs(output_root)

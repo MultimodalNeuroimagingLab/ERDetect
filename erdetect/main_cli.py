@@ -2,7 +2,7 @@
 """
 Evoked response detection - command-line entry-point
 =====================================================
-Command-line entry-point python script for the automatic detection of evoked responses in CCEP data.
+Command-line entry-point script for the automatic detection of evoked responses in CCEP data.
 
 
 Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
@@ -350,17 +350,20 @@ for subject in subjects_to_analyze:
                     if subset_name == subset_other_name:
                         subsets.remove(subset_other)
 
+        # TODO: mention all subsets before start processing
+
+
         # loop through the participant's subsets for analysis
         for subset in subsets:
 
-            # print subset information
-            logging.info('------------------------')
-            log_indented_line('Subset:', subset)
+            # empty space
+            logging.info('')
+            logging.info('')
             logging.info('')
 
             #
             try:
-                process_subset(subset, args.output_dir, preproc_prioritize_speed)
+                process(subset, args.output_dir, preproc_prioritize_speed)
             except RuntimeError:
                 logging.error('Error while processing dataset, exiting...')
                 exit(1)
@@ -369,5 +372,8 @@ for subject in subjects_to_analyze:
         #
         logging.warning('Participant \'' + subject + '\' could not be found, skipping')
 
-
+# empty space and end message
+logging.info('')
+logging.info('')
+logging.info('')
 logging.info('- Finished running')
