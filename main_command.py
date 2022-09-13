@@ -19,6 +19,7 @@ import os
 import logging
 from glob import glob
 
+from version import __version__
 from bids_validator import BIDSValidator
 from erdetect.app.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
     LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
@@ -31,9 +32,6 @@ from erdetect.utils.misc import is_number, CustomLoggingFormatter, multi_line_li
 #
 # version and logging
 #
-
-#
-__version__ = open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'version')).read()
 
 #
 logger = logging.getLogger()
@@ -50,7 +48,7 @@ def log_indented_line(caption, text):
 #
 # define and parse the input arguments
 #
-parser = argparse.ArgumentParser(description='BIDS App for the automatic detection of evoked responses in CCEP data.',
+parser = argparse.ArgumentParser(description='Automatically detect evoked responses in CCEP data.',
                                  formatter_class=argparse.RawTextHelpFormatter,
                                  add_help=False)
 parser._positionals.title = 'Required (positional) arguments'
@@ -137,13 +135,13 @@ parser.add_argument('--method',
                     nargs="?")
 parser.add_argument('-v', '--version',
                     action='version',
-                    version='ER-Detect BIDS-App version {}'.format(__version__))
+                    version='ER-Detect version {}'.format(__version__))
 args = parser.parse_args()
 
 #
 # display application information
 #
-log_indented_line('BIDS app:', ('Evoked Response Detection - ' + __version__))
+log_indented_line('Application:', ('Evoked Response Detection - v' + __version__))
 log_indented_line('BIDS input path:', args.bids_dir)
 log_indented_line('Output path:', args.output_dir)
 if args.config_filepath:
