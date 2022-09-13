@@ -1,5 +1,5 @@
 # Evoked Response Detection
-A BIDS Docker application for the automatic detection of evoked responses in CCEP data
+A python package and docker application for the automatic detection of evoked responses in CCEP data
 
 ## Usage
 
