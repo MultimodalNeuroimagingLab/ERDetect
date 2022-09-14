@@ -3,8 +3,7 @@ import sys
 from erdetect.utils.misc import CustomLoggingFormatter
 from erdetect.version import __version__
 from erdetect._erdetect import process
-from erdetect.views.gui import open_gui
-__all__ = ['process', 'open_gui', '__version__']
+__all__ = ['process', '__version__']
 
 #
 # logging
