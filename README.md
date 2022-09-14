@@ -1,9 +1,7 @@
 # Evoked Response Detection
 A python package and docker application for the automatic detection of evoked responses in SPES/CCEP data
 
-## Usage
-
-### Docker
+## Docker Usage
 
 To launch an instance of the container and analyse data in BIDS format, type:
 
@@ -13,35 +11,37 @@ $ docker run multimodalneuro/n1detect <bids_dir> <output_dir> [--participant_lab
 For example, to run an analysis, type:
 
 ```
-$ docker run -ti --rm \
-  -v /path/to/local/bids_input/dataset/:/data \
-  -v /path/to/local/output/:/output \
-  multimodalneuro/n1detect /data /output --participant_label 01 --skip_bids_validator
+docker run -ti --rm \
+-v /local_bids_data_root/:/data \
+-v /local_output_path/:/output \
+multimodalneuro/n1detect /data /output --participant_label 01 --skip_bids_validator
 ```
 
 
-### Python
+## Python Usage
 
 1. First install ERdetect, in the command-line run:
 ```
 pip install erdetect
 ```
 
-2a. Run directly in a python script:
+2. To run:
+- a) From the commandline:
 ```
-import erdetect
-erdetect.process('/path/to/bids_input/dataset/', '/path/to/output/')
+python -m erdetect ~/bids_data ~/output/ [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
 
-2b. Run from a windows/mac/unix commandline:
+- b) A subset of the data directly in a python script:
 ```
-python -m erdetect <bids_dir> <output_dir>/ [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
+import erdetect
+erdetect.process('/bids_data_root/bids_subj/ieeg/data_file', '/output_path/')
 ```
+
 
 
 ## Configure detection
-To adjust the preprocessing, evoked response detection and visualization settings, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter.
-An example JSON of the standard settings has the following content:
+From the command-line, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter to adjust the preprocessing, the evoked response detection and the visualization settings.
+An example JSON containing the standard settings looks as follows:
 ```
 {
     "preprocess": {
