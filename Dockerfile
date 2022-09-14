@@ -29,13 +29,5 @@ RUN pip3 install --upgrade pip \
 ENV PYTHONPATH=""
 
 #
-RUN mkdir -p /app
-COPY main_command.py /app/main_command.py
-COPY version /app/version
-COPY ./erdetect /app/erdetect
-
-#
-RUN chmod +x /app/main_command.py
-
-# 
-ENTRYPOINT ["/app/main_command.py"]
+COPY . /app/
+ENTRYPOINT ["/app/erdetect/main_cli.py"]
