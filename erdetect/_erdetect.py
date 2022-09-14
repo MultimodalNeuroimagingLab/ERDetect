@@ -3,6 +3,7 @@ import logging
 from math import isnan, ceil
 import numpy as np
 import scipy.io as sio
+from os.path import exists
 
 from erdetect.core.config import write_config, get as cfg, get_config_dict, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from erdetect.core.detection import ieeg_detect_er
@@ -21,9 +22,21 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
         bids_subset_data_path (str):          The path to the data of a subset (e.g. /BIDS/sub-01/ses-ieeg01/ieeg/sub-01_task-ccep.mefd)
                                               Paths other required files such as the _channels.tsv and _events.tsv file
                                               will be derived from the data path.
+        output_dir (str):                     The path to store the output files in. A subdirectory will be created for each subset.
         preproc_prioritize_speed (bool):      Set the pre-processing priority to either memory (default, False) or speed (True).
 
     """
+
+    # check the input arguments
+    if not bids_subset_data_path:
+        logging.error('Empty or invalid input data path, exiting...')
+        return
+    if not exists(bids_subset_data_path):
+        logging.error('Input data path (\'' + bids_subset_data_path +'\') could not be found, exiting...')
+        return
+    if not output_dir:
+        logging.error('Empty or invalid output directory, exiting...')
+        return
 
     # derive the bids subset root from the full path
     bids_subset_root = bids_subset_data_path[:bids_subset_data_path.rindex('_')]
