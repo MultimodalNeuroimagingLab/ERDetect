@@ -1,15 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=42",
-    "wheel",
-    "numpy>=1.22.3",
-    "scipy>=1.8.0",
-    "pandas>=1.4.2",
-    "matplotlib>=3.5.1",
-    "mne>=1.0.2",
-    "pymef>=1.3.4",
-    "psutil>=5.9.0",
-    "bids_validator>=1.9.3"
+    "wheel"
 ]
 build-backend = "setuptools.build_meta"
 
