@@ -19,8 +19,7 @@ import pandas as pd
 from scipy import signal
 
 from erdetect.utils.IeegDataReader import IeegDataReader, VALID_FORMAT_EXTENSIONS
-from erdetect.utils.misc import print_progressbar, allocate_array
-
+from erdetect.utils.misc import is_number, print_progressbar, allocate_array
 
 def load_channel_info(tsv_filepath):
 
@@ -129,6 +128,43 @@ class RerefStruct:
 
         return cls(groups, channel_reref_group)
 
+    @classmethod
+    def generate_car_per_headbox(cls, channel_names, channel_headboxes):
+        """
+        Factory method to generate a Common Average Re-referencing (CAR) per headbox setup struct
+
+        Args:
+            channel_names (list or tuple):      Channel names that might need to be re-referenced (or are needed for re-referencing)
+            channel_headboxes (list or tuple):  Channel headboxes, order should correspond with the channels_names input argument
+
+        """
+
+        # create a single group with all the channels from the channels argument
+        groups = list()
+        channel_reref_group = dict()
+
+        # loop over the unique headboxes
+        unique_headboxes = sorted(list(set(channel_headboxes)))
+        group_counter = 0
+        for headbox in unique_headboxes:
+            if is_number(headbox) and not headbox.lower() == 'nan' and not headbox.lower() == 'n/a':
+
+                # find the channel names that belong to this headbox
+                headbox_channels = [channel_names[ind] for ind, x in enumerate(channel_headboxes) if x == headbox]
+
+                # store the channel names as a group
+                groups.append(headbox_channels)
+
+                # store for each channel in this group that they below to this group
+                for channel_name in headbox_channels:
+                    channel_reref_group[channel_name] = group_counter
+
+                # raise the group counter
+                group_counter += 1
+
+        return cls(groups, channel_reref_group)
+
+
     def get_required_channels(self, retrieve_channels):
         """
         Retrieve all the channels (names) that are needed for re-referencing, given the channels that need to be retrieved
@@ -146,7 +182,7 @@ class RerefStruct:
         # loop over all requested channels
         for channel in retrieve_channels:
             if channel not in self.channel_group.keys():
-                logging.error('Could not find requested channel ' + channel + ' in reref struct')
+                logging.error('Could not find requested channel ' + channel + ' in reref struct, make sure each included channel is also set for re-referencing')
                 raise ValueError('Could not find requested channel')
 
             else:

@@ -29,7 +29,7 @@ CONFIG_DETECTION_CROSS_PROJ_THRESHOLD = 3.5
 CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD = 1000
 
 
-def __create_default_config():
+def create_default_config():
     """
     Create and return a config dictionary with default values
 
@@ -41,12 +41,17 @@ def __create_default_config():
 
     config['preprocess'] = dict()
     config['preprocess']['high_pass']                               = False                     #
-    config['preprocess']['line_noise_removal']                      = 'off'                     #
     config['preprocess']['early_re_referencing'] = dict()
     config['preprocess']['early_re_referencing']['enabled']         = False                     #
     config['preprocess']['early_re_referencing']['method']          = 'CAR'                     #
     config['preprocess']['early_re_referencing']['stim_excl_epoch'] = (-1.0, 2.0)
-    config['preprocess']['early_re_referencing']['types']           = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included for early re-referencing
+    config['preprocess']['early_re_referencing']['channel_types']   = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included for early re-referencing
+    config['preprocess']['line_noise_removal']                      = 'off'                     # TODO: off, json, 60, 50, 60Hz 50Hz
+    config['preprocess']['late_re_referencing'] = dict()
+    config['preprocess']['late_re_referencing']['enabled']          = False                     #
+    config['preprocess']['late_re_referencing']['method']           = 'CAR'                     #
+    config['preprocess']['late_re_referencing']['stim_excl_epoch']  = (-1.0, 2.0)
+    config['preprocess']['late_re_referencing']['channel_types']    = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included for late re-referencing
 
     config['trials'] = dict()
     config['trials']['trial_epoch']                                 = (-1.0, 2.0)               # the time-span (in seconds) relative to the stimulus onset that will be used to extract the signal for each trial
@@ -175,7 +180,7 @@ def load_config(filepath):
     """
 
     # first retrieve a default config
-    config = __create_default_config()
+    config = create_default_config()
 
     # try to read the JSON configuration file
     try:
@@ -268,7 +273,7 @@ def load_config(filepath):
                         else:
                             value_cased = json_dict[level1][level2]
                             if not case_sensitive:
-                                options = (option.lower() for option in options)
+                                options = [option.lower() for option in options]
                                 value_cased = value_cased.lower()
                             if value_cased in options:
                                 ref_config[level1][level2] = json_dict[level1][level2]
@@ -287,7 +292,7 @@ def load_config(filepath):
                             else:
                                 value_cased = json_dict[level1][level2][level3]
                                 if not case_sensitive:
-                                    options = (option.lower() for option in options)
+                                    options = [option.lower() for option in options]
                                     value_cased = value_cased.lower()
                                 if value_cased in options:
                                     ref_config[level1][level2][level3] = json_dict[level1][level2][level3]
@@ -358,6 +363,26 @@ def load_config(filepath):
     # preprocessing settings
     if not retrieve_config_bool(json_config, config, 'preprocess', 'high_pass'):
         return False
+    if not retrieve_config_bool(json_config, config, 'preprocess', 'early_re_referencing', 'enabled'):
+        return False
+    if not retrieve_config_string(json_config, config, 'preprocess', 'early_re_referencing', 'method', options=('CAR', 'CAR_headbox')):
+        return False
+
+    if not retrieve_config_string(json_config, config, 'preprocess', 'line_noise_removal', options=('off', 'json', '50', '60', '50hz', '60hz')):
+        return False
+    if config['preprocess']['line_noise_removal'].lower() == '50hz':
+        config['preprocess']['line_noise_removal'] = '50'
+    if config['preprocess']['line_noise_removal'].lower() == '60hz':
+        config['preprocess']['line_noise_removal'] = '60'
+    # TODO: load line noise removal, try also to accept a number instead of a string
+
+    if not retrieve_config_bool(json_config, config, 'preprocess', 'late_re_referencing', 'enabled'):
+        return False
+    if not retrieve_config_string(json_config, config, 'preprocess', 'late_re_referencing', 'method', options=('CAR', 'CAR_headbox')):
+        return False
+    # TODO: load early re-referencing channels
+    # TODO: load late re-referencing channels
+
 
     # trials settings
     if not retrieve_config_range(json_config, config, 'trials', 'trial_epoch'):
@@ -486,11 +511,18 @@ def write_config(filepath):
     config_str = '{\n' \
                  '    "preprocess": {\n' \
                  '        "high_pass":                        ' + ('true' if _config['preprocess']['high_pass'] else 'false') + ',\n' \
-                 '        "line_noise_removal":               "' + _config['preprocess']['line_noise_removal'] + '",\n' \
                  '        "early_re_referencing": {\n' \
                  '            "enabled":                      ' + ('true' if _config['preprocess']['early_re_referencing']['enabled'] else 'false') + ',\n' \
                  '            "method":                       "' + _config['preprocess']['early_re_referencing']['method'] + '",\n' \
-                 '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['early_re_referencing']['stim_excl_epoch'], 16) + ']\n' \
+                 '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['early_re_referencing']['stim_excl_epoch'], 16) + '],\n' \
+                 '            "channel_types":                ' + json.dumps(_config['preprocess']['early_re_referencing']['channel_types']) + '\n' \
+                 '        },\n' \
+                 '        "line_noise_removal":               "' + _config['preprocess']['line_noise_removal'] + '",\n' \
+                 '        "late_re_referencing": {\n' \
+                 '            "enabled":                      ' + ('true' if _config['preprocess']['late_re_referencing']['enabled'] else 'false') + ',\n' \
+                 '            "method":                       "' + _config['preprocess']['late_re_referencing']['method'] + '",\n' \
+                 '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['late_re_referencing']['stim_excl_epoch'], 16) + '],\n' \
+                 '            "channel_types":                ' + json.dumps(_config['preprocess']['late_re_referencing']['channel_types']) + '\n' \
                  '        }\n' \
                  '    },\n\n' \
                  '    "trials": {\n' \
@@ -719,4 +751,4 @@ def __check_config(config):
 
 
 # initialize a variable with a default configuration dictionary for this module
-_config = __create_default_config()
+_config = create_default_config()

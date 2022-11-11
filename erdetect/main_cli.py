@@ -77,8 +77,8 @@ def execute():
                         nargs="+")
     parser.add_argument('--config_filepath',
                         help='Configures the app according to the settings in the JSON configuration file\n\n')
-    parser.add_argument('--skip_bids_validator',
-                        help='Skip the BIDS data-set validation\n\n',
+    parser.add_argument('--apply_bids_validator',
+                        help='Apply the BIDS data-set validation\n\n',
                         action='store_true')
     parser.add_argument('--preproc_prioritize_speed',
                         help='Prioritize preprocessing for speed rather than for memory. By default, while preprocessing,\n'
@@ -98,11 +98,15 @@ def execute():
                              '      high-pass setting in the configuration file\n\n',
                         action='store_true')
     parser.add_argument('--early_reref',
-                        help='Perform early re-referencing before detection and visualization. The options are:\n'
-                             '      - CAR   = Common Average Re-refrencing (e.g. \'--early_reref CAR\')\n'
+                        help='Perform early re-referencing (before line-noise removal) as part of the processing\n'
+                             'preceding detection and visualization. The options are:\n'
+                             '      - CAR          = Common Average Re-referencing (e.g. \'--early_reref CAR\')\n'
+                             '      - CAR_headbox  = Common Average Re-referencing per headbox (e.g. \'--early_reref CAR_headbox\').'
+                             '                       The headbox number should be indicated for each channel in '
+                             '                       the _channels.tsv file in a column with the heading \'headbox\'.\n'
                              'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                              '      early re-referencing setting in the configuration file\n\n',
-                        nargs="?", const='CAR')
+                        nargs=1)
     parser.add_argument('--line_noise_removal',
                         help='Perform line-noise removal before detection and visualization. Can be either:\n'
                              '      - \'json\' or \'sidecar\' to lookup the line-noise frequency in the BIDS *_ieeg.json file\n'
@@ -111,6 +115,16 @@ def execute():
                              'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                              '      line-noise removal setting in the configuration file\n\n',
                         nargs="?", const='json')
+    parser.add_argument('--late_reref',
+                        help='Perform late re-referencing (after line-noise removal) as part of the processing\n'
+                             'preceding detection and visualization. The options are:\n'
+                             '      - CAR          = Common Average Re-referencing (e.g. \'--late_reref CAR\')\n'
+                             '      - CAR_headbox  = Common Average Re-referencing per headbox (e.g. \'--late_reref CAR_headbox\').'
+                             '                       The headbox number should be indicated for each channel in '
+                             '                       the _channels.tsv file in a column with the heading \'headbox\'.\n'
+                             'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                             '      late re-referencing setting in the configuration file\n\n',
+                        nargs=1)
     parser.add_argument('--include_positive_responses',
                         help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
                         action='store_true')
@@ -176,8 +190,22 @@ def execute():
         if str(args.early_reref).lower() == 'car':
             cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
+        elif str(args.early_reref).lower() == 'car_headbox':
+            cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
+            cfg_set('CAR_headbox', 'preprocess', 'early_re_referencing', 'method')
         else:
             logging.error('Invalid early_reref argument \'' + args.early_reref + '\'')
+            return 1
+
+    if args.late_reref:
+        if str(args.late_reref).lower() == 'car':
+            cfg_set(True, 'preprocess', 'late_re_referencing', 'enabled')
+            cfg_set('CAR', 'preprocess', 'late_re_referencing', 'method')
+        elif str(args.late_reref).lower() == 'car_headbox':
+            cfg_set(True, 'preprocess', 'late_re_referencing', 'enabled')
+            cfg_set('CAR_headbox', 'preprocess', 'late_re_referencing', 'method')
+        else:
+            logging.error('Invalid late_reref argument \'' + args.late_reref + '\'')
             return 1
 
     # check for methodological arguments
@@ -226,8 +254,13 @@ def execute():
     if cfg('preprocess', 'early_re_referencing', 'enabled'):
         log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
         log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 25, ' '))
+        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 25, ' '))
     log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
+    log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
+    if cfg('preprocess', 'late_re_referencing', 'enabled'):
+        log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
+        log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
+        logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 25, ' '))
     logging.info('')
     log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
     log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
@@ -274,14 +307,13 @@ def execute():
     #
     # check if the input is a valid BIDS dataset
     #
-
-    if not args.skip_bids_validator:
+    if args.apply_bids_validator:
         #process = run_cmd('bids-validator %s' % args.bids_dir)
         #logging.info(process.stdout)
         #if process.returncode != 0:
         #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-        #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-        #                    '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+        #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
+        #                    'without the --apply_bids_validator argument to skip prior BIDS validation.')
         #    return 1
         bids_error = False
         for dir_, d, files in os.walk(args.bids_dir):
@@ -294,9 +326,9 @@ def execute():
                     logging.error('Invalid BIDS-file: ' + rel_file)
                     bids_error = True
         if bids_error:
-            logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-                          'using the BIDS Validator (http://incf.github.io/bids-validator/).\nUse the '
-                          '--skip_bids_validator argument to run the detection without prior BIDS validation.')
+            logging.error('BIDS input dataset did not pass the BIDS validator. Datasets can be validated online '
+                          'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
+                          'without the --apply_bids_validator argument to skip prior BIDS validation.')
             return 1
 
     #

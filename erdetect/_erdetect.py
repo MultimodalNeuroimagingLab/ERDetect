@@ -102,13 +102,18 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
 
     channels_measured_incl = []                             # the channels that are used as measured electrodes
     channels_stim_incl = []                                 # the channels which stim-pairs should be included (actual filtering of stim-pairs happens at the reading of the events)
-    channels_early_reref_incl = []                          #
+    channels_early_reref_incl_names = []                    # the names of the channels that are included for early re-referencing
+    channels_early_reref_incl_headbox = []                  # the headbox that each of the included early re-referencing channels belong to
+    channels_late_reref_incl_names = []                     # the names of the channels that are included for late re-referencing
+    channels_late_reref_incl_headbox = []                   # the headbox that each of the included late re-referencing channels belong to
 
     channels_measured_excl_by_type = []                     # channels that were excluded as measured electrodes (by type)
     channels_stim_excl_by_type = []                         # channels that were excluded (and as a result exclude stim-pairs)
     channels_early_reref_excl_by_type = []                  #
+    channels_late_reref_excl_by_type = []                  #
 
     channels_have_status = 'status' in channel_tsv.columns
+    channels_have_headbox = 'headbox' in channel_tsv.columns
     for index, row in channel_tsv.iterrows():
 
         # check if bad channel
@@ -135,10 +140,12 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
 
         # determine if included or excluded from early re-referencing electrodes (by type)
         if cfg('preprocess', 'early_re_referencing', 'enabled'):
-            if row['type'].upper() in cfg('preprocess', 'early_re_referencing', 'types'):
+            if row['type'].upper() in cfg('preprocess', 'early_re_referencing', 'channel_types'):
 
                 # save for log output and the early-referencing (structure)
-                channels_early_reref_incl.append(row['name'])
+                channels_early_reref_incl_names.append(row['name'])
+                if channels_have_status:
+                    channels_early_reref_incl_headbox.append(row['headbox'])
 
                 # save for data reading (no duplicates)
                 if not row['name'] in channels_incl:
@@ -146,6 +153,23 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
 
             else:
                 channels_early_reref_excl_by_type.append(row['name'])   # save for log output
+
+        # determine if included or excluded from late re-referencing electrodes (by type)
+        if cfg('preprocess', 'late_re_referencing', 'enabled'):
+            if row['type'].upper() in cfg('preprocess', 'late_re_referencing', 'channel_types'):
+
+                # save for log output and the late-referencing (structure)
+                channels_late_reref_incl_names.append(row['name'])
+                if channels_have_status:
+                    channels_late_reref_incl_headbox.append(row['headbox'])
+                    # TODO: what if nan or not a number
+
+                # save for data reading (no duplicates)
+                if not row['name'] in channels_incl:
+                    channels_incl.append(row['name'])
+
+            else:
+                channels_late_reref_excl_by_type.append(row['name'])   # save for log output
 
     # print channel information
     logging.info(multi_line_list(channels_excl_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 25, ' '))
@@ -161,17 +185,93 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
         logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as measured electrodes:', 25, ' ', str(len(channels_measured_incl))))
         logging.info(multi_line_list(channels_stim_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as stim electrodes:', 25, ' ', str(len(channels_stim_incl))))
 
+
     # check if there are any channels (as measured electrodes, or to re-reference on)
     if len(channels_measured_incl) == 0:
         logging.error('No channels were found (after filtering by type), exiting...')
         raise RuntimeError('No channels were found')
+
+    # check early re-referencing settings and prepare reref struct
+    early_reref = None
     if cfg('preprocess', 'early_re_referencing', 'enabled'):
-        if len(channels_early_reref_incl) == 0:
-            logging.info(multi_line_list(channels_early_reref_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 25, ' '))
+
+        if cfg('preprocess', 'early_re_referencing', 'method') == 'CAR_headbox' and not channels_have_headbox:
+            logging.error('Early re-referencing is set to CAR per headbox, but the _channels.tsv file does not have a \'headbox\' column, exiting...')
+            raise RuntimeError('No \'headbox\' column in _channels.tsv file, needed to perform early re-referencing per headbox')
+
+        if len(channels_early_reref_incl_names) == 0:
+            logging.info(multi_line_list(channels_early_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 25, ' '))
             logging.info(multi_line_list(channels_early_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for early re-ref:', 25, ' '))
             logging.error('Early re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
             raise RuntimeError('No channels were found for early re-referencing')
+
+        # generate an early re-referencing object
+        if cfg('preprocess', 'early_re_referencing', 'method') == 'CAR':
+            early_reref = RerefStruct.generate_car(channels_early_reref_incl_names)
+        elif cfg('preprocess', 'early_re_referencing', 'method') == 'CAR_headbox':
+            early_reref = RerefStruct.generate_car_per_headbox(channels_early_reref_incl_names, channels_early_reref_incl_headbox)
+
+            # print CAR headbox info
+            logging.info('')
+            log_indented_line('Early re-referencing groups:', '')
+            for ind, group in enumerate(early_reref.groups):
+                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 25, ' '))
+
+            # check to make sure all included channels are also included in early re-referencing
+            missing_channels = []
+            for channel in channels_measured_incl:
+                if channel not in early_reref.channel_group.keys():
+                    missing_channels.append(channel)
+            if len(missing_channels) == 1:
+                logging.error('Channel \'' + missing_channels[0] + '\' is included but cannot be found in any early re-referencing group, make sure the channel has a valid headbox value in the _channels.tsv')
+                raise RuntimeError('Included channel not in re-referencing group')
+            elif len(missing_channels) > 1:
+                logging.error('Channels \'' + ', '.join(missing_channels) + '\' are included but cannot be found in any early re-referencing group, make sure the channels have valid headbox values in the _channels.tsv')
+                raise RuntimeError('Included channel not in re-referencing group')
+
+
+    # check late re-referencing settings and prepare reref struct
+    late_reref = None
+    if cfg('preprocess', 'late_re_referencing', 'enabled'):
+
+        if cfg('preprocess', 'late_re_referencing', 'method') == 'CAR_headbox' and not channels_have_headbox:
+            logging.error('Late re-referencing is set to CAR per headbox, but the _channels.tsv file does not have a \'headbox\' column, exiting...')
+            raise RuntimeError('No \'headbox\' column in _channels.tsv file, needed to perform late re-referencing per headbox')
+
+        if len(channels_late_reref_incl_names) == 0:
+            logging.info(multi_line_list(channels_late_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for late re-ref:', 25, ' '))
+            logging.info(multi_line_list(channels_late_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for late re-ref:', 25, ' '))
+            logging.error('Late re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
+            raise RuntimeError('No channels were found for late re-referencing')
+
+        # generate a late re-referencing object
+        if cfg('preprocess', 'late_re_referencing', 'method') == 'CAR':
+            late_reref = RerefStruct.generate_car(channels_late_reref_incl_names)
+        elif cfg('preprocess', 'late_re_referencing', 'method') == 'CAR_headbox':
+            late_reref = RerefStruct.generate_car_per_headbox(channels_late_reref_incl_names, channels_late_reref_incl_headbox)
+
+            # print CAR headbox info
+            logging.info('')
+            log_indented_line('Late re-referencing groups:', '')
+            for ind, group in enumerate(late_reref.groups):
+                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 25, ' '))
+
+            # check to make sure all included channels are also included in late re-referencing
+            missing_channels = []
+            for channel in channels_measured_incl:
+                if channel not in late_reref.channel_group.keys():
+                    missing_channels.append(channel)
+            if len(missing_channels) == 1:
+                logging.error('Channel \'' + missing_channels[0] + '\' is included but cannot be found in any late re-referencing group, make sure the channel has a valid headbox value in the _channels.tsv')
+                raise RuntimeError('Included channel not in re-referencing group')
+            elif len(missing_channels) > 1:
+                logging.error('Channels \'' + ', '.join(missing_channels) + '\' are included but cannot be found in any late re-referencing group, make sure the channels have valid headbox values in the _channels.tsv')
+                raise RuntimeError('Included channel not in re-referencing group')
+
+
+
     logging.info('')
+
 
 
     #
@@ -283,18 +383,16 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
         logging.error('No stimulus-pairs were found, exiting...')
         raise RuntimeError('No stimulus-pairs found')
 
-    # prepare some preprocessing variables
-    early_reref = None
-    late_reref = None
-    if cfg('preprocess', 'early_re_referencing', 'enabled'):
-
-        # set referencing
-        early_reref = RerefStruct.generate_car(channels_early_reref_incl)
-
-        # set the parts of stimulation (of specific channels) to exclude
+    # set the parts of stimulation (of specific channels) to exclude from early or late re-referencing
+    if early_reref is not None:
         early_reref.set_exclude_reref_epochs(stim_pairs_onsets,
                                              (cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]),
                                              '-')
+    if late_reref is not None:
+        late_reref.set_exclude_reref_epochs(stim_pairs_onsets,
+                                             (cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]),
+                                             '-')
+    logging.info('')
 
 
     #
