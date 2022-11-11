@@ -14,7 +14,7 @@ For example, to run an analysis, type:
 docker run -ti --rm \
 -v /local_bids_data_root/:/data \
 -v /local_output_path/:/output \
-multimodalneuro/n1detect /data /output --participant_label 01 --skip_bids_validator
+multimodalneuro/erdetect /data /output --participant_label 01 --skip_bids_validator
 ```
 
 
