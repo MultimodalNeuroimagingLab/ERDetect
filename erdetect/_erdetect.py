@@ -144,7 +144,7 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
 
                 # save for log output and the early-referencing (structure)
                 channels_early_reref_incl_names.append(row['name'])
-                if channels_have_status:
+                if channels_have_headbox:
                     channels_early_reref_incl_headbox.append(row['headbox'])
 
                 # save for data reading (no duplicates)
@@ -160,7 +160,7 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
 
                 # save for log output and the late-referencing (structure)
                 channels_late_reref_incl_names.append(row['name'])
-                if channels_have_status:
+                if channels_have_headbox:
                     channels_late_reref_incl_headbox.append(row['headbox'])
                     # TODO: what if nan or not a number
 
@@ -267,8 +267,6 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
             elif len(missing_channels) > 1:
                 logging.error('Channels \'' + ', '.join(missing_channels) + '\' are included but cannot be found in any late re-referencing group, make sure the channels have valid headbox values in the _channels.tsv')
                 raise RuntimeError('Included channel not in re-referencing group')
-
-
 
     logging.info('')
 
