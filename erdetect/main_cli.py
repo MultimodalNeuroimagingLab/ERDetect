@@ -187,25 +187,25 @@ def execute():
             return 1
 
     if args.early_reref:
-        if str(args.early_reref).lower() == 'car':
+        if str(args.early_reref[0]).lower() == 'car':
             cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
-        elif str(args.early_reref).lower() == 'car_headbox':
+        elif str(args.early_reref[0]).lower() == 'car_headbox':
             cfg_set(True, 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set('CAR_headbox', 'preprocess', 'early_re_referencing', 'method')
         else:
-            logging.error('Invalid early_reref argument \'' + args.early_reref + '\'')
+            logging.error('Invalid early_reref argument \'' + args.early_reref[0] + '\'')
             return 1
 
     if args.late_reref:
-        if str(args.late_reref).lower() == 'car':
+        if str(args.late_reref[0]).lower() == 'car':
             cfg_set(True, 'preprocess', 'late_re_referencing', 'enabled')
             cfg_set('CAR', 'preprocess', 'late_re_referencing', 'method')
-        elif str(args.late_reref).lower() == 'car_headbox':
+        elif str(args.late_reref[0]).lower() == 'car_headbox':
             cfg_set(True, 'preprocess', 'late_re_referencing', 'enabled')
             cfg_set('CAR_headbox', 'preprocess', 'late_re_referencing', 'method')
         else:
-            logging.error('Invalid late_reref argument \'' + args.late_reref + '\'')
+            logging.error('Invalid late_reref argument \'' + args.late_reref[0] + '\'')
             return 1
 
     # check for methodological arguments
