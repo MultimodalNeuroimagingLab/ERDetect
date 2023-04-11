@@ -32,7 +32,7 @@ from erdetect.version import __version__
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
     LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
-from erdetect._erdetect import process
+from erdetect._erdetect import process_subset
 from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.utils.console import multi_line_list
 from ieegprep.utils.misc import is_number
@@ -407,7 +407,7 @@ def execute():
 
                 #
                 try:
-                    process(subset, args.output_dir, preproc_prioritize_speed)
+                    process_subset(subset, args.output_dir, preproc_prioritize_speed)
                 except RuntimeError:
                     logging.error('Error while processing dataset, exiting...')
                     return 1

@@ -8,8 +8,8 @@ if sys.version_info < (3, 8, 0):
 # flatten access
 from ieegprep.utils.console import CustomLoggingFormatter
 from erdetect.version import __version__
-from erdetect._erdetect import process
-__all__ = ['process', '__version__']
+from erdetect._erdetect import process_subset
+__all__ = ['process_subset', '__version__']
 
 # logging
 import logging

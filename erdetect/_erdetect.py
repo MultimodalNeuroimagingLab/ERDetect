@@ -31,7 +31,7 @@ from erdetect.core.metrics.metric_cross_proj import metric_cross_proj
 from erdetect.core.metrics.metric_waveform import metric_waveform
 
 
-def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
+def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
     """
     Process a BIDS subset, perform pre-processing, evoked response detection and produce output
 
