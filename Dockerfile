@@ -13,16 +13,13 @@ ENV LANG C.UTF-8
 # See: https://github.com/Docker-Hub-frolvlad/docker-alpine-python3/pull/13
 ENV PYTHONUNBUFFERED=1
 
-# build and install numpy, scipy, mne, bids_validator and pymef
+# build and install dependencies
 RUN pip3 install --upgrade pip \
-	&& pip3 install numpy==1.22.3 \
-	&& pip3 install scipy==1.8.0 \
-	&& pip3 install pandas==1.4.2 \
-	&& pip3 install matplotlib==3.5.1 \
-	&& pip3 install mne==1.0.2 \
-        && pip3 install bids_validator==1.9.3 \
-        && pip3 install psutil==5.9.0 \
-	&& pip3 install pymef \
+	&& pip3 install numpy==1.24.2 \
+	&& pip3 install scipy==1.10.1 \
+	&& pip3 install matplotlib==3.7.1 \
+	&& pip3 install ieegprep==1.1.0 \
+	&& pip3 install bids_validator==1.11.0 \
 	&& rm -r /root/.cache
 
 # 
