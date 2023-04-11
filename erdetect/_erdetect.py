@@ -5,10 +5,13 @@ import numpy as np
 import scipy.io as sio
 from os.path import exists
 
+from ieegprep.bids.rereferencing import RerefStruct
+from ieegprep.bids.data_epoch import load_data_epochs_averages
+
 from erdetect.core.config import write_config, get as cfg, get_config_dict, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from erdetect.core.detection import ieeg_detect_er
 from erdetect.views.output_images import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
-from erdetect.utils.bids import load_channel_info, load_event_info, load_ieeg_sidecar, load_data_epochs_averages, RerefStruct
+from erdetect.utils.bids import load_channel_info, load_event_info, load_ieeg_sidecar
 from erdetect.utils.misc import print_progressbar, is_number, multi_line_list, create_figure
 from erdetect.core.metrics.metric_cross_proj import metric_cross_proj
 from erdetect.core.metrics.metric_waveform import metric_waveform
