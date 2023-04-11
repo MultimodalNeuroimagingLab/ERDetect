@@ -35,7 +35,7 @@ python -m erdetect ~/bids_data ~/output/ [--participant_label PARTICIPANT_LABEL 
 ```
 import erdetect
 erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_run-06', '/output_path/')
-erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_ses-1_task-SPES_run-06', '/output_path/')
+erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_run-06.edf', '/output_path/')
 ```
 
 
