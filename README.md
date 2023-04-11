@@ -103,6 +103,5 @@ An example JSON containing the standard settings looks as follows:
   - NumPy
   - SciPy
   - Matplotlib
-  - psutil
 
 - This project was funded by the National Institute Of Mental Health of the National Institutes of Health Award Number R01MH122258 to Dora Hermes

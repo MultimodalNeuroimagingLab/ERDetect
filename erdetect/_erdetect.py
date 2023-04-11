@@ -5,14 +5,15 @@ import numpy as np
 import scipy.io as sio
 from os.path import exists
 from ieegprep.bids import load_channel_info, load_event_info, load_ieeg_sidecar
-from ieegprep.bids.rereferencing import RerefStruct
 from ieegprep.bids.data_epoch import load_data_epochs_averages
+from ieegprep.bids.rereferencing import RerefStruct
+from ieegprep.utils.console import multi_line_list, print_progressbar
+from ieegprep.utils.misc import is_number
 
 from erdetect.core.config import write_config, get as cfg, get_config_dict, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from erdetect.core.detection import ieeg_detect_er
 from erdetect.views.output_images import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
-from erdetect.utils.bids import load_channel_info, load_event_info, load_ieeg_sidecar
-from erdetect.utils.misc import print_progressbar, is_number, multi_line_list, create_figure
+from erdetect.utils.misc import create_figure
 from erdetect.core.metrics.metric_cross_proj import metric_cross_proj
 from erdetect.core.metrics.metric_waveform import metric_waveform
 
@@ -35,7 +36,7 @@ def process(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
         logging.error('Empty or invalid input data path, exiting...')
         return
     if not exists(bids_subset_data_path):
-        logging.error('Input data path (\'' + bids_subset_data_path +'\') could not be found, exiting...')
+        logging.error('Input data path (\'' + bids_subset_data_path + '\') could not be found, exiting...')
         return
     if not output_dir:
         logging.error('Empty or invalid output directory, exiting...')
