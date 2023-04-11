@@ -15,7 +15,7 @@ ENV PYTHONUNBUFFERED=1
 
 # build and install dependencies
 RUN pip3 install --upgrade pip \
-	&& pip3 install numpy==1.24.2 \
+	&& pip3 install numpy==1.23.5 \
 	&& pip3 install scipy==1.10.1 \
 	&& pip3 install matplotlib==3.7.1 \
 	&& pip3 install ieegprep==1.1.0 \
