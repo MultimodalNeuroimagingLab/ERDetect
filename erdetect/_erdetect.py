@@ -4,7 +4,7 @@ from math import isnan, ceil
 import numpy as np
 import scipy.io as sio
 from os.path import exists
-
+from ieegprep.bids import load_channel_info, load_event_info, load_ieeg_sidecar
 from ieegprep.bids.rereferencing import RerefStruct
 from ieegprep.bids.data_epoch import load_data_epochs_averages
 

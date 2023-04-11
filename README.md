@@ -102,8 +102,6 @@ An example JSON containing the standard settings looks as follows:
   - BIDS-validator (https://github.com/bids-standard/bids-validator)
   - NumPy
   - SciPy
-  - Pandas
-  - KiwiSolver
   - Matplotlib
   - psutil
 
