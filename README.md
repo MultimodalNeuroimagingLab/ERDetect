@@ -3,10 +3,10 @@ A python package and docker application for the automatic detection of evoked re
 
 ## Docker Usage
 
-To launch an instance of the container and analyse data in BIDS format, type:
+To launch an instance of the container and analyse data in BIDS format, in the command-line interface/terminal:
 
 ```
-$ docker run multimodalneuro/n1detect <bids_dir> <output_dir> [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
+docker run multimodalneuro/erdetect <bids_dir>:/data <output_dir>:/output [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
 For example, to run an analysis, type:
 
