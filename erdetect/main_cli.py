@@ -151,20 +151,33 @@ def execute():
                         version='ER-Detect version {}'.format(__version__))
     args = parser.parse_args()
 
+
+    #
+    # make sure the output directory exists
+    #
+
+    # TODO: potentially the logging output can be written here from now on as well
+    if not os.path.exists(args.output_dir):
+        try:
+            os.makedirs(args.output_dir)
+        except OSError as e:
+            logging.error('Could not create output directory (\'' + args.output_dir + '\'), exiting...')
+            return 1
+
+
     #
     # display application information
     #
-    log_indented_line('Application:', ('Evoked Response Detection - v' + __version__))
-    log_indented_line('BIDS input path:', args.bids_dir)
-    log_indented_line('Output path:', args.output_dir)
-    if args.config_filepath:
-        log_indented_line('Configuration file:', args.config_filepath)
+    logging.info('------------------------ Evoked Response Detection - v' + __version__ + ' ------------------------')
     logging.info('')
 
 
     #
     # configure
     #
+    if args.config_filepath:
+        log_indented_line('Input configuration file:', args.config_filepath)
+        logging.info('')
 
     #  read the configuration file (if passed)
     if args.config_filepath:
@@ -314,6 +327,25 @@ def execute():
     # Find and process participants and their datasets
     #
 
+    logging.info('--------------------------------- Participants and data subsets ----------------------------------')
+    log_indented_line('BIDS input path:', args.bids_dir)
+    log_indented_line('Output path:', args.output_dir)
+    logging.info('')
+
+    # print optional search arguments
+    optional_search_argument = False
+    if args.participant_label:
+        log_indented_line('Participant(s) to include:', ", ".join(args.participant_label))
+        optional_search_argument = True
+    if args.subset_search_pattern:
+        log_indented_line('Subset search pattern(s):', ", ".join(args.subset_search_pattern))
+        optional_search_argument = True
+    if args.format_extension:
+        log_indented_line('Only include subsets with data extension(s):', ", ".join(args.format_extension))
+        optional_search_argument = True
+    if optional_search_argument:
+        logging.info('')
+
     # check if the input is a valid BIDS dataset
     if args.apply_bids_validator:
         #process = run_cmd('bids-validator %s' % args.bids_dir)
@@ -346,7 +378,6 @@ def execute():
                                   subjects_filter=args.participant_label,
                                   subset_search_pattern=args.subset_search_pattern, strict_search=strict_search,
                                   only_subjects_with_subsets=True)
-
 
     #
     if len(datasets) == 0:
@@ -389,7 +420,7 @@ def execute():
     logging.info('')
     logging.info('')
     logging.info('')
-    logging.info('- Finished running')
+    logging.info('--------------------------------------   Finished running   --------------------------------------')
 
     # return success exit code
     return 0
