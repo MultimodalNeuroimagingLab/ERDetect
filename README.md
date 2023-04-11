@@ -31,7 +31,7 @@ pip install erdetect
 python -m erdetect ~/bids_data ~/output/ [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
 
-- b) A subset of the data directly in a python script:
+- b) To process a subset directly in a python script:
 ```
 import erdetect
 erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_run-06.edf', '/output_path/')

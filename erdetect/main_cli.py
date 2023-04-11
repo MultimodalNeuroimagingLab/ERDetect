@@ -271,13 +271,13 @@ def execute():
     if cfg('preprocess', 'early_re_referencing', 'enabled'):
         log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
         log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 20, ' '))
+        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
     log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
     log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
     if cfg('preprocess', 'late_re_referencing', 'enabled'):
         log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
         log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 20, ' '))
+        logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
     logging.info('')
     log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
     log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
@@ -285,8 +285,8 @@ def execute():
     log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
     log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
     log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
-    logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 20, ' '))
-    logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types for stimulation:', 20, ' '))
+    logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 14, ' '))
+    logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types for stimulation:', 14, ' '))
     logging.info('')
     log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
     if cfg('metrics', 'cross_proj', 'enabled'):

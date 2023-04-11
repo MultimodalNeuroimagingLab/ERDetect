@@ -41,3 +41,4 @@ version = {attr = "erdetect.version.__version__"}
 homepage = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
 documentation = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
 repository = "https://github.com/MultimodalNeuroimagingLab/ERDetect"
+
