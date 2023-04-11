@@ -17,7 +17,6 @@ import argparse
 import logging
 import os
 import sys
-from glob import glob
 from bids_validator import BIDSValidator
 
 # add a system path to ensure the absolute imports can be used
@@ -34,6 +33,7 @@ from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as
     CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
 from erdetect._erdetect import process_subset
 from ieegprep import VALID_FORMAT_EXTENSIONS
+from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.console import multi_line_list
 from ieegprep.utils.misc import is_number
 from erdetect._erdetect import log_indented_line
@@ -58,20 +58,23 @@ def execute():
                              'level analysis this folder should be prepopulated with the results of the\n'
                              'participant level analysis.\n\n')
     parser.add_argument('--participant_label',
-                        help='The label(s) of the participant(s) that should be analyzed. The label corresponds\n'
-                             'to sub-<participant_label> from the BIDS spec (so it does not include \'sub-\').\n'
-                             'If this parameter is not provided all subjects will be analyzed. Multiple\n'
-                             'participants can be specified with a space separated list.\n\n',
+                        help='This argument can be used to indicate which specific participant(s) in the BIDS\n'
+                             'directory should be analyzed. The given label(s) should correspond to the\n'
+                             'sub-<participant_label> as described in the BIDS specification. Label matching is\n'
+                             'case-insensitive and \'sub-\' prefixes in any of the labels will be ignored.\n'
+                             'If this parameter is not provided then all subjects will be analyzed. Multiple\n'
+                             'participant can be specified with a space separated list.\n\n',
                         nargs="+")
     parser.add_argument('--subset_search_pattern',
-                        help='The subset(s) of data that should be analyzed. The pattern should be part of a BIDS\n'
-                             'compliant folder name (e.g. \'task-ccep_run-01\'). If this parameter is not provided\n'
-                             'all the found subset(s) will be analyzed. Multiple subsets can be specified with\n'
-                             'a space separated list.\n\n',
+                        help='This argument can be used to ensure that a specific text has to occur in the\n'
+                             '(data) subset name for it to be analyzed. The pattern could be part of a BIDS\n'
+                             'compliant folder name (e.g. \'task-ccep_run-01\'). The search is case-insensitive.\n'
+                             'If this parameter is not provided then all the data subset(s) that are found will be\n'
+                             'analyzed. Multiple search patterns can be specified with a space separated list.\n\n',
                         nargs="+")
     parser.add_argument('--format_extension',
-                        help='The data format(s) to include. The format(s) should be specified by their\n'
-                             'extension (e.g. \'.edf\'). If this parameter is not provided, then by default\n'
+                        help='Can be used to limit the data format(s) to include. The format(s) should be specified\n'
+                             'by their extension (e.g. \'.edf\'). If this parameter is not provided, then by default\n'
                              'the European Data Format (\'.edf\'), BrainVision (\'.vhdr\', \'.vmrk\', \'.eeg\')\n'
                              'and MEF3 (\'.mefd\') formats will be included. Multiple formats can be specified\n'
                              'with a space separated list.\n\n',
@@ -303,11 +306,15 @@ def execute():
     log_indented_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
     log_indented_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
     logging.info('')
+    logging.info('')
+    logging.info('')
 
 
     #
+    # Find and process participants and their datasets
+    #
+
     # check if the input is a valid BIDS dataset
-    #
     if args.apply_bids_validator:
         #process = run_cmd('bids-validator %s' % args.bids_dir)
         #logging.info(process.stdout)
@@ -332,72 +339,38 @@ def execute():
                           'without the --apply_bids_validator argument to skip prior BIDS validation.')
             return 1
 
-    #
-    # process per subject and subset
-    #
+    # list the datasets
+    strict_search = True if args.apply_bids_validator else False
+    datasets = list_bids_datasets(args.bids_dir,
+                                  dataset_extensions=VALID_FORMAT_EXTENSIONS,
+                                  subjects_filter=args.participant_label,
+                                  subset_search_pattern=args.subset_search_pattern, strict_search=strict_search,
+                                  only_subjects_with_subsets=True)
 
-    # make sure the output directory exists
-    if not os.path.exists(args.output_dir):
-        try:
-            os.makedirs(args.output_dir)
-        except OSError as e:
-            logging.error('Could not create output directory (\'' + args.output_dir + '\'), exiting...')
-            return 1
 
-    # list the subject to analyze (either based on the input parameter or list all in the BIDS_dir)
-    subjects_to_analyze = []
-    if args.participant_label:
-        # user-specified subjects
-        subjects_to_analyze = args.participant_label
+    #
+    if len(datasets) == 0:
+
+        logging.info('')
+        if optional_search_argument:
+            logging.warning('No datasets were found...\n'
+                            'Input arguments might have limited the search, make sure to check your CLI arguments')
+        else:
+            logging.warning('No datasets were found...')
 
     else:
-        # all subjects
-        subject_dirs = glob(os.path.join(args.bids_dir, 'sub-*'))
-        subjects_to_analyze = [subject_dir.split("-")[-1] for subject_dir in subject_dirs]
 
-    #
-    for subject in subjects_to_analyze:
+        # display subject/subset information
+        logging.info('Participant(s) and subset(s) found:')
+        for (subject, subsets) in datasets.items():
+            short_subsets = [os.path.splitext(os.path.basename(os.path.normpath(x)))[0] for x in subsets]
+            short_subsets = [x[0:-5] if x.endswith('_ieeg') else x for x in short_subsets]
+            short_subsets = [x[0:-4] if x.endswith('_eeg') else x for x in short_subsets]
+            logging.info(multi_line_list(list(short_subsets), LOGGING_CAPTION_INDENT_LENGTH, '    ' + subject + ':', 1, ' '))
+        logging.info('')
 
-        # remove the sub part from the subject
-        if len(subject) > 4 and subject[0:4] == 'sub-':
-            subject = subject[4:]
-
-        # see if the subject is exists (in case the user specified the labels)
-        if os.path.isdir(os.path.join(args.bids_dir, ('sub-' + subject))):
-
-            # retrieve the data formats to include
-            if args.format_extension:
-                extensions = args.format_extension
-                for extension in extensions:
-                    if not any(extension in x for x in VALID_FORMAT_EXTENSIONS):
-                        logging.error('Invalid data format extension \'' + extension + '\', exiting...')
-                        return 1
-            else:
-                extensions = VALID_FORMAT_EXTENSIONS
-
-            # build path patterns for the search of subsets
-            subset_patterns = args.subset_search_pattern if args.subset_search_pattern else ('',)
-            subsets = []
-            modalities = ('*eeg',)                    # ieeg and eeg
-            for extension in extensions:
-                for modality in modalities:
-                    for subset_pattern in subset_patterns:
-                        subsets += glob(os.path.join(args.bids_dir, ('sub-' + subject), modality, '*' + subset_pattern + '*' + extension)) + \
-                                   glob(os.path.join(args.bids_dir, ('sub-' + subject), '*', modality, '*' + subset_pattern + '*' + extension))
-
-            # bring subsets with multiple formats down to one format (prioritized to occurrence in the extension var)
-            for subset in subsets:
-                subset_name = subset[:subset.rindex(".")]
-                for subset_other in reversed(subsets):
-                    if not subset == subset_other:
-                        subset_other_name = subset_other[:subset_other.rindex(".")]
-                        if subset_name == subset_other_name:
-                            subsets.remove(subset_other)
-
-            # TODO: mention all subsets before start processing
-
-
-            # loop through the participant's subsets for analysis
+        # process
+        for (subject, subsets) in datasets.items():
             for subset in subsets:
 
                 # empty space
@@ -405,16 +378,12 @@ def execute():
                 logging.info('')
                 logging.info('')
 
-                #
+                # process
                 try:
                     process_subset(subset, args.output_dir, preproc_prioritize_speed)
                 except RuntimeError:
                     logging.error('Error while processing dataset, exiting...')
                     return 1
-
-        else:
-            #
-            logging.warning('Participant \'' + subject + '\' could not be found, skipping')
 
     # empty space and end message
     logging.info('')
