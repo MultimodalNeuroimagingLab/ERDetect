@@ -189,18 +189,18 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                 channels_late_reref_excl_by_type.append(row['name'])   # save for log output
 
     # print channel information
-    logging.info(multi_line_list(channels_excl_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 25, ' '))
+    logging.info(multi_line_list(channels_excl_bad, LOGGING_CAPTION_INDENT_LENGTH, 'Bad channels (excluded):', 20, ' '))
     if channels_measured_excl_by_type == channels_stim_excl_by_type:
-        logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type:', 25, ' '))
+        logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type:', 20, ' '))
     else:
-        logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as measured electrodes:', 25, ' '))
-        logging.info(multi_line_list(channels_stim_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as stim electrodes:', 25, ' '))
+        logging.info(multi_line_list(channels_measured_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as measured electrodes:', 20, ' '))
+        logging.info(multi_line_list(channels_stim_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excl. (by type) as stim electrodes:', 20, ' '))
     logging.info('')
     if channels_measured_incl == channels_stim_incl:
-        logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included as electrodes:', 25, ' ', str(len(channels_measured_incl))))
+        logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included as electrodes:', 20, ' ', str(len(channels_measured_incl))))
     else:
-        logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as measured electrodes:', 25, ' ', str(len(channels_measured_incl))))
-        logging.info(multi_line_list(channels_stim_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as stim electrodes:', 25, ' ', str(len(channels_stim_incl))))
+        logging.info(multi_line_list(channels_measured_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as measured electrodes:', 20, ' ', str(len(channels_measured_incl))))
+        logging.info(multi_line_list(channels_stim_incl, LOGGING_CAPTION_INDENT_LENGTH, 'Channels incl. as stim electrodes:', 20, ' ', str(len(channels_stim_incl))))
 
 
     # check if there are any channels (as measured electrodes, or to re-reference on)
@@ -217,8 +217,8 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             raise RuntimeError('No \'headbox\' column in _channels.tsv file, needed to perform early re-referencing per headbox')
 
         if len(channels_early_reref_incl_names) == 0:
-            logging.info(multi_line_list(channels_early_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 25, ' '))
-            logging.info(multi_line_list(channels_early_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for early re-ref:', 25, ' '))
+            logging.info(multi_line_list(channels_early_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for early re-ref:', 20, ' '))
+            logging.info(multi_line_list(channels_early_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for early re-ref:', 20, ' '))
             logging.error('Early re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
             raise RuntimeError('No channels were found for early re-referencing')
 
@@ -232,7 +232,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             logging.info('')
             log_indented_line('Early re-referencing groups:', '')
             for ind, group in enumerate(early_reref.groups):
-                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 25, ' '))
+                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 20, ' '))
 
             # check to make sure all included channels are also included in early re-referencing
             missing_channels = []
@@ -256,8 +256,8 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             raise RuntimeError('No \'headbox\' column in _channels.tsv file, needed to perform late re-referencing per headbox')
 
         if len(channels_late_reref_incl_names) == 0:
-            logging.info(multi_line_list(channels_late_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for late re-ref:', 25, ' '))
-            logging.info(multi_line_list(channels_late_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for late re-ref:', 25, ' '))
+            logging.info(multi_line_list(channels_late_reref_incl_names, LOGGING_CAPTION_INDENT_LENGTH, 'Channels included (by type) for late re-ref:', 20, ' '))
+            logging.info(multi_line_list(channels_late_reref_excl_by_type, LOGGING_CAPTION_INDENT_LENGTH, 'Channels excluded by type for late re-ref:', 20, ' '))
             logging.error('Late re-referencing is enabled but (after filtering by type) no channels were found, exiting...')
             raise RuntimeError('No channels were found for late re-referencing')
 
@@ -271,7 +271,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
             logging.info('')
             log_indented_line('Late re-referencing groups:', '')
             for ind, group in enumerate(late_reref.groups):
-                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 25, ' '))
+                logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 20, ' '))
 
             # check to make sure all included channels are also included in late re-referencing
             missing_channels = []
