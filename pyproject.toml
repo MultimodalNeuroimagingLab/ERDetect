@@ -11,6 +11,14 @@ description = "A package for the automatic detection of evoked responses in SPES
 readme = "README.md"
 license = { text="GPLv3" }
 requires-python = ">=3.8"
+dependencies = [
+    "ieegprep >= 1.1.0",
+    "numpy >= 1.22.3",
+    "scipy >= 1.8.0",
+    "pandas >= 1.4.2",
+    "matplotlib >= 3.5.1",
+    "bids_validator >= 1.9.3",
+]
 keywords = ["evoked response", "detection", "ieeg", "n1", "SPES", "CCEP"]
 authors = [{ name="Max van den Boom", email="m.a.vandenboom84@gmail.com" }]
 classifiers = [
