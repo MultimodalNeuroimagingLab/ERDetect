@@ -179,7 +179,6 @@ def open_gui():
     output_directory = tk.StringVar()
     subset_items = tk.StringVar()
     subset_filter = tk.StringVar()
-    apply_bids_validator = tk.IntVar()
     processing_thread = None
     processing_thread_lock = threading.Lock()
 
@@ -335,7 +334,6 @@ def open_gui():
 
     def btn_process_start_onclick():
         nonlocal processing_thread, processing_thread_lock
-        #txt_console.configure(background='systemTextBackgroundColor', state='normal')
 
         #
         datasets_to_analyze = [(val['label'], key) for key, val in datasets.items() if val['selected']]
@@ -443,9 +441,6 @@ def open_gui():
     y_pos += 28
     tk.Button(win, text="Detection & Metrics").place(x=10, y=y_pos, width=config_btn_width, height=28)
     tk.Button(win, text="Visualizations").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
-    #y_pos += 40 + 2
-    #chk_apply_validator = tk.Checkbutton(win, text='Apply BIDS validator', anchor="w", variable=apply_bids_validator, onvalue=1, offvalue=0)
-    #chk_apply_validator.place(x=20, y=y_pos, width=window_width - 30, height=20)
 
     y_pos += 45 + 2
     tk.Label(win, text="BIDS output directory:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
