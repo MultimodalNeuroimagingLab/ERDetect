@@ -66,9 +66,9 @@ def open_gui():
                                       int((win.winfo_screenwidth() / 2) - (pd_window_width / 2)),
                                       int((win.winfo_screenheight() / 2) - (pd_window_height / 2))))
             self.root.resizable(False, False)
-            blank_icon = tk.PhotoImage(height=16, width=16)
-            blank_icon.blank()
-            self.root.iconphoto(False, blank_icon)
+            #blank_icon = tk.PhotoImage(height=16, width=16)
+            #blank_icon.blank()
+            #self.root.iconphoto(False, blank_icon)
 
             #
             pd_y_pos = 10
@@ -147,7 +147,25 @@ def open_gui():
 
     # open window
     win = tk.Tk()
-    #win.iconbitmap("myIcon.ico")
+    icon_64 = 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAIM0lEQVR4nO3be4xdVRUG8N+eNM2ENKRBU6tBovKIgdYoYtFiBeUhigoFKcKxRZ4RlSDWB1CJIYgNMRW0KKBAEXugoFYeFRCqECiCiKTW0iCp' \
+              'WEttyKTB2kxIM2nm+MfetzO9rznnzrS96nzJzdxzzz5r77322mt9a+0zjGMc4/h/RtjbA6ihyL0D70QvNmJdyLy+u/vdLQoocj04Bh/Dodgv3dqIp7A8ZDalSV+COZhaJ2YHVmEJloXMwO4Y65groMidimvE1WyFQTyLIzChhNgXcXbIPDv6Ee6K' \
+              'MVNAkdsHN2LeWMmsw3bci/1Fi+rHS3gS94ZMXydCx0QBRa4XD4lmvzcwgDuwoKoiOlZAkdtf3N9TMBundiprDLEZnwyZ58s+UEkBRW4yvoCzcUi1se0xbMWxZZVQWgFF7ix8H2/scGCtsE3cz28ZQ5mb8N4y26GnjLQidw1yYz/5AUxPn+1jKHd/' \
+              'LC7TcEQFFLnLcMVoR9QCg+gLmdewfoxlzylytxa5g9o1aquAInc4rq7Q6e04WfnJTBSZHzGklcEKPFyy7bl4ochdV+QmNWswkgUsVI6o1HB3yNyPI7FUXOFW6MM5IbM1XT9UQv5SUcGzKc0MJ+LLeKrIG/1MSydY5N6GvynpJxI246MhszbJOBRn' \
+              'ioyvRnU34FEsDZltw/qbnPrbT3NswPSQ6S9y5+MnFcZVwxocFTL9tR+aKiBx+UWi5qqiHwtw00j8PeUCl0sEpsjNw09bNM9C5s4iNw1/NLR1quKmkLmodtFg3kXuENysc1Y3SQyX/bityO2bfq9ldlMwE6fjFNFE9xEneEeROxjfrJO5Cb9I3xfp' \
+              'fPJwYZG7MWTWUGfeRe5T+JOxobQ1InIV/pU+/8Y/8XMxA5yY2pxV5C6EkLkSl7JLKrw8ZAbS6h83ynH1YP7wC1DkTkgDa+otE9bj6CRgY5t2a7EmbaUTUz+TxJVuhcVF7hMQMtfjYFyJZ/BYanOcaj6pFU4p8mj9AYrcVPzFyERneciclp7pxVfx' \
+              'LY1b6cyQWVbkZuAPFQZ2Qcjc0upmkdtPtM7j8RlMriC7HoeFzLqaApbgcyUeGsQyLBzm6T8uWk5tde/E3JAZLHIPEFe1BJ7Dkem5RSIzfACrQ9bIElPUuBxfUS1U13B0yDwRUmz8R0UhO3ADvhYyO4rccWmwD4rObHvKHfIKMmeHzL1F7hhDJk9U' \
+              'xEbREb4sRoD7Q+ZVKHIfxC9F59oM60V/NKfu9+NDZmVPulFVgxPEEHl3kZsYMivxAZyeJv8h1eL0VlF5RAc4HL1i5vkRnC9GqL8ndrdPyKzCh7Glidx78J6QOUPkAPV9moBZFQbaj3UiKXkVr4j7sC9kVkOR+2waZDuHV4/nkpefLDrNkdArLsCM' \
+              'IndSyKwrcnPxa9FJrsdVIbM0jelEsXYxHJuICmibLCT8DtdhZbP9mDp5l1gLHGnPPy/y+RfwmridNqd7hxoKjWUwU7TCk0Lm4SJ3sriyvw9ZpOGJNS7WaOXn4juhyP1V6+LGFlwUsp0kREoqDhLz96k4UDTPGdqHqA2ic1zVqkHyJY+2kdEKF4fM' \
+              'DXWyZogL0oo3bMNbJ7AzGanHVswKmRdTPP80voj3q7ZKNTwcMqtS/D1CXL0DRaX9KmQeobPCJi4ucj9KEWQOvoHDR3hmX8ybIKahM5o0WJcmPwU/wwkdDq6GealyPFPjtpuGR9JYtqXBVcEhScYaHGXkyddweg9+2+LmzCL3mLhXRzt5olOcp7nP' \
+              'OaLITU7+5cEm98tgZvr7SoVnDujBcobS0jocY+zLYM3QayhOf1d0jM3QL/KP03AY3pQ+0w0VSSqdINWY4NUaM7A9jfVivr+9yC3EZU3azA+Z77UTUuS+jmtL9rmhFhoWiqnptLKj3Q04SEx+Foj5xVk4oK7NrCL3HN6N9xlif5twaSqwvLlKpzsL' \
+              'Iql4+KTGQ8o9iUEx03wCv1F++23G2xOZesqQPxgJj+9SEUpKuE8ja+p2XBAyt6R6wZ+VT5nn79IwZNaLpvVthupmLbBD5NrnaeTZzbBB5BEtiVCHuAe3pe/zlZ/8Vtzerig6Wcy5jxX3Ws+wB58Wz+xfTm1r7wPMFmPwVJF6bhGVcx9WpMyxV/T0' \
+              'n9dZGlvDoBgR5ocsRo1UzlusXNi+JGR+sNfeEElU9Vqdld/6RLO/P8mahpdD5vW0GJeJ5xmtrOFx8fxwcK+/IpMyteu0f6FiONaIJ8Ab02S/JFpUn5i3rEhyrxBzgWaYVctJ9roC2Fleu1UMfe3wkljX35IKOUvsau6D4pa4Psm9S9zGwzGAN9TO' \
+              'BsaiwDhqJAp8tvgGSCvsEGuNW1K0elrjXu/BonS+QHSK9adTjw8/GOkKBUByZOcZqg3U486QeT5Zy30aSVINPfhhKvGfqnGOS+obdw3SKfGCFrdvTn8vNDJPmSQqqf6IfLWhAxZ0mQISlmm0gtfY+YbY3A7l9osFmV0Sra5TQPIHd9T9vDZxiEli' \
+              'HlAVr+O0Wil/OLpOAQmP1V2/mv5OUZ08bRBj/iPNbnarAuoLrzWvXaXSvF2k9NND5plWjUZDRfckagopW4tcK4bMBpOvR7cqoL4iVLsuM94VOKPsi9bdqoB68tLuVZvhWCEesbUqqTWgW31Aqwm3W7C14sqXnjzdq4BKk0jt53by/wXdqoCyJl/D' \
+              'j2tnk1Xxv6CAAeWrwA3oVgVU2QIPhqzt6zpt0a0KqGIBd42mo/92BQxg5Wg66lYFlN0Cq1MK3TG6lQj1ia/YThQXaV36fT3OSd8HlH/BehzjGMc4muI/NG5lZrDw9tYAAAAASUVORK5CYII='
+    app_icon = tk.PhotoImage(height=64, width=64, data=icon_64)
+    win.iconphoto(False, app_icon)
+
     win.title('Evoked Response detection')
     win.geometry("{}x{}+{}+{}".format(window_width, window_height,
                                       int((win.winfo_screenwidth() / 2) - (window_width / 2)),
