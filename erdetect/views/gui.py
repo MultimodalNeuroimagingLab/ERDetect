@@ -173,7 +173,7 @@ def open_gui():
         if not initial_dir:
             initial_dir = os.path.abspath(os.path.expanduser(os.path.expandvars('~')))
 
-        folder_selected = folder_selected = filedialog.askdirectory(title='Select BIDS root directory', initialdir=initial_dir)
+        folder_selected = filedialog.askdirectory(title='Select BIDS root directory', initialdir=initial_dir)
         if folder_selected is not None and folder_selected != '':
             input_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(folder_selected))))
 
