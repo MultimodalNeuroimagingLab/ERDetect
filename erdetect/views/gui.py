@@ -378,6 +378,13 @@ def open_gui():
         processing_thread = None
         processing_thread_lock.release()
 
+    def txt_no_input_onkey(event):
+        # TODO: check for mac
+        if event.state == 12 and event.keysym == 'c':
+            return
+        else:
+            return "break"
+
 
     # elements
     y_pos = 10
@@ -436,10 +443,12 @@ def open_gui():
     btn_process = tk.Button(win, text="Start", command=btn_process_start_onclick, state='disabled')
     btn_process.place(x=10, y=y_pos, width=window_width - 20, height=40)
     y_pos += 40 + 2
-    txt_console = tk.Text(win)
+    txt_console = tk.Text(win, highlightthickness = 0, borderwidth=1, relief="solid", undo=False, maxundo=-1, background='systemWindowBackgroundColor')
+    txt_console.bind("<Key>", lambda e: txt_no_input_onkey(e))
+
     scr_subsets = tk.Scrollbar(win, orient='vertical')
-    txt_console.place(x=12, y=y_pos, width=window_width - 42, height=120)
-    scr_subsets.place(x=window_width - 33, y=y_pos + 3, width=20, height=120 - 6)
+    txt_console.place(x=12, y=y_pos, width=window_width - 45, height=120)
+    scr_subsets.place(x=window_width - 33, y=y_pos, width=20, height=120)
     txt_console.config(yscrollcommand=scr_subsets.set)
     scr_subsets.config(command=txt_console.yview)
     y_pos += 120 + 2
