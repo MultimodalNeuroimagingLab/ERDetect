@@ -170,11 +170,11 @@ def open_gui():
 
         initial_dir = input_directory.get()
         if not initial_dir:
-            initial_dir = '~'
+            initial_dir = os.path.abspath(os.path.expanduser(os.path.expandvars('~')))
 
         folder_selected = filedialog.askdirectory(title='Open BIDS root directory', initialdir=initial_dir)
         if folder_selected is not None and folder_selected != '':
-            input_directory.set(folder_selected)
+            input_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(folder_selected))))
             datasets = None
 
             # reset search filters

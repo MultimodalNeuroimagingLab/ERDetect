@@ -327,6 +327,9 @@ def execute():
     # Find and process participants and their datasets
     #
 
+    args.bids_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.bids_dir)))
+    args.output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.output_dir)))
+
     logging.info('--------------------------------- Participants and data subsets ----------------------------------')
     log_indented_line('BIDS input path:', args.bids_dir)
     log_indented_line('Output path:', args.output_dir)

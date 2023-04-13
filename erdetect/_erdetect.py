@@ -49,12 +49,16 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     if not bids_subset_data_path:
         logging.error('Empty or invalid input data path, make sure to provide a path to subset data (e.g. \'/bids_data_root/subj-01/ieeg/sub-01_run-06.edf\'), exiting...')
         return
+
+    bids_subset_data_path = os.path.abspath(os.path.expanduser(os.path.expandvars(bids_subset_data_path)))
     if not exists(bids_subset_data_path):
         logging.error('Input data path (\'' + bids_subset_data_path + '\') could not be found.\nMake sure to provide a path to subset data (e.g. \'/bids_data_root/subj-01/ieeg/sub-01_run-06.edf\'), exiting...')
         return
+
     if not output_dir:
         logging.error('Empty or invalid output directory, exiting...')
         return
+    output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(output_dir)))
 
     # derive the bids subset root from the full path
     try:
