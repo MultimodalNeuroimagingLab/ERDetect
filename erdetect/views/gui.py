@@ -37,7 +37,7 @@ def open_gui():
     #
     class PreprocessDialog(object):
 
-        reref_values_text = {'CAR': 'Common Average Re-refencing (CAR)', 'Henk': 'Henk'}
+        reref_values_text = {'CAR': 'Common Average Re-refencing (CAR)', 'CAR_headbox': 'Common Average Re-refencing (CAR) per headbox'}
         reref_text_values = {v: k for k, v in reref_values_text.items()}
 
         def _update_early_refef_controls(self):
@@ -51,7 +51,7 @@ def open_gui():
 
         def __init__(self, parent):
             pd_window_height = 300
-            pd_window_width = 550
+            pd_window_width = 600
 
             self.highpass = tk.IntVar(value=cfg('preprocess', 'high_pass'))
             self.early_reref = tk.IntVar(value=cfg('preprocess', 'early_re_referencing', 'enabled'))
@@ -85,7 +85,7 @@ def open_gui():
             self.cmb_early_reref_method.bind("<Key>", lambda e: "break")
             self.cmb_early_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
             self.cmb_early_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
-            self.cmb_early_reref_method.place(x=220, y=pd_y_pos, width=300, height=25)
+            self.cmb_early_reref_method.place(x=220, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
             self.lbl_early_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
             self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=205, height=20)
