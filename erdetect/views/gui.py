@@ -421,10 +421,10 @@ def open_gui():
     y_pos += 30 + 5
     config_btn_width = (window_width - 10 - 10 - 10) / 2
     tk.Button(win, text="Preprocessing", command=config_preprocessing_callback).place(x=10, y=y_pos, width=config_btn_width, height=28)
-    tk.Button(win, text="Trials and channels", command=config_preprocessing_callback).place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    tk.Button(win, text="Trials and channels").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     y_pos += 28
-    tk.Button(win, text="Detection & Metrics", command=config_preprocessing_callback).place(x=10, y=y_pos, width=config_btn_width, height=28)
-    tk.Button(win, text="Visualizations", command=config_preprocessing_callback).place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    tk.Button(win, text="Detection & Metrics").place(x=10, y=y_pos, width=config_btn_width, height=28)
+    tk.Button(win, text="Visualizations").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     #y_pos += 40 + 2
     #chk_apply_validator = tk.Checkbutton(win, text='Apply BIDS validator', anchor="w", variable=apply_bids_validator, onvalue=1, offvalue=0)
     #chk_apply_validator.place(x=20, y=y_pos, width=window_width - 30, height=20)
