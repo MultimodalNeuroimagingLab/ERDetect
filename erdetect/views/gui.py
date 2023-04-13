@@ -158,6 +158,7 @@ def open_gui():
     datasets = None
     datasets_filtered_keys = None
     input_directory = tk.StringVar()
+    output_directory = tk.StringVar()
     subset_items = tk.StringVar()
     subset_filter = tk.StringVar()
     apply_bids_validator = tk.IntVar()
@@ -172,12 +173,17 @@ def open_gui():
         if not initial_dir:
             initial_dir = os.path.abspath(os.path.expanduser(os.path.expandvars('~')))
 
-        folder_selected = filedialog.askdirectory(title='Open BIDS root directory', initialdir=initial_dir)
+        folder_selected = folder_selected = filedialog.askdirectory(title='Select BIDS root directory', initialdir=initial_dir)
         if folder_selected is not None and folder_selected != '':
             input_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(folder_selected))))
-            datasets = None
 
-            # reset search filters
+            # provide an initial output directory
+            output_dir = output_directory.get()
+            if not output_dir:
+                output_directory.set(os.path.join(input_directory.get(), 'derivatives', 'erdetect_out'))
+
+            # reset datasets and filters
+            datasets = None
             datasets_filtered_keys = None
             subset_filter.set('')
 
@@ -222,8 +228,22 @@ def open_gui():
             btn_process.config(state='disabled', text='Start')
 
             #
+            txt_input_browse.config(state='readonly')
+            txt_output_browse.config(state='readonly')
+            btn_output_browse.config(state='normal')
+
+            #
             update_subset_list('')
 
+    def btn_output_browse_onclick():
+
+        initial_dir = output_directory.get()
+        if not initial_dir:
+            initial_dir = os.path.abspath(os.path.expanduser(os.path.expandvars('~')))
+
+        folder_selected = filedialog.askdirectory(title='Select output directory', initialdir=initial_dir)
+        if folder_selected is not None and folder_selected != '':
+            output_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(folder_selected))))
 
     def update_subset_list(filter):
         nonlocal datasets, datasets_filtered_keys
@@ -305,7 +325,7 @@ def open_gui():
         # create a thread to process the datasets
         processing_thread_lock.acquire()
         if processing_thread is None:
-            processing_thread = threading.Thread(target=process_thread, args=(datasets_to_analyze,), daemon=False)
+            processing_thread = threading.Thread(target=process_thread, args=(datasets_to_analyze, output_directory.get()), daemon=False)
             processing_thread.start()
         else:
             print('Already started')
@@ -322,7 +342,7 @@ def open_gui():
         txt_subsets_filter.config(state='disabled')
         # TODO: disable configuration buttons
 
-    def process_thread(process_datasets):
+    def process_thread(process_datasets, output_dir):
         nonlocal processing_thread, processing_thread_lock
 
         # display subject/subset information
@@ -330,22 +350,20 @@ def open_gui():
         for (name, path) in process_datasets:
             txt_console.insert(tk.END, '    - ' + name + '\n')
         txt_console.insert(tk.END, '\n')
-
-        # TODO: output directory
-        output_dir = '~/Documents/ccepAgeOutput'
-        output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(output_dir)))
+        txt_console.insert(tk.END, 'Output directory:\n' + output_dir + '\n')
+        txt_console.insert(tk.END, '\n')
+        txt_console.see(tk.END)
 
         # process
         for (val, path) in process_datasets:
-
             txt_console.insert(tk.END, '------ Processing ' + name + ' -------\n')
-            logging.info('\n')
+            txt_console.insert(tk.END, '\n')
+            txt_console.see(tk.END)
 
             # process
             path = os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
             try:
-                #process_subset(path, output_dir, True)
-                pass
+                process_subset(path, output_dir, True)
             except RuntimeError:
                 txt_console.insert(tk.END, 'Error while processing dataset, stopping...')
                 # TODO: handle when error
@@ -353,10 +371,9 @@ def open_gui():
         # empty space and end message
         txt_console.insert(tk.END, '\n\n')
         txt_console.insert(tk.END, '-----------      Finished running      -----------')
+        txt_console.see(tk.END)
 
-    #
-        print(len(datasets))
-
+        #
         processing_thread_lock.acquire()
         processing_thread = None
         processing_thread_lock.release()
@@ -366,7 +383,7 @@ def open_gui():
     y_pos = 10
     tk.Label(win, text="BIDS input directory:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
     y_pos += 20 + 5
-    txt_input_browse = tk.Entry(win, textvariable=input_directory, state='readonly')
+    txt_input_browse = tk.Entry(win, textvariable=input_directory, state='disabled')
     txt_input_browse.place(x=10, y=y_pos, width=window_width - 120, height=25)
     tk.Button(win, text="Browse...", command=btn_input_browse_onclick).place(x=window_width - 105, y=y_pos, width=95, height=25)
 
@@ -404,6 +421,14 @@ def open_gui():
     #y_pos += 40 + 2
     #chk_apply_validator = tk.Checkbutton(win, text='Apply BIDS validator', anchor="w", variable=apply_bids_validator, onvalue=1, offvalue=0)
     #chk_apply_validator.place(x=20, y=y_pos, width=window_width - 30, height=20)
+
+    y_pos += 45 + 2
+    tk.Label(win, text="BIDS output directory:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
+    y_pos += 20 + 5
+    txt_output_browse = tk.Entry(win, textvariable=output_directory, state='disabled')
+    txt_output_browse.place(x=10, y=y_pos, width=window_width - 120, height=25)
+    btn_output_browse = tk.Button(win, text="Browse...", command=btn_output_browse_onclick, state='disabled')
+    btn_output_browse.place(x=window_width - 105, y=y_pos, width=95, height=25)
 
     y_pos += 45 + 2
     tk.Label(win, text="Process:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
