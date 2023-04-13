@@ -177,6 +177,7 @@ def open_gui():
     datasets_filtered_keys = None
     input_directory = tk.StringVar()
     output_directory = tk.StringVar()
+    last_browsed_configfile = ''
     subset_items = tk.StringVar()
     subset_filter = tk.StringVar()
     processing_thread = None
@@ -379,7 +380,7 @@ def open_gui():
             # process
             path = os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
             try:
-                process_subset(path, output_dir, True)
+                process_subset(path, output_dir, preproc_prioritize_speed=True)
             except RuntimeError:
                 txt_console.insert(tk.END, 'Error while processing dataset, stopping...')
                 # TODO: handle when error
@@ -393,6 +394,27 @@ def open_gui():
         processing_thread_lock.acquire()
         processing_thread = None
         processing_thread_lock.release()
+
+
+    def btn_import_config_callback():
+        nonlocal last_browsed_configfile
+
+        #
+        initial_dir = os.path.split(last_browsed_configfile)[0] if last_browsed_configfile else os.path.abspath(os.path.expanduser(os.path.expandvars('~')))
+        file_selected = filedialog.askopenfilename(title='Select JSON file to import', initialdir=initial_dir, filetypes=[("JSON files", "*.json")])
+        if file_selected is not None and file_selected != '':
+            last_browsed_configfile = os.path.abspath(os.path.expanduser(os.path.expandvars(file_selected)))
+
+            #  read the configuration file
+            txt_console.insert(tk.END, 'Importing configuration file:\n' + last_browsed_configfile + '\n')
+            if load_config(last_browsed_configfile):
+                txt_console.insert(tk.END, '> Import successful\n')
+            else:
+                txt_console.insert(tk.END, '> Import failed!\n')
+                return
+
+            txt_console.see(tk.END)
+
 
     def txt_no_input_onkey(event):
         # TODO: check for mac
@@ -433,7 +455,7 @@ def open_gui():
     y_pos += 40
     tk.Label(win, text="Configuration:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
     y_pos += 20 + 5
-    tk.Button(win, text="Import from JSON file...", command=config_preprocessing_callback).place(x=10, y=y_pos, width=window_width - 20, height=26)
+    tk.Button(win, text="Import from JSON file...", command=btn_import_config_callback).place(x=10, y=y_pos, width=window_width - 20, height=26)
     y_pos += 30 + 5
     config_btn_width = (window_width - 10 - 10 - 10) / 2
     tk.Button(win, text="Preprocessing", command=config_preprocessing_callback).place(x=10, y=y_pos, width=config_btn_width, height=28)
