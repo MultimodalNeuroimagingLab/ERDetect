@@ -73,6 +73,10 @@ def metric_waveform(sampling_rate, data, baseline):
     n_band, wn_band = signal.buttord([high_p, low_p], [high_s, low_s], Rp, Rs, True)
     bf_b, bf_a = signal.butter(n_band, wn_band, 'band', analog=False)
 
+    # band-pass can only be performed with enough samples, return nan elsewise
+    if metric_data.shape[0] <= 3 * (max(len(bf_b), len(bf_a)) - 1):
+        return np.nan
+
     # Perform the band-passing
     # Note: custom padlen to match the way matlab does it (-1 is omitted in scipy)
     metric_data = signal.filtfilt(bf_b, bf_a, metric_data, padtype='odd', padlen=3 * (max(len(bf_b), len(bf_a)) - 1))
