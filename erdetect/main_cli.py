@@ -292,7 +292,7 @@ def execute():
     log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
     if cfg('preprocess', 'late_re_referencing', 'enabled'):
         log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
-        if cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_per_headbox'):
+        if cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_headbox'):
             log_indented_line('    CAR by variance:', ('Off' if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') == -1 else 'Channels within ' + str(cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')) + ' quantile'))
         log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
         logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))

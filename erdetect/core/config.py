@@ -381,6 +381,9 @@ def load_config(filepath):
         return False
     if not retrieve_config_string(json_config, config, 'preprocess', 'late_re_referencing', 'method', options=('CAR', 'CAR_headbox')):
         return False
+
+    if config['preprocess']['late_re_referencing']['method'] in ('CAR', 'CAR_headbox'):
+        retrieve_config_number(json_config, config, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
     # TODO: load early re-referencing channels
     # TODO: load late re-referencing channels
 
