@@ -273,8 +273,13 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         # generate a late re-referencing object
         if cfg('preprocess', 'late_re_referencing', 'method') == 'CAR':
             late_reref = RerefStruct.generate_car(channels_late_reref_incl_names)
+            if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') != -1:
+                late_reref.late_group_reselect_varPerc = cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')
+
         elif cfg('preprocess', 'late_re_referencing', 'method') == 'CAR_headbox':
             late_reref = RerefStruct.generate_car_per_headbox(channels_late_reref_incl_names, channels_late_reref_incl_headbox)
+            if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') != -1:
+                late_reref.late_group_reselect_varPerc = cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')
 
             # print CAR headbox info
             logging.info('')

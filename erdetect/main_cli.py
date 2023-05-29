@@ -129,6 +129,10 @@ def execute():
                              'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                              '      late re-referencing setting in the configuration file\n\n',
                         nargs=1)
+    parser.add_argument('--late_reref_CAR_by_variance',
+                        help='Perform late re-referencing by calculating a common average for each stim-pair condition'
+                             '(per group) over the channels with the least variance, which is then applied\n\n',
+                        nargs='?', const='0.2')
     parser.add_argument('--include_positive_responses',
                         help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
                         action='store_true')
@@ -225,6 +229,18 @@ def execute():
             logging.error('Invalid late_reref argument \'' + args.late_reref[0] + '\'')
             return 1
 
+    if args.late_reref_CAR_by_variance:
+        if not cfg('preprocess', 'late_re_referencing', 'enabled') or not cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_headbox'):
+            logging.error('The \'late_reref_CAR_by_variance\' argument is set, but can only be used while using a late CAR re-referencing method.\n'
+                          'Make sure the \'late_reref\' argument is set to either CAR or CAR_headbox')
+            return 1
+        if is_number(args.late_reref_CAR_by_variance):
+            # TODO: valid number
+            cfg_set(str(args.late_reref_CAR_by_variance), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
+        else:
+            logging.error('Invalid late_reref_CAR_by_variance argument \'' + args.late_reref_CAR_by_variance + '\', provide a quantile as number.')
+            return 1
+
     # check for methodological arguments
     if args.include_positive_responses:
         cfg_set(True, 'detection', 'positive')
@@ -276,6 +292,8 @@ def execute():
     log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
     if cfg('preprocess', 'late_re_referencing', 'enabled'):
         log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
+        if cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_per_headbox'):
+            log_indented_line('    CAR by variance:', ('Off' if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') == -1 else 'Channels within ' + str(cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')) + ' quantile'))
         log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
         logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
     logging.info('')

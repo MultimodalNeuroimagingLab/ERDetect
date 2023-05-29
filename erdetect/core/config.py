@@ -50,6 +50,7 @@ def create_default_config():
     config['preprocess']['late_re_referencing'] = dict()
     config['preprocess']['late_re_referencing']['enabled']          = False                     #
     config['preprocess']['late_re_referencing']['method']           = 'CAR'                     #
+    config['preprocess']['late_re_referencing']['CAR_by_variance']  = -1                        #
     config['preprocess']['late_re_referencing']['stim_excl_epoch']  = (-1.0, 2.0)
     config['preprocess']['late_re_referencing']['channel_types']    = ('ECOG', 'SEEG', 'DBS')   # the type of channels that will be included for late re-referencing
 
@@ -520,40 +521,44 @@ def write_config(filepath):
                  '        "line_noise_removal":               "' + _config['preprocess']['line_noise_removal'] + '",\n' \
                  '        "late_re_referencing": {\n' \
                  '            "enabled":                      ' + ('true' if _config['preprocess']['late_re_referencing']['enabled'] else 'false') + ',\n' \
-                 '            "method":                       "' + _config['preprocess']['late_re_referencing']['method'] + '",\n' \
-                 '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['late_re_referencing']['stim_excl_epoch'], 16) + '],\n' \
-                 '            "channel_types":                ' + json.dumps(_config['preprocess']['late_re_referencing']['channel_types']) + '\n' \
-                 '        }\n' \
-                 '    },\n\n' \
-                 '    "trials": {\n' \
-                 '        "trial_epoch":                      [' + numbers_to_padded_string(_config['trials']['trial_epoch'], 16) + '],\n' \
-                 '        "out_of_bounds_handling":           "' + _config['trials']['out_of_bounds_handling'] + '",\n' \
-                 '        "baseline_epoch":                   [' + numbers_to_padded_string(_config['trials']['baseline_epoch'], 16) + '],\n' \
-                 '        "baseline_norm":                    "' + _config['trials']['baseline_norm'] + '",\n' \
-                 '        "concat_bidirectional_pairs":       ' + ('true' if _config['trials']['concat_bidirectional_pairs'] else 'false') + ',\n' \
-                 '        "minimum_stimpair_trials":          ' + str(_config['trials']['minimum_stimpair_trials']) + '\n' \
-                 '    },\n\n' \
-                 '    "channels": {\n' \
-                 '        "measured_types":                   ' + json.dumps(_config['channels']['measured_types']) + ',\n' \
-                 '        "stim_types":                       ' + json.dumps(_config['channels']['stim_types']) + '\n' \
-                 '    },\n\n' \
-                 '    "metrics": {\n' \
-                 '        "cross_proj": {\n' \
-                 '            "enabled":                      ' + ('true' if _config['metrics']['cross_proj']['enabled'] else 'false') + ',\n' \
-                 '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['cross_proj']['epoch'], 16) + ']\n' \
-                 '        },\n' \
-                 '        "waveform": {\n' \
-                 '            "enabled":                      ' + ('true' if _config['metrics']['waveform']['enabled'] else 'false') + ',\n' \
-                 '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['waveform']['epoch'], 16) + '],\n' \
-                 '            "bandpass":                     [' + numbers_to_padded_string(_config['metrics']['waveform']['bandpass'], 16) + ']\n' \
-                 '        }\n' \
-                 '    },\n\n' \
-                 '    "detection": {\n' \
-                 '        "negative":                         ' + ('true' if _config['detection']['negative'] else 'false') + ',\n' \
-                 '        "positive":                         ' + ('true' if _config['detection']['positive'] else 'false') + ',\n' \
-                 '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['detection']['peak_search_epoch'], 16) + '],\n' \
-                 '        "response_search_epoch":            [' + numbers_to_padded_string(_config['detection']['response_search_epoch'], 16) + '],\n' \
-                 '        "method":                           "' + _config['detection']['method'] + '",\n'
+                 '            "method":                       "' + _config['preprocess']['late_re_referencing']['method'] + '",\n'
+
+    if _config['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
+        config_str += '            "CAR_by_variance":              "' + str(_config['preprocess']['late_re_referencing']['CAR_by_variance']) + '",\n'
+
+    config_str += '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['late_re_referencing']['stim_excl_epoch'], 16) + '],\n' \
+                  '            "channel_types":                ' + json.dumps(_config['preprocess']['late_re_referencing']['channel_types']) + '\n' \
+                  '        }\n' \
+                  '    },\n\n' \
+                  '    "trials": {\n' \
+                  '        "trial_epoch":                      [' + numbers_to_padded_string(_config['trials']['trial_epoch'], 16) + '],\n' \
+                  '        "out_of_bounds_handling":           "' + _config['trials']['out_of_bounds_handling'] + '",\n' \
+                  '        "baseline_epoch":                   [' + numbers_to_padded_string(_config['trials']['baseline_epoch'], 16) + '],\n' \
+                  '        "baseline_norm":                    "' + _config['trials']['baseline_norm'] + '",\n' \
+                  '        "concat_bidirectional_pairs":       ' + ('true' if _config['trials']['concat_bidirectional_pairs'] else 'false') + ',\n' \
+                  '        "minimum_stimpair_trials":          ' + str(_config['trials']['minimum_stimpair_trials']) + '\n' \
+                  '    },\n\n' \
+                  '    "channels": {\n' \
+                  '        "measured_types":                   ' + json.dumps(_config['channels']['measured_types']) + ',\n' \
+                  '        "stim_types":                       ' + json.dumps(_config['channels']['stim_types']) + '\n' \
+                  '    },\n\n' \
+                  '    "metrics": {\n' \
+                  '        "cross_proj": {\n' \
+                  '            "enabled":                      ' + ('true' if _config['metrics']['cross_proj']['enabled'] else 'false') + ',\n' \
+                  '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['cross_proj']['epoch'], 16) + ']\n' \
+                  '        },\n' \
+                  '        "waveform": {\n' \
+                  '            "enabled":                      ' + ('true' if _config['metrics']['waveform']['enabled'] else 'false') + ',\n' \
+                  '            "epoch":                        [' + numbers_to_padded_string(_config['metrics']['waveform']['epoch'], 16) + '],\n' \
+                  '            "bandpass":                     [' + numbers_to_padded_string(_config['metrics']['waveform']['bandpass'], 16) + ']\n' \
+                  '        }\n' \
+                  '    },\n\n' \
+                  '    "detection": {\n' \
+                  '        "negative":                         ' + ('true' if _config['detection']['negative'] else 'false') + ',\n' \
+                  '        "positive":                         ' + ('true' if _config['detection']['positive'] else 'false') + ',\n' \
+                  '        "peak_search_epoch":                [' + numbers_to_padded_string(_config['detection']['peak_search_epoch'], 16) + '],\n' \
+                  '        "response_search_epoch":            [' + numbers_to_padded_string(_config['detection']['response_search_epoch'], 16) + '],\n' \
+                  '        "method":                           "' + _config['detection']['method'] + '",\n'
 
     if _config['detection']['method'] == 'std_base':
         config_str += '        "std_base": {\n' \
