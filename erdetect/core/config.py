@@ -385,10 +385,10 @@ def load_config(filepath):
 
     if config['preprocess']['late_re_referencing']['method'] in ('CAR', 'CAR_headbox'):
         retrieve_config_number(json_config, config, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
-    config['preprocess']['late_re_referencing']['CAR_by_variance'] = float(config['preprocess']['late_re_referencing']['CAR_by_variance'])
-    if config['preprocess']['late_re_referencing']['CAR_by_variance'] < 0 or config['preprocess']['late_re_referencing']['CAR_by_variance'] > 1:
-        logging.error('Invalid value in the configuration file for preprocess->late_re_referencing->CAR_by_variance, should be a (quantile) value between 0 and 1 (default is 0.2)')
-        return False
+        if not config['preprocess']['late_re_referencing']['CAR_by_variance'] == -1:
+            if config['preprocess']['late_re_referencing']['CAR_by_variance'] < 0 or config['preprocess']['late_re_referencing']['CAR_by_variance'] > 1:
+                logging.error('Invalid value in the configuration file for preprocess->late_re_referencing->CAR_by_variance, should be a (quantile) value between 0 and 1 (default is 0.2)')
+                return False
 
     # TODO: load early re-referencing channel types
     # TODO: load late re-referencing channel types
