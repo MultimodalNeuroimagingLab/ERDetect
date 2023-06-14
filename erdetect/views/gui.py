@@ -235,7 +235,7 @@ def open_gui():
             # if no datasets, set text and disable list
             if not datasets:
                 subset_items.set(value=('  - Could not find datasets in the selected BIDS directory -',))
-                lst_subsets.configure(background='systemWindowBackgroundColor', state='disabled')
+                lst_subsets.configure(background=win['background'], state='disabled')
                 btn_subsets_all.config(state='disabled')
                 btn_subsets_none.config(state='disabled')
                 lbl_subsets_filter.config(state='disabled')
@@ -280,7 +280,7 @@ def open_gui():
             subset_items.set(value=lst_values)
 
             # enable controls
-            lst_subsets.configure(background='systemTextBackgroundColor', state='normal')
+            lst_subsets.configure(background='white', state='normal')
             btn_subsets_all.config(state='normal')
             btn_subsets_none.config(state='normal')
             lbl_subsets_filter.config(state='normal')
@@ -352,7 +352,7 @@ def open_gui():
         btn_process.config(state='disabled')
 
         # TODO: show only sets to process and disable list
-        lst_subsets.configure(background='systemWindowBackgroundColor', state='disabled')
+        lst_subsets.configure(background=win['background'], state='disabled')
         btn_subsets_all.config(state='disabled')
         btn_subsets_none.config(state='disabled')
         lbl_subsets_filter.config(state='disabled')
@@ -433,7 +433,7 @@ def open_gui():
     y_pos += 37 + 5
     tk.Label(win, text="Subjects/subsets (click/highlight to include for processing):", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
     y_pos += 20 + 5
-    lst_subsets = tk.Listbox(win, listvariable=subset_items, selectmode="multiple", exportselection=False, state='disabled', background='systemWindowBackgroundColor')
+    lst_subsets = tk.Listbox(win, listvariable=subset_items, selectmode="multiple", exportselection=False, state='disabled', background=win['background'])
     lst_subsets.place(x=10, y=y_pos, width=window_width - 40, height=200)
     lst_subsets.bind('<<ListboxSelect>>', lst_subsets_onselect)
     scr_subsets = tk.Scrollbar(win, orient='vertical', command=lst_subsets.yview)
@@ -477,7 +477,7 @@ def open_gui():
     btn_process = tk.Button(win, text="Start", command=btn_process_start_onclick, state='disabled')
     btn_process.place(x=10, y=y_pos, width=window_width - 20, height=40)
     y_pos += 40 + 2
-    txt_console = tk.Text(win, highlightthickness = 0, borderwidth=1, relief="solid", undo=False, maxundo=-1, background='systemWindowBackgroundColor')
+    txt_console = tk.Text(win, highlightthickness = 0, borderwidth=1, relief="solid", undo=False, maxundo=-1, background=win['background'])
     txt_console.bind("<Key>", lambda e: txt_no_input_onkey(e))
 
     scr_subsets = tk.Scrollbar(win, orient='vertical')
