@@ -376,6 +376,7 @@ def load_config(filepath):
     if config['preprocess']['line_noise_removal'].lower() == '60hz':
         config['preprocess']['line_noise_removal'] = '60'
     # TODO: load line noise removal, try also to accept a number instead of a string
+    #        should include a check on range
 
     if not retrieve_config_bool(json_config, config, 'preprocess', 'late_re_referencing', 'enabled'):
         return False
@@ -384,8 +385,13 @@ def load_config(filepath):
 
     if config['preprocess']['late_re_referencing']['method'] in ('CAR', 'CAR_headbox'):
         retrieve_config_number(json_config, config, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
-    # TODO: load early re-referencing channels
-    # TODO: load late re-referencing channels
+    config['preprocess']['late_re_referencing']['CAR_by_variance'] = float(config['preprocess']['late_re_referencing']['CAR_by_variance'])
+    if config['preprocess']['late_re_referencing']['CAR_by_variance'] < 0 or config['preprocess']['late_re_referencing']['CAR_by_variance'] > 1:
+        logging.error('Invalid value in the configuration file for preprocess->late_re_referencing->CAR_by_variance, should be a (quantile) value between 0 and 1 (default is 0.2)')
+        return False
+
+    # TODO: load early re-referencing channel types
+    # TODO: load late re-referencing channel types
 
 
     # trials settings
@@ -527,7 +533,7 @@ def write_config(filepath):
                  '            "method":                       "' + _config['preprocess']['late_re_referencing']['method'] + '",\n'
 
     if _config['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
-        config_str += '            "CAR_by_variance":              "' + str(_config['preprocess']['late_re_referencing']['CAR_by_variance']) + '",\n'
+        config_str += '            "CAR_by_variance":              ' + str(_config['preprocess']['late_re_referencing']['CAR_by_variance']) + ',\n'
 
     config_str += '            "stim_excl_epoch":              [' + numbers_to_padded_string(_config['preprocess']['late_re_referencing']['stim_excl_epoch'], 16) + '],\n' \
                   '            "channel_types":                ' + json.dumps(_config['preprocess']['late_re_referencing']['channel_types']) + '\n' \
