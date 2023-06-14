@@ -40,7 +40,7 @@ def open_gui():
         reref_values_text = {'CAR': 'Common Average Re-refencing (CAR)', 'CAR_headbox': 'Common Average Re-refencing (CAR) per headbox'}
         reref_text_values = {v: k for k, v in reref_values_text.items()}
 
-        def _update_early_refef_controls(self):
+        def _update_early_reref_controls(self):
             new_state = 'normal' if self.early_reref.get() else 'disabled'
             self.lbl_early_reref_method.configure(state=new_state)
             self.cmb_early_reref_method.configure(state=new_state)
@@ -75,7 +75,7 @@ def open_gui():
             self.chk_highpass = tk.Checkbutton(self.root, text='High pass filtering (0.50Hz)', anchor="w", variable=self.highpass, onvalue=1, offvalue=0)
             self.chk_highpass.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 30
-            self.chk_early_reref = tk.Checkbutton(self.root, text='Early re-referencing:', anchor="w", variable=self.early_reref, onvalue=1, offvalue=0, command=self._update_early_refef_controls)
+            self.chk_early_reref = tk.Checkbutton(self.root, text='Early re-referencing:', anchor="w", variable=self.early_reref, onvalue=1, offvalue=0, command=self._update_early_reref_controls)
             self.chk_early_reref.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 32
             early_reref_state = 'normal' if self.early_reref.get() else 'disabled'
@@ -130,7 +130,7 @@ def open_gui():
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
             self.early_reref_method.set(self.reref_values_text[config_defaults['preprocess']['early_re_referencing']['method']])
-            self._update_early_refef_controls()
+            self._update_early_reref_controls()
 
 
 
@@ -382,7 +382,7 @@ def open_gui():
             try:
                 process_subset(path, output_dir, preproc_prioritize_speed=True)
             except RuntimeError:
-                txt_console.insert(tk.END, 'Error while processing dataset, stopping...')
+                txt_console.insert(tk.END, 'Error while processing dataset, stopping...\n')
                 # TODO: handle when error
 
         # empty space and end message
@@ -411,8 +411,6 @@ def open_gui():
                 txt_console.insert(tk.END, '> Import successful\n')
             else:
                 txt_console.insert(tk.END, '> Import failed!\n')
-                return
-
             txt_console.see(tk.END)
 
 
@@ -463,6 +461,7 @@ def open_gui():
     y_pos += 28
     tk.Button(win, text="Detection & Metrics").place(x=10, y=y_pos, width=config_btn_width, height=28)
     tk.Button(win, text="Visualizations").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    # TODO: speed vs memory processing
 
     y_pos += 45 + 2
     tk.Label(win, text="BIDS output directory:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
@@ -486,9 +485,12 @@ def open_gui():
     scr_subsets.place(x=window_width - 33, y=y_pos, width=20, height=120)
     txt_console.config(yscrollcommand=scr_subsets.set)
     scr_subsets.config(command=txt_console.yview)
+
+    """
     y_pos += 120 + 2
     subject_pb = ttk.Progressbar(win, orient='horizontal', mode='determinate')
     subject_pb.place(x=15, y=y_pos, width=window_width - 30, height=30)
+    """
 
     # open window
     win.mainloop()
