@@ -45,19 +45,54 @@ def open_gui():
             self.lbl_early_reref_method.configure(state=new_state)
             self.cmb_early_reref_method.configure(state=new_state)
             self.lbl_early_reref_epoch.configure(state=new_state)
+            self.txt_early_reref_epoch_start.configure(state=new_state)
+            self.lbl_early_reref_epoch_range.configure(state=new_state)
+            self.txt_early_reref_epoch_end.configure(state=new_state)
+
+
+        def _update_late_reref_controls(self):
+            new_state = 'normal' if self.late_reref.get() else 'disabled'
+            self.lbl_late_reref_method.configure(state=new_state)
+            self.cmb_late_reref_method.configure(state=new_state)
+            self.lbl_late_reref_epoch.configure(state=new_state)
+            self.txt_late_reref_epoch_start.configure(state=new_state)
+            self.lbl_late_reref_epoch_range.configure(state=new_state)
+            self.txt_late_reref_epoch_end.configure(state=new_state)
+
+            new_CAR_state = 'normal' if self.late_reref.get() and self.reref_text_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
+            self.lbl_late_reref_CAR_variance.configure(state=new_CAR_state)
+            self.chk_late_reref_CAR_variance.configure(state=new_CAR_state)
+
+            new_CAR_variance_state = 'normal' if new_CAR_state == 'normal' and self.late_reref_CAR_variance_enabled.get() else 'disabled'
+            self.lbl_late_reref_CAR_variance_quantile.configure(state=new_CAR_variance_state)
+            self.txt_late_reref_CAR_variance_quantile.configure(state=new_CAR_variance_state)
+            self.lbl_late_reref_CAR_variance_quantile2.configure(state=new_CAR_variance_state)
 
         def _update_combo_losefocus(self, event):
             self.root.focus()
 
         def __init__(self, parent):
-            pd_window_height = 300
-            pd_window_width = 600
+            pd_window_height = 500
+            pd_window_width = 630
 
+            # retrieve values from config
             self.highpass = tk.IntVar(value=cfg('preprocess', 'high_pass'))
             self.early_reref = tk.IntVar(value=cfg('preprocess', 'early_re_referencing', 'enabled'))
             self.early_reref_method = tk.StringVar(value=self.reref_values_text[str(cfg('preprocess', 'early_re_referencing', 'method'))])
             self.early_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0])
             self.early_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1])
+
+            self.late_reref = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'enabled'))
+            self.late_reref_method = tk.StringVar(value=self.reref_values_text[str(cfg('preprocess', 'late_re_referencing', 'method'))])
+            self.late_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0])
+            self.late_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1])
+            self.late_reref_CAR_variance_enabled = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') != -1)
+            if self.late_reref_CAR_variance_enabled.get():
+                self.late_reref_CAR_variance_quantile = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'CAR_by_variance'))
+            else:
+                self.late_reref_CAR_variance_quantile = tk.DoubleVar(value=0.2)
+
+
 
             #
             self.root = tk.Toplevel(parent)
@@ -80,22 +115,63 @@ def open_gui():
             pd_y_pos += 32
             early_reref_state = 'normal' if self.early_reref.get() else 'disabled'
             self.lbl_early_reref_method = tk.Label(self.root, text="Method", anchor='e', state=early_reref_state)
-            self.lbl_early_reref_method.place(x=5, y=pd_y_pos + 2, width=205, height=20)
+            self.lbl_early_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_early_reref_method = ttk.Combobox(self.root, textvariable=self.early_reref_method, values=list(self.reref_text_values.keys()), state=early_reref_state)
             self.cmb_early_reref_method.bind("<Key>", lambda e: "break")
             self.cmb_early_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
             self.cmb_early_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
-            self.cmb_early_reref_method.place(x=220, y=pd_y_pos, width=350, height=25)
+            self.cmb_early_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
             self.lbl_early_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
-            self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=205, height=20)
+            self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center')
-            self.txt_early_reref_epoch_start.place(x=220, y=pd_y_pos, width=70, height=25)
+            self.txt_early_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             self.lbl_early_reref_epoch_range = tk.Label(self.root, text="-", state=early_reref_state)
-            self.lbl_early_reref_epoch_range.place(x=295, y=pd_y_pos, width=30, height=25)
+            self.lbl_early_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center')
-            self.txt_early_reref_epoch_end.place(x=330, y=pd_y_pos, width=70, height=25)
+            self.txt_early_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
+
+            # TODO: Line noise-removal
+
+            pd_y_pos += 30
+            self.chk_late_reref = tk.Checkbutton(self.root, text='Late re-referencing:', anchor="w", variable=self.late_reref, onvalue=1, offvalue=0, command=self._update_late_reref_controls)
+            self.chk_late_reref.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 32
+            late_reref_state = 'normal' if self.late_reref.get() else 'disabled'
+            self.lbl_late_reref_method = tk.Label(self.root, text="Method", anchor='e', state=late_reref_state)
+            self.lbl_late_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.cmb_late_reref_method = ttk.Combobox(self.root, textvariable=self.late_reref_method, values=list(self.reref_text_values.keys()), state=late_reref_state)
+            self.cmb_late_reref_method.bind("<Key>", lambda e: "break")
+            self.cmb_late_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
+            self.cmb_late_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
+            self.cmb_late_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
+            pd_y_pos += 32
+            self.lbl_late_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
+            self.lbl_late_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center')
+            self.txt_late_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_late_reref_epoch_range = tk.Label(self.root, text="-", state=late_reref_state)
+            self.lbl_late_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center')
+            self.txt_late_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+
+            late_reref_CAR_state = 'normal' if self.late_reref.get() and self.reref_text_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
+            self.lbl_late_reref_CAR_variance = tk.Label(self.root, text="Select channels by trial variance", anchor='e', state=late_reref_CAR_state)
+            self.lbl_late_reref_CAR_variance.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.chk_late_reref_CAR_variance = tk.Checkbutton(self.root, text='', anchor="w", variable=self.late_reref_CAR_variance_enabled, onvalue=1, offvalue=0, command=self._update_late_reref_controls)
+            self.chk_late_reref_CAR_variance.place(x=258, y=pd_y_pos, width=pd_window_width, height=30)
+
+            late_reref_CAR_variance_state = 'normal' if late_reref_CAR_state == 'normal' and self.late_reref_CAR_variance_enabled.get() else 'disabled'
+            self.lbl_late_reref_CAR_variance_quantile = tk.Label(self.root, text="within", anchor='w', state=late_reref_CAR_variance_state)
+            self.lbl_late_reref_CAR_variance_quantile.place(x=285, y=pd_y_pos + 2, width=100, height=20)
+            self.txt_late_reref_CAR_variance_quantile = ttk.Entry(self.root, textvariable=self.late_reref_CAR_variance_quantile, state=late_reref_CAR_variance_state, justify='center')
+            self.txt_late_reref_CAR_variance_quantile.place(x=340, y=pd_y_pos, width=60, height=25)
+            self.lbl_late_reref_CAR_variance_quantile2 = tk.Label(self.root, text="quantile", anchor='w', state=late_reref_CAR_variance_state)
+            self.lbl_late_reref_CAR_variance_quantile2.place(x=410, y=pd_y_pos + 2, width=100, height=20)
+
+
 
             #
             tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
@@ -116,6 +192,14 @@ def open_gui():
             cfg_set(self.early_reref.get(), 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set(self.reref_text_values[self.early_reref_method.get()], 'preprocess', 'early_re_referencing', 'method')
 
+            cfg_set(self.late_reref.get(), 'preprocess', 'late_re_referencing', 'enabled')
+            cfg_set(self.reref_text_values[self.late_reref_method.get()], 'preprocess', 'late_re_referencing', 'method')
+            if self.late_reref_CAR_variance_enabled.get():
+                cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
+            else:
+                cfg_set(-1, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
+            # TODO: check input values
+
             #
             self.root.grab_release()
             self.root.destroy()
@@ -130,7 +214,16 @@ def open_gui():
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
             self.early_reref_method.set(self.reref_values_text[config_defaults['preprocess']['early_re_referencing']['method']])
+            self.late_reref.set(config_defaults['preprocess']['late_re_referencing']['enabled'])
+            self.late_reref_method.set(self.reref_values_text[config_defaults['preprocess']['late_re_referencing']['method']])
+            self.late_reref_CAR_variance_enabled.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1)
+            if config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
+                self.late_reref_CAR_variance_quantile.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'])
+            else:
+                self.late_reref_CAR_variance_quantile.set(.2)
+
             self._update_early_reref_controls()
+            self._update_late_reref_controls()
 
 
 
@@ -141,9 +234,9 @@ def open_gui():
     # defaults
     window_width = 640
     window_height = 800
-    cfg_set(1, 'preprocess', 'high_pass')
-    cfg_set(1, 'preprocess', 'early_re_referencing', 'enabled')
-    cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
+    #cfg_set(1, 'preprocess', 'high_pass')
+    #cfg_set(1, 'preprocess', 'early_re_referencing', 'enabled')
+    #cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
 
     # open window
     win = tk.Tk()
@@ -352,12 +445,21 @@ def open_gui():
         btn_process.config(state='disabled')
 
         # TODO: show only sets to process and disable list
+        btn_input_browse.config(state='disabled')
         lst_subsets.configure(background=win['background'], state='disabled')
         btn_subsets_all.config(state='disabled')
         btn_subsets_none.config(state='disabled')
         lbl_subsets_filter.config(state='disabled')
         txt_subsets_filter.config(state='disabled')
-        # TODO: disable configuration buttons
+
+        btn_cfg_import.config(state='disabled')
+        btn_cfg_preproc.config(state='disabled')
+        #btn_cfg_trials_channels.config(state='disabled')
+        #btn_cfg_detect_metrics.config(state='disabled')
+        #btn_cfg_visualization.config(state='disabled')
+
+        btn_output_browse.config(state='disabled')
+
 
     def process_thread(process_datasets, output_dir):
         nonlocal processing_thread, processing_thread_lock
@@ -383,12 +485,16 @@ def open_gui():
                 process_subset(path, output_dir, preproc_prioritize_speed=True)
             except RuntimeError:
                 txt_console.insert(tk.END, 'Error while processing dataset, stopping...\n')
+                enable_controls()
                 # TODO: handle when error
 
         # empty space and end message
         txt_console.insert(tk.END, '\n\n')
         txt_console.insert(tk.END, '-----------      Finished running      -----------')
         txt_console.see(tk.END)
+
+        #
+        enable_controls()
 
         #
         processing_thread_lock.acquire()
@@ -414,6 +520,25 @@ def open_gui():
             txt_console.see(tk.END)
 
 
+    def enable_controls():
+
+        btn_input_browse.config(state='normal')
+        lst_subsets.configure(background='white', state='normal')
+        btn_subsets_all.config(state='normal')
+        btn_subsets_none.config(state='normal')
+        lbl_subsets_filter.config(state='normal')
+        txt_subsets_filter.config(state='normal')
+        txt_subsets_filter.config(state='normal')
+
+        btn_cfg_import.config(state='normal')
+        btn_cfg_preproc.config(state='normal')
+        #btn_cfg_trials_channels.config(state='normal')
+        #btn_cfg_detect_metrics.config(state='normal')
+        #btn_cfg_visualization.config(state='normal')
+
+        btn_output_browse.config(state='normal')
+        btn_process.config(state='normal')
+
     def txt_no_input_onkey(event):
         # TODO: check for mac
         if event.state == 12 and event.keysym == 'c':
@@ -428,7 +553,8 @@ def open_gui():
     y_pos += 20 + 5
     txt_input_browse = tk.Entry(win, textvariable=input_directory, state='disabled')
     txt_input_browse.place(x=10, y=y_pos, width=window_width - 120, height=25)
-    tk.Button(win, text="Browse...", command=btn_input_browse_onclick).place(x=window_width - 105, y=y_pos, width=95, height=25)
+    btn_input_browse = tk.Button(win, text="Browse...", command=btn_input_browse_onclick)
+    btn_input_browse.place(x=window_width - 105, y=y_pos, width=95, height=25)
 
     y_pos += 37 + 5
     tk.Label(win, text="Subjects/subsets (click/highlight to include for processing):", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
@@ -453,14 +579,19 @@ def open_gui():
     y_pos += 40
     tk.Label(win, text="Configuration:", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
     y_pos += 20 + 5
-    tk.Button(win, text="Import from JSON file...", command=btn_import_config_callback).place(x=10, y=y_pos, width=window_width - 20, height=26)
+    btn_cfg_import = tk.Button(win, text="Import from JSON file...", command=btn_import_config_callback)
+    btn_cfg_import.place(x=10, y=y_pos, width=window_width - 20, height=26)
     y_pos += 30 + 5
     config_btn_width = (window_width - 10 - 10 - 10) / 2
-    tk.Button(win, text="Preprocessing", command=config_preprocessing_callback).place(x=10, y=y_pos, width=config_btn_width, height=28)
-    tk.Button(win, text="Trials and channels").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    btn_cfg_preproc = tk.Button(win, text="Preprocessing", command=config_preprocessing_callback)
+    btn_cfg_preproc.place(x=10, y=y_pos, width=config_btn_width, height=28)
+    #btn_cfg_trials_channels = tk.Button(win, text="Trials and channels")
+    #btn_cfg_trials_channels.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     y_pos += 28
-    tk.Button(win, text="Detection & Metrics").place(x=10, y=y_pos, width=config_btn_width, height=28)
-    tk.Button(win, text="Visualizations").place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    #btn_cfg_detect_metrics = tk.Button(win, text="Detection & Metrics")
+    #btn_cfg_detect_metrics.place(x=10, y=y_pos, width=config_btn_width, height=28)
+    #btn_cfg_visualization = tk.Button(win, text="Visualizations")
+    #btn_cfg_visualization.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     # TODO: speed vs memory processing
 
     y_pos += 45 + 2
