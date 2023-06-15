@@ -26,12 +26,17 @@ pip install erdetect
 ```
 
 2. To run:
-- a) From the commandline:
+- a) With a graphical user interface:
+```
+python -m erdetect ~/bids_data ~/output/ --gui
+```
+
+- b) From the commandline:
 ```
 python -m erdetect ~/bids_data ~/output/ [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
 ```
 
-- b) To process a subset directly in a python script:
+- c) To process a subset directly in a python script:
 ```
 import erdetect
 erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_run-06.edf', '/output_path/')

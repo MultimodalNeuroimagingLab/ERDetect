@@ -52,15 +52,15 @@ def execute():
     parser._optionals.title = 'Optional arguments'
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                         help='Show this help message and exit\n\n')
-    parser.add_argument('--gui',
-                        help='Run with the graphical user interface\n\n',
-                        action='store_true')
     parser.add_argument('bids_dir',
                         help='The directory with the input dataset formatted according to the BIDS standard.\n\n')
     parser.add_argument('output_dir',
                         help='The directory where the output files should be stored. If you are running group\n'
                              'level analysis this folder should be prepopulated with the results of the\n'
                              'participant level analysis.\n\n')
+    parser.add_argument('--gui',
+                        help='Run with the graphical user interface\n\n',
+                        action='store_true')
     parser.add_argument('--participant_label',
                         help='This argument can be used to indicate which specific participant(s) in the BIDS\n'
                              'directory should be analyzed. The given label(s) should correspond to the\n'
