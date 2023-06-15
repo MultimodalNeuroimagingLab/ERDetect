@@ -37,6 +37,7 @@ from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.console import multi_line_list
 from ieegprep.utils.misc import is_number
 from erdetect._erdetect import log_indented_line
+from erdetect.views.gui import open_gui
 
 
 def execute():
@@ -51,6 +52,9 @@ def execute():
     parser._optionals.title = 'Optional arguments'
     parser.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                         help='Show this help message and exit\n\n')
+    parser.add_argument('--gui',
+                        help='Run with the graphical user interface\n\n',
+                        action='store_true')
     parser.add_argument('bids_dir',
                         help='The directory with the input dataset formatted according to the BIDS standard.\n\n')
     parser.add_argument('output_dir',
@@ -337,108 +341,115 @@ def execute():
     logging.info('')
     logging.info('')
 
+    if args.gui:
 
-    #
-    # Find and process participants and their datasets
-    #
-
-    args.bids_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.bids_dir)))
-    args.output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.output_dir)))
-
-    logging.info('--------------------------------- Participants and data subsets ----------------------------------')
-    log_indented_line('BIDS input path:', args.bids_dir)
-    log_indented_line('Output path:', args.output_dir)
-    logging.info('')
-
-    # print optional search arguments
-    optional_search_argument = False
-    if args.participant_label:
-        log_indented_line('Participant(s) to include:', ", ".join(args.participant_label))
-        optional_search_argument = True
-    if args.subset_search_pattern:
-        log_indented_line('Subset search pattern(s):', ", ".join(args.subset_search_pattern))
-        optional_search_argument = True
-    if args.format_extension:
-        log_indented_line('Only include subsets with data extension(s):', ", ".join(args.format_extension))
-        optional_search_argument = True
-    if optional_search_argument:
-        logging.info('')
-
-    # check if the input is a valid BIDS dataset
-    if args.apply_bids_validator:
-        #process = run_cmd('bids-validator %s' % args.bids_dir)
-        #logging.info(process.stdout)
-        #if process.returncode != 0:
-        #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
-        #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
-        #                    'without the --apply_bids_validator argument to skip prior BIDS validation.')
-        #    return 1
-        bids_error = False
-        for dir_, d, files in os.walk(args.bids_dir):
-            for file in files:
-                rel_file = os.path.relpath(dir_, args.bids_dir)
-                if rel_file[0] == '.':
-                    rel_file = rel_file[1:]
-                rel_file = os.path.join(rel_file, file)
-                if not BIDSValidator().is_bids('/' + rel_file):
-                    logging.error('Invalid BIDS-file: ' + rel_file)
-                    bids_error = True
-        if bids_error:
-            logging.error('BIDS input dataset did not pass the BIDS validator. Datasets can be validated online '
-                          'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
-                          'without the --apply_bids_validator argument to skip prior BIDS validation.')
-            return 1
-
-    # list the datasets
-    strict_search = True if args.apply_bids_validator else False
-    datasets = list_bids_datasets(args.bids_dir,
-                                  dataset_extensions=VALID_FORMAT_EXTENSIONS,
-                                  subjects_filter=args.participant_label,
-                                  subset_search_pattern=args.subset_search_pattern, strict_search=strict_search,
-                                  only_subjects_with_subsets=True)
-
-    #
-    if len(datasets) == 0:
-
-        logging.info('')
-        if optional_search_argument:
-            logging.warning('No datasets were found...\n'
-                            'Input arguments might have limited the search, make sure to check your CLI arguments')
-        else:
-            logging.warning('No datasets were found...')
+        # open and run on theGUI
+        open_gui()
+        # TODO: transfer CLI arguments to GUI
 
     else:
 
-        # display subject/subset information
-        logging.info('Participant(s) and subset(s) found:')
-        for (subject, subsets) in datasets.items():
-            short_subsets = [os.path.splitext(os.path.basename(os.path.normpath(x)))[0] for x in subsets]
-            short_subsets = [x[0:-5] if x.endswith('_ieeg') else x for x in short_subsets]
-            short_subsets = [x[0:-4] if x.endswith('_eeg') else x for x in short_subsets]
-            logging.info(multi_line_list(list(short_subsets), LOGGING_CAPTION_INDENT_LENGTH, '    ' + subject + ':', 1, ' '))
+        #
+        # Find and process participants and their datasets
+        #
+
+        args.bids_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.bids_dir)))
+        args.output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.output_dir)))
+
+        logging.info('--------------------------------- Participants and data subsets ----------------------------------')
+        log_indented_line('BIDS input path:', args.bids_dir)
+        log_indented_line('Output path:', args.output_dir)
         logging.info('')
 
-        # process
-        for (subject, subsets) in datasets.items():
-            for subset in subsets:
+        # print optional search arguments
+        optional_search_argument = False
+        if args.participant_label:
+            log_indented_line('Participant(s) to include:', ", ".join(args.participant_label))
+            optional_search_argument = True
+        if args.subset_search_pattern:
+            log_indented_line('Subset search pattern(s):', ", ".join(args.subset_search_pattern))
+            optional_search_argument = True
+        if args.format_extension:
+            log_indented_line('Only include subsets with data extension(s):', ", ".join(args.format_extension))
+            optional_search_argument = True
+        if optional_search_argument:
+            logging.info('')
 
-                # empty space
-                logging.info('')
-                logging.info('')
-                logging.info('')
+        # check if the input is a valid BIDS dataset
+        if args.apply_bids_validator:
+            #process = run_cmd('bids-validator %s' % args.bids_dir)
+            #logging.info(process.stdout)
+            #if process.returncode != 0:
+            #    logging.error('BIDS input dataset did not pass BIDS validator. Datasets can be validated online '
+            #                    'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
+            #                    'without the --apply_bids_validator argument to skip prior BIDS validation.')
+            #    return 1
+            bids_error = False
+            for dir_, d, files in os.walk(args.bids_dir):
+                for file in files:
+                    rel_file = os.path.relpath(dir_, args.bids_dir)
+                    if rel_file[0] == '.':
+                        rel_file = rel_file[1:]
+                    rel_file = os.path.join(rel_file, file)
+                    if not BIDSValidator().is_bids('/' + rel_file):
+                        logging.error('Invalid BIDS-file: ' + rel_file)
+                        bids_error = True
+            if bids_error:
+                logging.error('BIDS input dataset did not pass the BIDS validator. Datasets can be validated online '
+                              'using the BIDS Validator (http://incf.github.io/bids-validator/).\nRun the detection '
+                              'without the --apply_bids_validator argument to skip prior BIDS validation.')
+                return 1
 
-                # process
-                try:
-                    process_subset(subset, args.output_dir, preproc_prioritize_speed)
-                except RuntimeError:
-                    logging.error('Error while processing dataset, exiting...')
-                    return 1
+        # list the datasets
+        strict_search = True if args.apply_bids_validator else False
+        datasets = list_bids_datasets(args.bids_dir,
+                                      dataset_extensions=VALID_FORMAT_EXTENSIONS,
+                                      subjects_filter=args.participant_label,
+                                      subset_search_pattern=args.subset_search_pattern, strict_search=strict_search,
+                                      only_subjects_with_subsets=True)
 
-    # empty space and end message
-    logging.info('')
-    logging.info('')
-    logging.info('')
-    logging.info('--------------------------------------   Finished running   --------------------------------------')
+        #
+        if len(datasets) == 0:
+
+            logging.info('')
+            if optional_search_argument:
+                logging.warning('No datasets were found...\n'
+                                'Input arguments might have limited the search, make sure to check your CLI arguments')
+            else:
+                logging.warning('No datasets were found...')
+
+        else:
+
+            # display subject/subset information
+            logging.info('Participant(s) and subset(s) found:')
+            for (subject, subsets) in datasets.items():
+                short_subsets = [os.path.splitext(os.path.basename(os.path.normpath(x)))[0] for x in subsets]
+                short_subsets = [x[0:-5] if x.endswith('_ieeg') else x for x in short_subsets]
+                short_subsets = [x[0:-4] if x.endswith('_eeg') else x for x in short_subsets]
+                logging.info(multi_line_list(list(short_subsets), LOGGING_CAPTION_INDENT_LENGTH, '    ' + subject + ':', 1, ' '))
+            logging.info('')
+
+            # process
+            for (subject, subsets) in datasets.items():
+                for subset in subsets:
+
+                    # empty space
+                    logging.info('')
+                    logging.info('')
+                    logging.info('')
+
+                    # process
+                    try:
+                        process_subset(subset, args.output_dir, preproc_prioritize_speed)
+                    except RuntimeError:
+                        logging.error('Error while processing dataset, exiting...')
+                        return 1
+
+        # empty space and end message
+        logging.info('')
+        logging.info('')
+        logging.info('')
+        logging.info('--------------------------------------   Finished running   --------------------------------------')
 
     # return success exit code
     return 0
