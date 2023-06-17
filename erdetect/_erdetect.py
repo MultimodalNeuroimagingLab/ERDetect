@@ -107,7 +107,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         # not from JSON
 
         # check if there is a number in the config, if so, use it
-        if not str(cfg('preprocess', 'line_noise_removal')).lower() == 'off':
+        if not cfg('preprocess', 'line_noise_removal').lower() == 'off':
             line_noise_removal = float(cfg('preprocess', 'line_noise_removal'))
 
 

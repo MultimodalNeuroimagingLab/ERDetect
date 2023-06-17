@@ -37,8 +37,11 @@ def open_gui():
     #
     class PreprocessDialog(object):
 
-        reref_values_text = {'CAR': 'Common Average Re-refencing (CAR)', 'CAR_headbox': 'Common Average Re-refencing (CAR) per headbox'}
-        reref_text_values = {v: k for k, v in reref_values_text.items()}
+        reref_options = {'CAR': 'Common Average Re-refencing (CAR)', 'CAR_headbox': 'Common Average Re-refencing (CAR) per headbox'}
+        reref_options_values = {v: k for k, v in reref_options.items()}
+
+        line_noise_removal_options = {'JSON': 'JSON/sidecar (from *_ieeg.json files)', '50': '50Hz', '60': '60Hz'}
+        line_noise_removal_options_values = {v: k for k, v in line_noise_removal_options.items()}
 
         def _update_early_reref_controls(self):
             new_state = 'normal' if self.early_reref.get() else 'disabled'
@@ -49,6 +52,10 @@ def open_gui():
             self.lbl_early_reref_epoch_range.configure(state=new_state)
             self.txt_early_reref_epoch_end.configure(state=new_state)
 
+        def _update_line_noise_controls(self):
+            new_state = 'normal' if self.line_noise_removal.get() else 'disabled'
+            self.lbl_line_noise_frequency.configure(state=new_state)
+            self.cmb_line_noise_frequency.configure(state=new_state)
 
         def _update_late_reref_controls(self):
             new_state = 'normal' if self.late_reref.get() else 'disabled'
@@ -59,7 +66,7 @@ def open_gui():
             self.lbl_late_reref_epoch_range.configure(state=new_state)
             self.txt_late_reref_epoch_end.configure(state=new_state)
 
-            new_CAR_state = 'normal' if self.late_reref.get() and self.reref_text_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
+            new_CAR_state = 'normal' if self.late_reref.get() and self.reref_options_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
             self.lbl_late_reref_CAR_variance.configure(state=new_CAR_state)
             self.chk_late_reref_CAR_variance.configure(state=new_CAR_state)
 
@@ -72,18 +79,28 @@ def open_gui():
             self.root.focus()
 
         def __init__(self, parent):
-            pd_window_height = 500
+            pd_window_height = 450
             pd_window_width = 630
 
             # retrieve values from config
             self.highpass = tk.IntVar(value=cfg('preprocess', 'high_pass'))
             self.early_reref = tk.IntVar(value=cfg('preprocess', 'early_re_referencing', 'enabled'))
-            self.early_reref_method = tk.StringVar(value=self.reref_values_text[str(cfg('preprocess', 'early_re_referencing', 'method'))])
+            self.early_reref_method = tk.StringVar(value=self.reref_options[str(cfg('preprocess', 'early_re_referencing', 'method'))])
             self.early_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0])
             self.early_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1])
 
+            if cfg('preprocess', 'line_noise_removal').lower() == 'off':
+                self.line_noise_removal = tk.IntVar(value=0)
+                self.line_noise_frequency = tk.StringVar(value=self.line_noise_removal_options['JSON'])
+            else:
+                self.line_noise_removal = tk.IntVar(value=1)
+                if cfg('preprocess', 'line_noise_removal').lower() == 'json':
+                    self.line_noise_frequency = tk.StringVar(value=self.line_noise_removal_options['JSON'])
+                else:
+                    self.line_noise_frequency = tk.StringVar(value=self.line_noise_removal_options[str(cfg('preprocess', 'line_noise_removal'))])
+
             self.late_reref = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'enabled'))
-            self.late_reref_method = tk.StringVar(value=self.reref_values_text[str(cfg('preprocess', 'late_re_referencing', 'method'))])
+            self.late_reref_method = tk.StringVar(value=self.reref_options[str(cfg('preprocess', 'late_re_referencing', 'method'))])
             self.late_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0])
             self.late_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1])
             self.late_reref_CAR_variance_enabled = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') != -1)
@@ -93,8 +110,10 @@ def open_gui():
                 self.late_reref_CAR_variance_quantile = tk.DoubleVar(value=0.2)
 
 
-
             #
+            # elements
+            #
+
             self.root = tk.Toplevel(parent)
             self.root.title('Preprocessing')
             self.root.geometry("{}x{}+{}+{}".format(pd_window_width, pd_window_height,
@@ -116,7 +135,7 @@ def open_gui():
             early_reref_state = 'normal' if self.early_reref.get() else 'disabled'
             self.lbl_early_reref_method = tk.Label(self.root, text="Method", anchor='e', state=early_reref_state)
             self.lbl_early_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.cmb_early_reref_method = ttk.Combobox(self.root, textvariable=self.early_reref_method, values=list(self.reref_text_values.keys()), state=early_reref_state)
+            self.cmb_early_reref_method = ttk.Combobox(self.root, textvariable=self.early_reref_method, values=list(self.reref_options_values.keys()), state=early_reref_state)
             self.cmb_early_reref_method.bind("<Key>", lambda e: "break")
             self.cmb_early_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
             self.cmb_early_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
@@ -130,18 +149,28 @@ def open_gui():
             self.lbl_early_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center')
             self.txt_early_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 42
+
+            self.chk_line_noise = tk.Checkbutton(self.root, text='Line-noise removal:', anchor="w", variable=self.line_noise_removal, onvalue=1, offvalue=0, command=self._update_line_noise_controls)
+            self.chk_line_noise.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 32
+            line_noise_state = 'normal' if self.line_noise_removal.get() else 'disabled'
+            self.lbl_line_noise_frequency = tk.Label(self.root, text="Frequency", anchor='e', state=line_noise_state)
+            self.lbl_line_noise_frequency.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.cmb_line_noise_frequency = ttk.Combobox(self.root, textvariable=self.line_noise_frequency, values=list(self.line_noise_removal_options_values.keys()), state=line_noise_state)
+            self.cmb_line_noise_frequency.bind("<Key>", lambda e: "break")
+            self.cmb_line_noise_frequency.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
+            self.cmb_line_noise_frequency.bind("<FocusIn>", self._update_combo_losefocus)
+            self.cmb_line_noise_frequency.place(x=260, y=pd_y_pos, width=350, height=25)
+            pd_y_pos += 42
 
-            # TODO: Line noise-removal
-
-            pd_y_pos += 30
             self.chk_late_reref = tk.Checkbutton(self.root, text='Late re-referencing:', anchor="w", variable=self.late_reref, onvalue=1, offvalue=0, command=self._update_late_reref_controls)
             self.chk_late_reref.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 32
             late_reref_state = 'normal' if self.late_reref.get() else 'disabled'
             self.lbl_late_reref_method = tk.Label(self.root, text="Method", anchor='e', state=late_reref_state)
             self.lbl_late_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.cmb_late_reref_method = ttk.Combobox(self.root, textvariable=self.late_reref_method, values=list(self.reref_text_values.keys()), state=late_reref_state)
+            self.cmb_late_reref_method = ttk.Combobox(self.root, textvariable=self.late_reref_method, values=list(self.reref_options_values.keys()), state=late_reref_state)
             self.cmb_late_reref_method.bind("<Key>", lambda e: "break")
             self.cmb_late_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
             self.cmb_late_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
@@ -157,10 +186,10 @@ def open_gui():
             self.txt_late_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
 
-            late_reref_CAR_state = 'normal' if self.late_reref.get() and self.reref_text_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
+            late_reref_CAR_state = 'normal' if self.late_reref.get() and self.reref_options_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
             self.lbl_late_reref_CAR_variance = tk.Label(self.root, text="Select channels by trial variance", anchor='e', state=late_reref_CAR_state)
             self.lbl_late_reref_CAR_variance.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.chk_late_reref_CAR_variance = tk.Checkbutton(self.root, text='', anchor="w", variable=self.late_reref_CAR_variance_enabled, onvalue=1, offvalue=0, command=self._update_late_reref_controls)
+            self.chk_late_reref_CAR_variance = tk.Checkbutton(self.root, text='', anchor="w", variable=self.late_reref_CAR_variance_enabled, onvalue=1, offvalue=0, command=self._update_late_reref_controls, state=late_reref_CAR_state)
             self.chk_late_reref_CAR_variance.place(x=258, y=pd_y_pos, width=pd_window_width, height=30)
 
             late_reref_CAR_variance_state = 'normal' if late_reref_CAR_state == 'normal' and self.late_reref_CAR_variance_enabled.get() else 'disabled'
@@ -170,8 +199,6 @@ def open_gui():
             self.txt_late_reref_CAR_variance_quantile.place(x=340, y=pd_y_pos, width=60, height=25)
             self.lbl_late_reref_CAR_variance_quantile2 = tk.Label(self.root, text="quantile", anchor='w', state=late_reref_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile2.place(x=410, y=pd_y_pos + 2, width=100, height=20)
-
-
 
             #
             tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
@@ -190,10 +217,13 @@ def open_gui():
             # update config
             cfg_set(self.highpass.get(), 'preprocess', 'high_pass')
             cfg_set(self.early_reref.get(), 'preprocess', 'early_re_referencing', 'enabled')
-            cfg_set(self.reref_text_values[self.early_reref_method.get()], 'preprocess', 'early_re_referencing', 'method')
-
+            cfg_set(self.reref_options_values[self.early_reref_method.get()], 'preprocess', 'early_re_referencing', 'method')
+            if self.line_noise_removal.get():
+                cfg_set(self.line_noise_removal_options_values[self.line_noise_frequency.get()], 'preprocess', 'line_noise_removal')
+            else:
+                cfg_set('off', 'preprocess', 'line_noise_removal')
             cfg_set(self.late_reref.get(), 'preprocess', 'late_re_referencing', 'enabled')
-            cfg_set(self.reref_text_values[self.late_reref_method.get()], 'preprocess', 'late_re_referencing', 'method')
+            cfg_set(self.reref_options_values[self.late_reref_method.get()], 'preprocess', 'late_re_referencing', 'method')
             if self.late_reref_CAR_variance_enabled.get():
                 cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
             else:
@@ -213,9 +243,15 @@ def open_gui():
             config_defaults = create_default_config()
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
-            self.early_reref_method.set(self.reref_values_text[config_defaults['preprocess']['early_re_referencing']['method']])
+            self.early_reref_method.set(self.reref_options[config_defaults['preprocess']['early_re_referencing']['method']])
+            if config_defaults['preprocess']['line_noise_removal'].lower() == 'off':
+                self.line_noise_removal.set(0)
+                self.line_noise_frequency.set(self.line_noise_removal_options['JSON'])
+            else:
+                self.line_noise_removal.set(1)
+                self.line_noise_frequency.set(self.line_noise_removal_options[config_defaults['preprocess']['line_noise_removal']])
             self.late_reref.set(config_defaults['preprocess']['late_re_referencing']['enabled'])
-            self.late_reref_method.set(self.reref_values_text[config_defaults['preprocess']['late_re_referencing']['method']])
+            self.late_reref_method.set(self.reref_options[config_defaults['preprocess']['late_re_referencing']['method']])
             self.late_reref_CAR_variance_enabled.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1)
             if config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
                 self.late_reref_CAR_variance_quantile.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'])
@@ -223,6 +259,7 @@ def open_gui():
                 self.late_reref_CAR_variance_quantile.set(.2)
 
             self._update_early_reref_controls()
+            self._update_line_noise_controls()
             self._update_late_reref_controls()
 
 

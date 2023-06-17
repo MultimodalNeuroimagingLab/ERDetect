@@ -197,7 +197,7 @@ def execute():
 
     if args.line_noise_removal:
         if str(args.line_noise_removal).lower() == 'json' or str(args.line_noise_removal).lower() == 'sidecar':
-            cfg_set('json', 'preprocess', 'line_noise_removal')
+            cfg_set('JSON', 'preprocess', 'line_noise_removal')
         elif is_number(args.line_noise_removal):
             # TODO: valid number
             cfg_set(str(args.line_noise_removal), 'preprocess', 'line_noise_removal')
