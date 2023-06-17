@@ -19,7 +19,7 @@ import threading
 from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids import list_bids_datasets
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem, create_default_config
-from erdetect._erdetect import process_subset
+from erdetect._erdetect import process_subset, print_config
 
 def open_gui():
     """
@@ -501,6 +501,12 @@ def open_gui():
     def process_thread(process_datasets, output_dir):
         nonlocal processing_thread, processing_thread_lock
 
+        #
+        preproc_prioritize_speed = True
+
+        #
+        print_config(preproc_prioritize_speed)
+
         # display subject/subset information
         txt_console.insert(tk.END, 'Participant(s) and subset(s) to process:\n')
         for (name, path) in process_datasets:
@@ -519,7 +525,7 @@ def open_gui():
             # process
             path = os.path.abspath(os.path.expanduser(os.path.expandvars(path)))
             try:
-                process_subset(path, output_dir, preproc_prioritize_speed=True)
+                process_subset(path, output_dir, preproc_prioritize_speed=preproc_prioritize_speed)
             except RuntimeError:
                 txt_console.insert(tk.END, 'Error while processing dataset, stopping...\n')
                 enable_controls()

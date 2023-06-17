@@ -36,7 +36,7 @@ from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.console import multi_line_list
 from ieegprep.utils.misc import is_number
-from erdetect._erdetect import log_indented_line
+from erdetect._erdetect import log_indented_line, print_config
 from erdetect.views.gui import open_gui
 
 
@@ -129,7 +129,9 @@ def execute():
                         nargs=1)
     parser.add_argument('--late_reref_CAR_by_variance',
                         help='Perform late re-referencing by calculating a common average for each stim-pair condition\n'
-                             '(per group) over only the channels with the lowest trial signal variance.\n\n',
+                             '(per group) over only the channels with the lowest trial signal variance.\n'
+                             'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
+                             '      late re-referencing by variance setting in the configuration file\n\n',
                         nargs='?', const='0.2')
     parser.add_argument('--include_positive_responses',
                         help='Detect and visualize positive evoked responses in addition to the negative responses\n\n',
@@ -281,73 +283,22 @@ def execute():
         logging.warning('Evoked response detection is set to use waveforms but the waveform metric is disabled, the waveform metric will be enabled')
         cfg_set(True, 'metrics', 'waveform', 'enabled')
 
-    # print configuration information
-    log_indented_line('Preprocessing priority:', ('Speed' if preproc_prioritize_speed else 'Memory'))
-    log_indented_line('High-pass filtering:', ('Yes' if cfg('preprocess', 'high_pass') else 'No'))
-    log_indented_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re_referencing', 'enabled') else 'No'))
-    if cfg('preprocess', 'early_re_referencing', 'enabled'):
-        log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
-        log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
-    log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
-    log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
-    if cfg('preprocess', 'late_re_referencing', 'enabled'):
-        log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
-        if cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_headbox'):
-            log_indented_line('    CAR by variance:', ('Off' if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') == -1 else 'Channels with lowest (' + str(cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')) + ' quantile) trial variance'))
-        log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
-    logging.info('')
-    log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
-    log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
-    log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's')
-    log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
-    log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
-    log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
-    logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 14, ' '))
-    logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types for stimulation:', 14, ' '))
-    logging.info('')
-    log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
-    if cfg('metrics', 'cross_proj', 'enabled'):
-        log_indented_line('    Cross-projection epoch:', str(cfg('metrics', 'cross_proj', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'cross_proj', 'epoch')[1]) + 's')
-    log_indented_line('Waveform metric:', ('Enabled' if cfg('metrics', 'waveform', 'enabled') else 'Disabled'))
-    if cfg('metrics', 'waveform', 'enabled'):
-        log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
-        log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
-    logging.info('')
-    logging.info('Detection')
-    log_indented_line('    Negative responses:', ('Yes' if cfg('detection', 'negative') else 'No'))
-    log_indented_line('    Positive responses:', ('Yes' if cfg('detection', 'positive') else 'No'))
-    log_indented_line('    Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
-    log_indented_line('    Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
-    log_indented_line('    Evoked response detection method:', str(cfg('detection', 'method')))
-    if cfg('detection', 'method') == 'std_base':
-        log_indented_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
-        log_indented_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
-    elif cfg('detection', 'method') == 'cross_proj':
-        log_indented_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
-    elif cfg('detection', 'method') == 'waveform':
-        log_indented_line('        Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
-    logging.info('')
-    logging.info('Visualization')
-    log_indented_line('    Negative responses:', ('Yes' if cfg('visualization', 'negative') else 'No'))
-    log_indented_line('    Positive responses:', ('Yes' if cfg('visualization', 'positive') else 'No'))
-    log_indented_line('    X-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
-    log_indented_line('    Blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
-    log_indented_line('    Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
-    log_indented_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
-    log_indented_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
-    logging.info('')
-    logging.info('')
-    logging.info('')
+
+    #
+    # open GUI or CLI processing
+    #
 
     if args.gui:
 
         # open and run on theGUI
         open_gui()
-        # TODO: transfer CLI arguments to GUI
+        # TODO: transfer CLI input/output arguments to GUI
 
     else:
+
+        # print configuration
+        print_config(preproc_prioritize_speed)
+
 
         #
         # Find and process participants and their datasets
