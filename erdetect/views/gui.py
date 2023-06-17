@@ -602,7 +602,7 @@ def open_gui():
     y_pos += 37 + 5
     tk.Label(win, text="Subjects/subsets (click/highlight to include for processing):", anchor='w').place(x=5, y=y_pos, width=window_width - 10, height=20)
     y_pos += 20 + 5
-    lst_subsets = tk.Listbox(win, listvariable=subset_items, selectmode="multiple", exportselection=False, state='disabled', background=win['background'])
+    lst_subsets = tk.Listbox(win, listvariable=subset_items, selectmode="multiple", activestyle=tk.NONE, exportselection=False, state='disabled', background=win['background'])
     lst_subsets.place(x=10, y=y_pos, width=window_width - 40, height=200)
     lst_subsets.bind('<<ListboxSelect>>', lst_subsets_onselect)
     scr_subsets = tk.Scrollbar(win, orient='vertical', command=lst_subsets.yview)
@@ -616,7 +616,7 @@ def open_gui():
     lbl_subsets_filter = tk.Label(win, text="Filter:", anchor='e', state='disabled')
     lbl_subsets_filter.place(x=140, y=y_pos + 2, width=100, height=20)
     txt_subsets_filter = tk.Entry(win, textvariable=subset_filter, state='disabled')
-    txt_subsets_filter.place(x=240, y=y_pos, width=window_width - 268, height=25)
+    txt_subsets_filter.place(x=240, y=y_pos, width=window_width - 272, height=25)
     txt_subsets_filter.bind('<KeyRelease>', txt_subsets_filter_onkeyrelease)
 
     y_pos += 40
