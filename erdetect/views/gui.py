@@ -4,7 +4,7 @@ Evoked response detection - GUI entry-point
 GUI entry-point python script for the automatic detection of evoked responses in CCEP data.
 
 
-Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2023, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -18,6 +18,7 @@ import threading
 
 from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids import list_bids_datasets
+from ieegprep.utils.misc import is_number
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem, create_default_config
 from erdetect._erdetect import process_subset, print_config
 
@@ -30,7 +31,19 @@ def open_gui():
     # rest (functions and command-line wrapper) can run without trouble
     import tkinter as tk
     import tkinter.ttk as ttk
-    from tkinter import filedialog
+    from tkinter import filedialog, messagebox
+
+    # custom callbacks
+    def _txt_numeric_input_validate(char, entry_value):
+        return is_number(entry_value) or entry_value in ('-', '.', ',', '')
+
+    def _txt_numeric_pos_input_validate(char, entry_value):
+        if char == '-':
+            return False
+        return is_number(entry_value) or entry_value in ('.', ',', '')
+
+    def _update_combo_losefocus(self):
+        self.widget.master.focus()
 
     #
     # the pre-process configuration dialog
@@ -75,9 +88,6 @@ def open_gui():
             self.txt_late_reref_CAR_variance_quantile.configure(state=new_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile2.configure(state=new_CAR_variance_state)
 
-        def _update_combo_losefocus(self, event):
-            self.root.focus()
-
         def __init__(self, parent):
             pd_window_height = 450
             pd_window_width = 630
@@ -120,12 +130,9 @@ def open_gui():
                                       int((win.winfo_screenwidth() / 2) - (pd_window_width / 2)),
                                       int((win.winfo_screenheight() / 2) - (pd_window_height / 2))))
             self.root.resizable(False, False)
-            #blank_icon = tk.PhotoImage(height=16, width=16)
-            #blank_icon.blank()
-            #self.root.iconphoto(False, blank_icon)
 
             #
-            pd_y_pos = 10
+            pd_y_pos = 15
             self.chk_highpass = tk.Checkbutton(self.root, text='High pass filtering (0.50Hz)', anchor="w", variable=self.highpass, onvalue=1, offvalue=0)
             self.chk_highpass.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 30
@@ -137,17 +144,17 @@ def open_gui():
             self.lbl_early_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_early_reref_method = ttk.Combobox(self.root, textvariable=self.early_reref_method, values=list(self.reref_options_values.keys()), state=early_reref_state)
             self.cmb_early_reref_method.bind("<Key>", lambda e: "break")
-            self.cmb_early_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
-            self.cmb_early_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
+            self.cmb_early_reref_method.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_early_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_early_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
             self.lbl_early_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
             self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center')
+            self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
             self.txt_early_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             self.lbl_early_reref_epoch_range = tk.Label(self.root, text="-", state=early_reref_state)
             self.lbl_early_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center')
+            self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
             self.txt_early_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 42
 
@@ -159,8 +166,8 @@ def open_gui():
             self.lbl_line_noise_frequency.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_line_noise_frequency = ttk.Combobox(self.root, textvariable=self.line_noise_frequency, values=list(self.line_noise_removal_options_values.keys()), state=line_noise_state)
             self.cmb_line_noise_frequency.bind("<Key>", lambda e: "break")
-            self.cmb_line_noise_frequency.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
-            self.cmb_line_noise_frequency.bind("<FocusIn>", self._update_combo_losefocus)
+            self.cmb_line_noise_frequency.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_line_noise_frequency.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_line_noise_frequency.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 42
 
@@ -172,17 +179,17 @@ def open_gui():
             self.lbl_late_reref_method.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_late_reref_method = ttk.Combobox(self.root, textvariable=self.late_reref_method, values=list(self.reref_options_values.keys()), state=late_reref_state)
             self.cmb_late_reref_method.bind("<Key>", lambda e: "break")
-            self.cmb_late_reref_method.bind("<<ComboboxSelected>>", self._update_combo_losefocus)
-            self.cmb_late_reref_method.bind("<FocusIn>", self._update_combo_losefocus)
+            self.cmb_late_reref_method.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_late_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_late_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
             self.lbl_late_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
             self.lbl_late_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center')
+            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
             self.txt_late_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             self.lbl_late_reref_epoch_range = tk.Label(self.root, text="-", state=late_reref_state)
             self.lbl_late_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center')
+            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
             self.txt_late_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
 
@@ -195,7 +202,7 @@ def open_gui():
             late_reref_CAR_variance_state = 'normal' if late_reref_CAR_state == 'normal' and self.late_reref_CAR_variance_enabled.get() else 'disabled'
             self.lbl_late_reref_CAR_variance_quantile = tk.Label(self.root, text="within", anchor='w', state=late_reref_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile.place(x=285, y=pd_y_pos + 2, width=100, height=20)
-            self.txt_late_reref_CAR_variance_quantile = ttk.Entry(self.root, textvariable=self.late_reref_CAR_variance_quantile, state=late_reref_CAR_variance_state, justify='center')
+            self.txt_late_reref_CAR_variance_quantile = ttk.Entry(self.root, textvariable=self.late_reref_CAR_variance_quantile, state=late_reref_CAR_variance_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_pos_input_validate), '%S', '%P'))
             self.txt_late_reref_CAR_variance_quantile.place(x=340, y=pd_y_pos, width=60, height=25)
             self.lbl_late_reref_CAR_variance_quantile2 = tk.Label(self.root, text="quantile", anchor='w', state=late_reref_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile2.place(x=410, y=pd_y_pos + 2, width=100, height=20)
@@ -214,6 +221,28 @@ def open_gui():
 
         def ok(self):
 
+            # check input values
+            if self.early_reref.get():
+                if self.early_reref_epoch_end.get() < self.early_reref_epoch_start.get():
+                    messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the early re-referencing stim exclusion setting. '
+                                                                        'The given end-point (' + str(self.early_reref_epoch_end.get()) + ') lies before the start-point (' + str(self.early_reref_epoch_start.get()) + ')')
+                    self.txt_early_reref_epoch_start.focus()
+                    self.txt_early_reref_epoch_start.select_range(0, tk.END)
+                    return
+            if self.late_reref.get():
+                if self.late_reref_epoch_end.get() < self.late_reref_epoch_start.get():
+                    messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the late re-referencing stim exclusion setting. '
+                                                                        'The given end-point (' + str(self.late_reref_epoch_end.get()) + ') lies before the start-point (' + str(self.late_reref_epoch_start.get()) + ')')
+                    self.txt_late_reref_epoch_start.focus()
+                    self.txt_late_reref_epoch_start.select_range(0, tk.END)
+                    return
+                if self.late_reref_CAR_variance_enabled.get():
+                    if self.late_reref_CAR_variance_quantile.get() < 0 or self.late_reref_CAR_variance_quantile.get() > 1:
+                        messagebox.showerror(title='Invalid input', message='Invalid quantile value for channel selection by trial variance, the value should be between 0 and 1')
+                        self.txt_late_reref_CAR_variance_quantile.focus()
+                        self.txt_late_reref_CAR_variance_quantile.select_range(0, tk.END)
+                        return
+
             # update config
             cfg_set(self.highpass.get(), 'preprocess', 'high_pass')
             cfg_set(self.early_reref.get(), 'preprocess', 'early_re_referencing', 'enabled')
@@ -228,7 +257,6 @@ def open_gui():
                 cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
             else:
                 cfg_set(-1, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
-            # TODO: check input values
 
             #
             self.root.grab_release()
@@ -267,13 +295,8 @@ def open_gui():
     #
     # the main window
     #
-
-    # defaults
     window_width = 640
     window_height = 800
-    #cfg_set(1, 'preprocess', 'high_pass')
-    #cfg_set(1, 'preprocess', 'early_re_referencing', 'enabled')
-    #cfg_set('CAR', 'preprocess', 'early_re_referencing', 'method')
 
     # open window
     win = tk.Tk()
@@ -582,7 +605,7 @@ def open_gui():
         btn_output_browse.config(state='normal')
         btn_process.config(state='normal')
 
-    def txt_no_input_onkey(event):
+    def _txt_no_input_onkey(event):
         # TODO: check for mac
         if event.state == 12 and event.keysym == 'c':
             return
@@ -652,7 +675,7 @@ def open_gui():
     btn_process.place(x=10, y=y_pos, width=window_width - 20, height=40)
     y_pos += 40 + 2
     txt_console = tk.Text(win, highlightthickness = 0, borderwidth=1, relief="solid", undo=False, maxundo=-1, background=win['background'])
-    txt_console.bind("<Key>", lambda e: txt_no_input_onkey(e))
+    txt_console.bind("<Key>", lambda e: _txt_no_input_onkey(e))
 
     scr_subsets = tk.Scrollbar(win, orient='vertical')
     txt_console.place(x=12, y=y_pos, width=window_width - 45, height=120)
