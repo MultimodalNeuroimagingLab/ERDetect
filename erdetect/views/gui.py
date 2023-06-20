@@ -247,16 +247,20 @@ def open_gui():
             cfg_set(self.highpass.get(), 'preprocess', 'high_pass')
             cfg_set(self.early_reref.get(), 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set(self.reref_options_values[self.early_reref_method.get()], 'preprocess', 'early_re_referencing', 'method')
+            if self.early_reref.get():
+                cfg_set((self.early_reref_epoch_start.get(), self.early_reref_epoch_end.get()), 'preprocess', 'early_re_referencing', 'stim_excl_epoch')
             if self.line_noise_removal.get():
                 cfg_set(self.line_noise_removal_options_values[self.line_noise_frequency.get()], 'preprocess', 'line_noise_removal')
             else:
                 cfg_set('off', 'preprocess', 'line_noise_removal')
             cfg_set(self.late_reref.get(), 'preprocess', 'late_re_referencing', 'enabled')
             cfg_set(self.reref_options_values[self.late_reref_method.get()], 'preprocess', 'late_re_referencing', 'method')
-            if self.late_reref_CAR_variance_enabled.get():
-                cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
-            else:
-                cfg_set(-1, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
+            if self.late_reref.get():
+                cfg_set((self.late_reref_epoch_start.get(), self.late_reref_epoch_end.get()), 'preprocess', 'late_re_referencing', 'stim_excl_epoch')
+                if self.late_reref_CAR_variance_enabled.get():
+                    cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
+                else:
+                    cfg_set(-1, 'preprocess', 'late_re_referencing', 'CAR_by_variance')
 
             #
             self.root.grab_release()
@@ -272,6 +276,8 @@ def open_gui():
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
             self.early_reref_method.set(self.reref_options[config_defaults['preprocess']['early_re_referencing']['method']])
+            self.early_reref_epoch_start.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][0])
+            self.early_reref_epoch_end.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][1])
             if config_defaults['preprocess']['line_noise_removal'].lower() == 'off':
                 self.line_noise_removal.set(0)
                 self.line_noise_frequency.set(self.line_noise_removal_options['JSON'])
@@ -280,6 +286,8 @@ def open_gui():
                 self.line_noise_frequency.set(self.line_noise_removal_options[config_defaults['preprocess']['line_noise_removal']])
             self.late_reref.set(config_defaults['preprocess']['late_re_referencing']['enabled'])
             self.late_reref_method.set(self.reref_options[config_defaults['preprocess']['late_re_referencing']['method']])
+            self.late_reref_epoch_start.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][0])
+            self.late_reref_epoch_end.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][1])
             self.late_reref_CAR_variance_enabled.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1)
             if config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
                 self.late_reref_CAR_variance_quantile.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'])
