@@ -34,13 +34,18 @@ def open_gui():
     from tkinter import filedialog, messagebox
 
     # custom callbacks
-    def _txt_numeric_input_validate(char, entry_value):
-        return is_number(entry_value) or entry_value in ('-', '.', ',', '')
+    def _txt_double_input_validate(char, entry_value):
+        return is_number(entry_value) or entry_value in ('-', '-.', '.', ',', '')
 
-    def _txt_numeric_pos_input_validate(char, entry_value):
+    def _txt_double_pos_input_validate(char, entry_value):
         if char == '-':
             return False
         return is_number(entry_value) or entry_value in ('.', ',', '')
+
+    def _txt_integer_pos_input_validate(char, entry_value):
+        if char in ('.', '-'):
+            return False
+        return is_number(entry_value) or entry_value == ''
 
     def _update_combo_losefocus(self):
         self.widget.master.focus()
@@ -150,11 +155,11 @@ def open_gui():
             pd_y_pos += 32
             self.lbl_early_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
             self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
+            self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_early_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             self.lbl_early_reref_epoch_range = tk.Label(self.root, text="-", state=early_reref_state)
             self.lbl_early_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
+            self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_early_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 42
 
@@ -185,11 +190,11 @@ def open_gui():
             pd_y_pos += 32
             self.lbl_late_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
             self.lbl_late_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
+            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_late_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             self.lbl_late_reref_epoch_range = tk.Label(self.root, text="-", state=late_reref_state)
             self.lbl_late_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_input_validate), '%S', '%P'))
+            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_late_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
 
@@ -197,12 +202,12 @@ def open_gui():
             self.lbl_late_reref_CAR_variance = tk.Label(self.root, text="Select channels by trial variance", anchor='e', state=late_reref_CAR_state)
             self.lbl_late_reref_CAR_variance.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.chk_late_reref_CAR_variance = tk.Checkbutton(self.root, text='', anchor="w", variable=self.late_reref_CAR_variance_enabled, onvalue=1, offvalue=0, command=self._update_late_reref_controls, state=late_reref_CAR_state)
-            self.chk_late_reref_CAR_variance.place(x=258, y=pd_y_pos, width=pd_window_width, height=30)
+            self.chk_late_reref_CAR_variance.place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
 
             late_reref_CAR_variance_state = 'normal' if late_reref_CAR_state == 'normal' and self.late_reref_CAR_variance_enabled.get() else 'disabled'
             self.lbl_late_reref_CAR_variance_quantile = tk.Label(self.root, text="within", anchor='w', state=late_reref_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile.place(x=285, y=pd_y_pos + 2, width=100, height=20)
-            self.txt_late_reref_CAR_variance_quantile = ttk.Entry(self.root, textvariable=self.late_reref_CAR_variance_quantile, state=late_reref_CAR_variance_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_numeric_pos_input_validate), '%S', '%P'))
+            self.txt_late_reref_CAR_variance_quantile = ttk.Entry(self.root, textvariable=self.late_reref_CAR_variance_quantile, state=late_reref_CAR_variance_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_pos_input_validate), '%S', '%P'))
             self.txt_late_reref_CAR_variance_quantile.place(x=340, y=pd_y_pos, width=60, height=25)
             self.lbl_late_reref_CAR_variance_quantile2 = tk.Label(self.root, text="quantile", anchor='w', state=late_reref_CAR_variance_state)
             self.lbl_late_reref_CAR_variance_quantile2.place(x=410, y=pd_y_pos + 2, width=100, height=20)
@@ -299,6 +304,142 @@ def open_gui():
             self._update_late_reref_controls()
 
 
+    #
+    # the trials & channel-types configuration dialog
+    #
+    class TrialsAndChannelTypesDialog(object):
+
+        out_of_bounds_options = {'first_last_only': 'Allow only for the first and last trials to be out-of-bounds', 'allow': 'Allow for any trial to be out-of-bounds', 'error': 'Do not allow any trial to be out-of-bounds'}
+        out_of_bounds_options_values = {v: k for k, v in out_of_bounds_options.items()}
+
+        baseline_norm_options = {'median': 'By baseline median', 'mean': 'By baseline mean', 'none': 'No normalization'}
+        baseline_norm_options_values = {v: k for k, v in baseline_norm_options.items()}
+
+        def __init__(self, parent):
+            pd_window_height = 450
+            pd_window_width = 700
+
+            # retrieve values from config
+            self.trial_epoch_start = tk.DoubleVar(value=cfg('trials', 'trial_epoch')[0])
+            self.trial_epoch_end = tk.DoubleVar(value=cfg('trials', 'trial_epoch')[1])
+            self.out_of_bounds_handling = tk.StringVar(value=self.out_of_bounds_options[str(cfg('trials', 'out_of_bounds_handling'))])
+            self.baseline_norm = tk.StringVar(value=self.baseline_norm_options[str(cfg('trials', 'baseline_norm'))])
+            self.baseline_epoch_start = tk.DoubleVar(value=cfg('trials', 'baseline_epoch')[0])
+            self.baseline_epoch_end = tk.DoubleVar(value=cfg('trials', 'baseline_epoch')[1])
+            self.concat_bidir_stimpairs = tk.IntVar(value=cfg('trials', 'concat_bidirectional_pairs'))
+            self.min_stimpair_trials = tk.IntVar(value=cfg('trials', 'minimum_stimpair_trials'))
+
+            #
+            # elements
+            #
+            self.root = tk.Toplevel(parent)
+            self.root.title('Trials and Channel-types')
+            self.root.geometry("{}x{}+{}+{}".format(pd_window_width, pd_window_height,
+                                      int((win.winfo_screenwidth() / 2) - (pd_window_width / 2)),
+                                      int((win.winfo_screenheight() / 2) - (pd_window_height / 2))))
+            self.root.resizable(False, False)
+
+            #
+            pd_y_pos = 15
+            self.lbl_trial_epoch = tk.Label(self.root, text="Trial epoch/window:", anchor='e')
+            self.lbl_trial_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_trial_epoch_start = ttk.Entry(self.root, textvariable=self.trial_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_trial_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_trial_range = tk.Label(self.root, text="-")
+            self.lbl_trial_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_trial_end = ttk.Entry(self.root, textvariable=self.trial_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_trial_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 36
+            self.lbl_out_of_bounds_handling = tk.Label(self.root, text="Out-of-bounds handling:", anchor='e')
+            self.lbl_out_of_bounds_handling.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.cmb_out_of_bounds_handling = ttk.Combobox(self.root, textvariable=self.out_of_bounds_handling, values=list(self.out_of_bounds_options_values.keys()))
+            self.cmb_out_of_bounds_handling.bind("<Key>", lambda e: "break")
+            self.cmb_out_of_bounds_handling.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_out_of_bounds_handling.bind("<FocusIn>", _update_combo_losefocus)
+            self.cmb_out_of_bounds_handling.place(x=260, y=pd_y_pos, width=400, height=25)
+            pd_y_pos += 54
+            self.lbl_baseline_norm = tk.Label(self.root, text="Trial baseline normalization:", anchor='e')
+            self.lbl_baseline_norm.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.cmb_baseline_norm = ttk.Combobox(self.root, textvariable=self.baseline_norm, values=list(self.baseline_norm_options_values.keys()))
+            self.cmb_baseline_norm.bind("<Key>", lambda e: "break")
+            self.cmb_baseline_norm.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_baseline_norm.bind("<FocusIn>", _update_combo_losefocus)
+            self.cmb_baseline_norm.place(x=260, y=pd_y_pos, width=250, height=25)
+            pd_y_pos += 36
+            self.lbl_baseline_epoch = tk.Label(self.root, text="Baseline epoch/window:", anchor='e')
+            self.lbl_baseline_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_baseline_epoch_start = ttk.Entry(self.root, textvariable=self.baseline_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_baseline_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_baseline_range = tk.Label(self.root, text="-")
+            self.lbl_baseline_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_baseline_end = ttk.Entry(self.root, textvariable=self.baseline_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_baseline_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 54
+            self.lbl_concat_bidir_stimpairs = tk.Label(self.root, text="Concatenate bidirectional stim-pairs:", anchor='e')
+            self.lbl_concat_bidir_stimpairs.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.chk_concat_bidir_stimpairs = tk.Checkbutton(self.root, text='', anchor="w", variable=self.concat_bidir_stimpairs, onvalue=1, offvalue=0)
+            self.chk_concat_bidir_stimpairs.place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 36
+            self.lbl_min_stimpair_trials = tk.Label(self.root, text="Minimal number trials per stim-pair:", anchor='e')
+            self.lbl_min_stimpair_trials.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_min_stimpair_trials = ttk.Entry(self.root, textvariable=self.min_stimpair_trials, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_integer_pos_input_validate), '%S', '%P'))
+            self.txt_min_stimpair_trials.place(x=260, y=pd_y_pos, width=40, height=25)
+
+            #
+            tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
+            tk.Button(self.root, text="Defaults", command=self.defaults).place(x=(pd_window_width - 100) / 2, y=pd_window_height - 35, width=100, height=25)
+            tk.Button(self.root, text="Cancel", command=self.cancel).place(x=pd_window_width - 130, y=pd_window_height - 40, width=120, height=30)
+
+            # modal window
+            self.root.wait_visibility()
+            self.root.grab_set()
+            self.root.transient(parent)
+            self.parent = parent
+            self.root.focus()
+
+        def ok(self):
+
+            # check input values
+            if self.trial_epoch_end.get() <= self.trial_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the trial epoch setting. '
+                                                                    'The given end-point (' + str(self.trial_epoch_end.get()) + ') lies on or before the start-point (' + str(self.trial_epoch_start.get()) + ')')
+                self.txt_trial_epoch_start.focus()
+                self.txt_trial_epoch_start.select_range(0, tk.END)
+                return
+            if self.baseline_epoch_end.get() <= self.baseline_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the baseline epoch setting. '
+                                                                    'The given end-point (' + str(self.baseline_epoch_end.get()) + ') lies on or before the start-point (' + str(self.baseline_epoch_start.get()) + ')')
+                self.txt_baseline_epoch_start.focus()
+                self.txt_baseline_epoch_start.select_range(0, tk.END)
+                return
+
+            # update config
+            cfg_set((self.trial_epoch_start.get(), self.trial_epoch_end.get()), 'trials', 'trial_epoch')
+            cfg_set(self.out_of_bounds_options_values[self.out_of_bounds_handling.get()], 'trials', 'out_of_bounds_handling')
+            cfg_set(self.baseline_norm_options_values[self.baseline_norm.get()], 'trials', 'baseline_norm')
+            cfg_set((self.baseline_epoch_start.get(), self.baseline_epoch_end.get()), 'trials', 'baseline_epoch')
+            cfg_set(self.concat_bidir_stimpairs.get(), 'trials', 'concat_bidirectional_pairs')
+            cfg_set(self.min_stimpair_trials.get(), 'trials', 'minimum_stimpair_trials')
+
+            #
+            self.root.grab_release()
+            self.root.destroy()
+
+        def cancel(self):
+            self.root.grab_release()
+            self.root.destroy()
+
+        def defaults(self):
+
+            config_defaults = create_default_config()
+            self.trial_epoch_start.set(config_defaults['trials']['trial_epoch'][0])
+            self.trial_epoch_end.set(config_defaults['trials']['trial_epoch'][1])
+            self.out_of_bounds_handling.set(self.out_of_bounds_options[config_defaults['trials']['out_of_bounds_handling']])
+            self.baseline_norm.set(self.baseline_norm_options[config_defaults['trials']['baseline_norm']])
+            self.baseline_epoch_start.set(config_defaults['trials']['baseline_epoch'][0])
+            self.baseline_epoch_end.set(config_defaults['trials']['baseline_epoch'][1])
+            self.concat_bidir_stimpairs.set(config_defaults['trials']['concat_bidirectional_pairs'])
+            self.min_stimpair_trials.set(config_defaults['trials']['minimum_stimpair_trials'])
 
     #
     # the main window
@@ -494,6 +635,10 @@ def open_gui():
         dialog = PreprocessDialog(win)
         win.wait_window(dialog.root)
 
+    def config_trials_and_channel_types_callback():
+        dialog = TrialsAndChannelTypesDialog(win)
+        win.wait_window(dialog.root)
+
     def btn_process_start_onclick():
         nonlocal processing_thread, processing_thread_lock
 
@@ -522,7 +667,7 @@ def open_gui():
 
         btn_cfg_import.config(state='disabled')
         btn_cfg_preproc.config(state='disabled')
-        #btn_cfg_trials_channels.config(state='disabled')
+        btn_cfg_trials_channel_types.config(state='disabled')
         #btn_cfg_detect_metrics.config(state='disabled')
         #btn_cfg_visualization.config(state='disabled')
 
@@ -606,7 +751,7 @@ def open_gui():
 
         btn_cfg_import.config(state='normal')
         btn_cfg_preproc.config(state='normal')
-        #btn_cfg_trials_channels.config(state='normal')
+        btn_cfg_trials_channel_types.config(state='normal')
         #btn_cfg_detect_metrics.config(state='normal')
         #btn_cfg_visualization.config(state='normal')
 
@@ -659,8 +804,8 @@ def open_gui():
     config_btn_width = (window_width - 10 - 10 - 10) / 2
     btn_cfg_preproc = tk.Button(win, text="Preprocessing", command=config_preprocessing_callback)
     btn_cfg_preproc.place(x=10, y=y_pos, width=config_btn_width, height=28)
-    #btn_cfg_trials_channels = tk.Button(win, text="Trials and channels")
-    #btn_cfg_trials_channels.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    btn_cfg_trials_channel_types = tk.Button(win, text="Trials and channel-types", command=config_trials_and_channel_types_callback)
+    btn_cfg_trials_channel_types.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     y_pos += 28
     #btn_cfg_detect_metrics = tk.Button(win, text="Detection & Metrics")
     #btn_cfg_detect_metrics.place(x=10, y=y_pos, width=config_btn_width, height=28)
