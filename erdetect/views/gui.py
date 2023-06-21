@@ -340,7 +340,7 @@ def open_gui():
 
             #
             pd_y_pos = 15
-            self.lbl_trial_epoch = tk.Label(self.root, text="Trial epoch/window:", anchor='e')
+            self.lbl_trial_epoch = tk.Label(self.root, text="Trial epoch/window", anchor='e')
             self.lbl_trial_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_trial_epoch_start = ttk.Entry(self.root, textvariable=self.trial_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_trial_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -348,24 +348,24 @@ def open_gui():
             self.lbl_trial_range.place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_trial_end = ttk.Entry(self.root, textvariable=self.trial_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_trial_end.place(x=370, y=pd_y_pos, width=70, height=25)
-            pd_y_pos += 36
-            self.lbl_out_of_bounds_handling = tk.Label(self.root, text="Out-of-bounds handling:", anchor='e')
+            pd_y_pos += 32
+            self.lbl_out_of_bounds_handling = tk.Label(self.root, text="Out-of-bounds handling", anchor='e')
             self.lbl_out_of_bounds_handling.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_out_of_bounds_handling = ttk.Combobox(self.root, textvariable=self.out_of_bounds_handling, values=list(self.out_of_bounds_options_values.keys()))
             self.cmb_out_of_bounds_handling.bind("<Key>", lambda e: "break")
             self.cmb_out_of_bounds_handling.bind("<<ComboboxSelected>>", _update_combo_losefocus)
             self.cmb_out_of_bounds_handling.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_out_of_bounds_handling.place(x=260, y=pd_y_pos, width=400, height=25)
-            pd_y_pos += 54
-            self.lbl_baseline_norm = tk.Label(self.root, text="Trial normalization:", anchor='e')
+            pd_y_pos += 50
+            self.lbl_baseline_norm = tk.Label(self.root, text="Trial normalization", anchor='e')
             self.lbl_baseline_norm.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_baseline_norm = ttk.Combobox(self.root, textvariable=self.baseline_norm, values=list(self.baseline_norm_options_values.keys()))
             self.cmb_baseline_norm.bind("<Key>", lambda e: "break")
             self.cmb_baseline_norm.bind("<<ComboboxSelected>>", _update_combo_losefocus)
             self.cmb_baseline_norm.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_baseline_norm.place(x=260, y=pd_y_pos, width=250, height=25)
-            pd_y_pos += 36
-            self.lbl_baseline_epoch = tk.Label(self.root, text="Baseline epoch/window:", anchor='e')
+            pd_y_pos += 32
+            self.lbl_baseline_epoch = tk.Label(self.root, text="Baseline epoch/window", anchor='e')
             self.lbl_baseline_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_baseline_epoch_start = ttk.Entry(self.root, textvariable=self.baseline_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_baseline_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -373,13 +373,13 @@ def open_gui():
             self.lbl_baseline_range.place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_baseline_end = ttk.Entry(self.root, textvariable=self.baseline_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_baseline_end.place(x=370, y=pd_y_pos, width=70, height=25)
-            pd_y_pos += 54
-            self.lbl_concat_bidir_stimpairs = tk.Label(self.root, text="Concatenate bidirectional stim-pairs:", anchor='e')
+            pd_y_pos += 44
+            self.lbl_concat_bidir_stimpairs = tk.Label(self.root, text="Concatenate bidirectional stim-pairs", anchor='e')
             self.lbl_concat_bidir_stimpairs.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.chk_concat_bidir_stimpairs = tk.Checkbutton(self.root, text='', anchor="w", variable=self.concat_bidir_stimpairs, onvalue=1, offvalue=0)
             self.chk_concat_bidir_stimpairs.place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
-            pd_y_pos += 36
-            self.lbl_min_stimpair_trials = tk.Label(self.root, text="Minimal number trials per stim-pair:", anchor='e')
+            pd_y_pos += 32
+            self.lbl_min_stimpair_trials = tk.Label(self.root, text="Minimal number trials per stim-pair", anchor='e')
             self.lbl_min_stimpair_trials.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_min_stimpair_trials = ttk.Entry(self.root, textvariable=self.min_stimpair_trials, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_integer_pos_input_validate), '%S', '%P'))
             self.txt_min_stimpair_trials.place(x=260, y=pd_y_pos, width=40, height=25)
@@ -440,6 +440,219 @@ def open_gui():
             self.min_stimpair_trials.set(config_defaults['trials']['minimum_stimpair_trials'])
 
 
+    #
+    # the metrics & detection configuration dialog
+    #
+    class MetricsAndDetectionDialog(object):
+
+        def _update_metrics_cross_proj_controls(self):
+            new_state = 'normal' if self.metrics_cross_proj_enabled.get() else 'disabled'
+            self.lbl_metrics_cross_proj_epoch.configure(state=new_state)
+            self.txt_metrics_cross_proj_epoch_start.configure(state=new_state)
+            self.lbl_metrics_cross_proj_epoch_range.configure(state=new_state)
+            self.txt_metrics_cross_proj_epoch_end.configure(state=new_state)
+
+        def _update_metrics_waveform_controls(self):
+            new_state = 'normal' if self.metrics_waveform_enabled.get() else 'disabled'
+            self.lbl_metrics_waveform_epoch.configure(state=new_state)
+            self.txt_metrics_waveform_epoch_start.configure(state=new_state)
+            self.lbl_metrics_waveform_epoch_range.configure(state=new_state)
+            self.txt_metrics_waveform_epoch_end.configure(state=new_state)
+            self.lbl_metrics_waveform_bandpass.configure(state=new_state)
+            self.txt_metrics_waveform_bandpass_start.configure(state=new_state)
+            self.lbl_metrics_waveform_bandpass_range.configure(state=new_state)
+            self.txt_metrics_waveform_bandpass_end.configure(state=new_state)
+
+        def __init__(self, parent):
+            pd_window_height = 600
+            pd_window_width = 630
+
+            # retrieve values from config
+            self.detect_neg = tk.IntVar(value=cfg('detection', 'negative'))
+            self.detect_pos = tk.IntVar(value=cfg('detection', 'positive'))
+            self.detect_peak_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[0])
+            self.detect_peak_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[1])
+            self.detect_response_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[0])
+            self.detect_response_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[1])
+
+
+            self.metrics_cross_proj_enabled = tk.IntVar(value=cfg('metrics', 'cross_proj', 'enabled'))
+            self.metrics_cross_proj_epoch_start = tk.DoubleVar(value=cfg('metrics', 'cross_proj', 'epoch')[0])
+            self.metrics_cross_proj_epoch_end = tk.DoubleVar(value=cfg('metrics', 'cross_proj', 'epoch')[1])
+            self.metrics_waveform_enabled = tk.IntVar(value=cfg('metrics', 'waveform', 'enabled'))
+            self.metrics_waveform_epoch_start = tk.DoubleVar(value=cfg('metrics', 'waveform', 'epoch')[0])
+            self.metrics_waveform_epoch_end = tk.DoubleVar(value=cfg('metrics', 'waveform', 'epoch')[1])
+            self.metrics_waveform_bandpass_start = tk.IntVar(value=cfg('metrics', 'waveform', 'bandpass')[0])
+            self.metrics_waveform_bandpass_end = tk.IntVar(value=cfg('metrics', 'waveform', 'bandpass')[1])
+
+            #
+            # elements
+            #
+            self.root = tk.Toplevel(parent)
+            self.root.title('Metrics and Detection')
+            self.root.geometry("{}x{}+{}+{}".format(pd_window_width, pd_window_height,
+                                      int((win.winfo_screenwidth() / 2) - (pd_window_width / 2)),
+                                      int((win.winfo_screenheight() / 2) - (pd_window_height / 2))))
+            self.root.resizable(False, False)
+
+            #
+            pd_y_pos = 15
+            self.chk_metrics_cross_proj = tk.Checkbutton(self.root, text='Cross projection metric:', anchor="w", variable=self.metrics_cross_proj_enabled, onvalue=1, offvalue=0, command=self._update_metrics_cross_proj_controls)
+            self.chk_metrics_cross_proj.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 32
+            metrics_cross_proj_state = 'normal' if self.metrics_cross_proj_enabled.get() else 'disabled'
+            self.lbl_metrics_cross_proj_epoch = tk.Label(self.root, text="Epoch/window", anchor='e', state=metrics_cross_proj_state)
+            self.lbl_metrics_cross_proj_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_metrics_cross_proj_epoch_start = ttk.Entry(self.root, textvariable=self.metrics_cross_proj_epoch_start, state=metrics_cross_proj_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_metrics_cross_proj_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_metrics_cross_proj_epoch_range = tk.Label(self.root, text="-", state=metrics_cross_proj_state)
+            self.lbl_metrics_cross_proj_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_metrics_cross_proj_epoch_end = ttk.Entry(self.root, textvariable=self.metrics_cross_proj_epoch_end, state=metrics_cross_proj_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_metrics_cross_proj_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 42
+            self.chk_metrics_waveform = tk.Checkbutton(self.root, text='Waveform metric:', anchor="w", variable=self.metrics_waveform_enabled, onvalue=1, offvalue=0, command=self._update_metrics_waveform_controls)
+            self.chk_metrics_waveform.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 32
+            metrics_waveform_state = 'normal' if self.metrics_waveform_enabled.get() else 'disabled'
+            self.lbl_metrics_waveform_epoch = tk.Label(self.root, text="Epoch/window", anchor='e', state=metrics_waveform_state)
+            self.lbl_metrics_waveform_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_metrics_waveform_epoch_start = ttk.Entry(self.root, textvariable=self.metrics_waveform_epoch_start, state=metrics_waveform_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_metrics_waveform_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_metrics_waveform_epoch_range = tk.Label(self.root, text="-", state=metrics_waveform_state)
+            self.lbl_metrics_waveform_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_metrics_waveform_epoch_end = ttk.Entry(self.root, textvariable=self.metrics_waveform_epoch_end, state=metrics_waveform_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_metrics_waveform_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+            self.lbl_metrics_waveform_bandpass = tk.Label(self.root, text="Bandpass frequency range", anchor='e', state=metrics_waveform_state)
+            self.lbl_metrics_waveform_bandpass.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_metrics_waveform_bandpass_start = ttk.Entry(self.root, textvariable=self.metrics_waveform_bandpass_start, state=metrics_waveform_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_integer_pos_input_validate), '%S', '%P'))
+            self.txt_metrics_waveform_bandpass_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_metrics_waveform_bandpass_range = tk.Label(self.root, text="-", state=metrics_waveform_state)
+            self.lbl_metrics_waveform_bandpass_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_metrics_waveform_bandpass_end = ttk.Entry(self.root, textvariable=self.metrics_waveform_bandpass_end, state=metrics_waveform_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_integer_pos_input_validate), '%S', '%P'))
+            self.txt_metrics_waveform_bandpass_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 80
+
+            tk.Label(self.root, text="Response Detection:", anchor='w').place(x=10, y=pd_y_pos + 2, width=245, height=20)
+            pd_y_pos += 36
+            tk.Label(self.root, text="Negative deflections", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.detect_neg, onvalue=1, offvalue=0).place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 32
+
+            tk.Label(self.root, text="Positive deflections", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.detect_pos, onvalue=1, offvalue=0).place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 38
+            tk.Label(self.root, text="Peak search epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_detect_peak_search_epoch_start = ttk.Entry(self.root, textvariable=self.detect_peak_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_detect_peak_search_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_detect_peak_search_epoch_end = ttk.Entry(self.root, textvariable=self.detect_peak_search_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_detect_peak_search_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+            tk.Label(self.root, text="Response search epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_detect_response_search_epoch_start = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_detect_response_search_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_detect_response_search_epoch_end = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_detect_response_search_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 38
+
+
+            #
+            tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
+            tk.Button(self.root, text="Defaults", command=self.defaults).place(x=(pd_window_width - 100) / 2, y=pd_window_height - 35, width=100, height=25)
+            tk.Button(self.root, text="Cancel", command=self.cancel).place(x=pd_window_width - 130, y=pd_window_height - 40, width=120, height=30)
+
+            # modal window
+            self.root.wait_visibility()
+            self.root.grab_set()
+            self.root.transient(parent)
+            self.parent = parent
+            self.root.focus()
+
+        def ok(self):
+
+            # check input values
+            if self.metrics_cross_proj_enabled.get():
+                if self.metrics_cross_proj_epoch_end.get() < self.metrics_cross_proj_epoch_start.get():
+                    messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the cross projection metric. '
+                                                                        'The given end-point (' + str(self.metrics_cross_proj_epoch_end.get()) + ') lies before the start-point (' + str(self.metrics_cross_proj_epoch_start.get()) + ')')
+                    self.txt_metrics_cross_proj_epoch_start.focus()
+                    self.txt_metrics_cross_proj_epoch_start.select_range(0, tk.END)
+                    return
+            if self.metrics_waveform_enabled.get():
+                if self.metrics_waveform_epoch_end.get() < self.metrics_waveform_epoch_start.get():
+                    messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the waveform metric. '
+                                                                        'The given end-point (' + str(self.metrics_waveform_epoch_end.get()) + ') lies before the start-point (' + str(self.metrics_waveform_epoch_start.get()) + ')')
+                    self.txt_metrics_waveform_epoch_start.focus()
+                    self.txt_metrics_waveform_epoch_start.select_range(0, tk.END)
+                    return
+                if self.metrics_waveform_bandpass_start.get() < 1:
+                    messagebox.showerror(title='Invalid input', message='Invalid lower cutoff frequency for the waveform bandpass metric, the value should be 1 or higher')
+                    self.txt_metrics_waveform_bandpass_start.focus()
+                    self.txt_metrics_waveform_bandpass_start.select_range(0, tk.END)
+                    return
+                if self.metrics_waveform_bandpass_end.get() < self.metrics_waveform_bandpass_start.get():
+                    messagebox.showerror(title='Invalid input', message='Invalid frequency range (start and end values) for the waveform bandpass metric. '
+                                                                        'The end of the range (' + str(self.metrics_waveform_bandpass_end.get()) + ') lies before the start of the range (' + str(self.metrics_waveform_bandpass_start.get()) + ')')
+                    self.txt_metrics_waveform_bandpass_start.focus()
+                    self.txt_metrics_waveform_bandpass_start.select_range(0, tk.END)
+                    return
+            if self.detect_peak_search_epoch_end.get() <= self.detect_peak_search_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the peak search epoch setting. '
+                                                                    'The given end-point (' + str(self.detect_peak_search_epoch_end.get()) + ') lies on or before the start-point (' + str(self.detect_peak_search_epoch_start.get()) + ')')
+                self.txt_detect_peak_search_epoch_start.focus()
+                self.txt_detect_peak_search_epoch_start.select_range(0, tk.END)
+                return
+            if self.detect_response_search_epoch_end.get() <= self.detect_response_search_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the response search epoch setting. '
+                                                                    'The given end-point (' + str(self.detect_response_search_epoch_end.get()) + ') lies on or before the start-point (' + str(self.detect_response_search_epoch_start.get()) + ')')
+                self.txt_detect_response_search_epoch_start.focus()
+                self.txt_detect_response_search_epoch_start.select_range(0, tk.END)
+                return
+            # TODO: check inside of trial epoch
+
+            # update config
+            cfg_set(self.metrics_cross_proj_enabled.get(), 'metrics', 'cross_proj', 'enabled')
+            if self.metrics_cross_proj_enabled.get():
+                cfg_set((self.metrics_cross_proj_epoch_start.get(), self.metrics_cross_proj_epoch_end.get()), 'metrics', 'cross_proj', 'epoch')
+            cfg_set(self.metrics_waveform_enabled.get(), 'metrics', 'waveform', 'enabled')
+            if self.metrics_waveform_enabled.get():
+                cfg_set((self.metrics_waveform_epoch_start.get(), self.metrics_waveform_epoch_end.get()), 'metrics', 'waveform', 'epoch')
+                cfg_set((self.metrics_waveform_bandpass_start.get(), self.metrics_waveform_bandpass_end.get()), 'metrics', 'waveform', 'bandpass')
+            cfg_set(self.detect_neg.get(), 'detection', 'negative')
+            cfg_set(self.detect_pos.get(), 'detection', 'positive')
+            cfg_set((self.detect_peak_search_epoch_start.get(), self.detect_peak_search_epoch_end.get()), 'detection', 'peak_search_epoch')
+            cfg_set((self.detect_response_search_epoch_start.get(), self.detect_response_search_epoch_end.get()), 'detection', 'response_search_epoch')
+
+            #
+            self.root.grab_release()
+            self.root.destroy()
+
+        def cancel(self):
+            self.root.grab_release()
+            self.root.destroy()
+
+        def defaults(self):
+            config_defaults = create_default_config()
+            self.metrics_cross_proj_enabled.set(config_defaults['metrics']['cross_proj']['enabled'])
+            self.metrics_cross_proj_epoch_start.set(config_defaults['metrics']['cross_proj']['epoch'][0])
+            self.metrics_cross_proj_epoch_end.set(config_defaults['metrics']['cross_proj']['epoch'][1])
+            self.metrics_waveform_enabled.set(config_defaults['metrics']['waveform']['enabled'])
+            self.metrics_waveform_epoch_start.set(config_defaults['metrics']['waveform']['epoch'][0])
+            self.metrics_waveform_epoch_end.set(config_defaults['metrics']['waveform']['epoch'][1])
+            self.metrics_waveform_bandpass_start.set(config_defaults['metrics']['waveform']['bandpass'][0])
+            self.metrics_waveform_bandpass_end.set(config_defaults['metrics']['waveform']['bandpass'][1])
+            self.detect_neg.set(config_defaults['detection']['negative'])
+            self.detect_pos.set(config_defaults['detection']['positive'])
+            self.detect_peak_search_epoch_start.set(config_defaults['detection']['peak_search_epoch'][0])
+            self.detect_peak_search_epoch_end.set(config_defaults['detection']['peak_search_epoch'][1])
+            self.detect_response_search_epoch_start.set(config_defaults['detection']['response_search_epoch'][0])
+            self.detect_response_search_epoch_end.set(config_defaults['detection']['response_search_epoch'][1])
+
+            self._update_metrics_cross_proj_controls()
+            self._update_metrics_waveform_controls()
+
 
     #
     # the visualization configuration dialog
@@ -447,7 +660,7 @@ def open_gui():
     class VisualizationDialog(object):
 
         def __init__(self, parent):
-            pd_window_height = 340
+            pd_window_height = 350
             pd_window_width = 460
 
             # retrieve values from config
@@ -474,21 +687,21 @@ def open_gui():
 
             #
             pd_y_pos = 15
-            tk.Label(self.root, text="Negative deflections:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Negative deflections", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.visualize_neg, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 30
-            tk.Label(self.root, text="Positive deflections:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Positive deflections", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.visualize_pos, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 42
 
-            tk.Label(self.root, text="X-axis epoch/window:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="X-axis epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             self.txt_visualize_x_axis_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_x_axis_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
             self.txt_visualize_x_axis_epoch_end = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_x_axis_epoch_end.place(x=350, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
-            tk.Label(self.root, text="Blank stimulus epoch/window:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Blank stimulus epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             self.txt_visualize_blank_stim_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_blank_stim_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_blank_stim_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
@@ -496,13 +709,13 @@ def open_gui():
             self.txt_visualize_blank_stim_epoch_end.place(x=350, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 42
 
-            tk.Label(self.root, text="Generate electrode images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Generate electrode images", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_electrode_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 30
-            tk.Label(self.root, text="Generate stimulus-pair images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Generate stimulus-pair images", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_stimpair_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 30
-            tk.Label(self.root, text="Generate matrix images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Generate matrix images", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_matrix_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
 
 
@@ -763,6 +976,9 @@ def open_gui():
         dialog = TrialsAndChannelTypesDialog(win)
         win.wait_window(dialog.root)
 
+    def config_metrics_and_detection_callback():
+        dialog = MetricsAndDetectionDialog(win)
+        win.wait_window(dialog.root)
 
     def config_visualization_callback():
         dialog = VisualizationDialog(win)
@@ -797,7 +1013,7 @@ def open_gui():
         btn_cfg_import.config(state='disabled')
         btn_cfg_preproc.config(state='disabled')
         btn_cfg_trials_channel_types.config(state='disabled')
-        #btn_cfg_detect_metrics.config(state='disabled')
+        btn_cfg_detect_metrics.config(state='disabled')
         btn_cfg_visualization.config(state='disabled')
 
         btn_output_browse.config(state='disabled')
@@ -881,7 +1097,7 @@ def open_gui():
         btn_cfg_import.config(state='normal')
         btn_cfg_preproc.config(state='normal')
         btn_cfg_trials_channel_types.config(state='normal')
-        #btn_cfg_detect_metrics.config(state='normal')
+        btn_cfg_detect_metrics.config(state='normal')
         btn_cfg_visualization.config(state='normal')
 
         btn_output_browse.config(state='normal')
@@ -936,8 +1152,8 @@ def open_gui():
     btn_cfg_trials_channel_types = tk.Button(win, text="Trials and channel-types", command=config_trials_and_channel_types_callback)
     btn_cfg_trials_channel_types.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     y_pos += 28
-    #btn_cfg_detect_metrics = tk.Button(win, text="Detection & Metrics")
-    #btn_cfg_detect_metrics.place(x=10, y=y_pos, width=config_btn_width, height=28)
+    btn_cfg_detect_metrics = tk.Button(win, text="Metrics & Detection", command=config_metrics_and_detection_callback)
+    btn_cfg_detect_metrics.place(x=10, y=y_pos, width=config_btn_width, height=28)
     btn_cfg_visualization = tk.Button(win, text="Visualization", command=config_visualization_callback)
     btn_cfg_visualization.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     # TODO: speed vs memory processing
