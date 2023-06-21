@@ -276,7 +276,6 @@ def open_gui():
             self.root.destroy()
 
         def defaults(self):
-
             config_defaults = create_default_config()
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
@@ -358,7 +357,7 @@ def open_gui():
             self.cmb_out_of_bounds_handling.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_out_of_bounds_handling.place(x=260, y=pd_y_pos, width=400, height=25)
             pd_y_pos += 54
-            self.lbl_baseline_norm = tk.Label(self.root, text="Trial baseline normalization:", anchor='e')
+            self.lbl_baseline_norm = tk.Label(self.root, text="Trial normalization:", anchor='e')
             self.lbl_baseline_norm.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.cmb_baseline_norm = ttk.Combobox(self.root, textvariable=self.baseline_norm, values=list(self.baseline_norm_options_values.keys()))
             self.cmb_baseline_norm.bind("<Key>", lambda e: "break")
@@ -430,7 +429,6 @@ def open_gui():
             self.root.destroy()
 
         def defaults(self):
-
             config_defaults = create_default_config()
             self.trial_epoch_start.set(config_defaults['trials']['trial_epoch'][0])
             self.trial_epoch_end.set(config_defaults['trials']['trial_epoch'][1])
@@ -440,6 +438,132 @@ def open_gui():
             self.baseline_epoch_end.set(config_defaults['trials']['baseline_epoch'][1])
             self.concat_bidir_stimpairs.set(config_defaults['trials']['concat_bidirectional_pairs'])
             self.min_stimpair_trials.set(config_defaults['trials']['minimum_stimpair_trials'])
+
+
+
+    #
+    # the visualization configuration dialog
+    #
+    class VisualizationDialog(object):
+
+        def __init__(self, parent):
+            pd_window_height = 340
+            pd_window_width = 460
+
+            # retrieve values from config
+            self.visualize_neg = tk.IntVar(value=cfg('visualization', 'negative'))
+            self.visualize_pos = tk.IntVar(value=cfg('visualization', 'positive'))
+            self.visualize_x_axis_epoch_start = tk.DoubleVar(value=cfg('visualization', 'x_axis_epoch')[0])
+            self.visualize_x_axis_epoch_end = tk.DoubleVar(value=cfg('visualization', 'x_axis_epoch')[1])
+            self.visualize_blank_stim_epoch_start = tk.DoubleVar(value=cfg('visualization', 'blank_stim_epoch')[0])
+            self.visualize_blank_stim_epoch_end = tk.DoubleVar(value=cfg('visualization', 'blank_stim_epoch')[1])
+            self.generate_electrode_images = tk.IntVar(value=cfg('visualization', 'generate_electrode_images'))
+            self.generate_stimpair_images = tk.IntVar(value=cfg('visualization', 'generate_stimpair_images'))
+            self.generate_matrix_images = tk.IntVar(value=cfg('visualization', 'generate_matrix_images'))
+
+
+            #
+            # elements
+            #
+            self.root = tk.Toplevel(parent)
+            self.root.title('Visualization')
+            self.root.geometry("{}x{}+{}+{}".format(pd_window_width, pd_window_height,
+                                      int((win.winfo_screenwidth() / 2) - (pd_window_width / 2)),
+                                      int((win.winfo_screenheight() / 2) - (pd_window_height / 2))))
+            self.root.resizable(False, False)
+
+            #
+            pd_y_pos = 15
+            tk.Label(self.root, text="Negative deflections:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.visualize_neg, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 30
+            tk.Label(self.root, text="Positive deflections:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.visualize_pos, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 42
+
+            tk.Label(self.root, text="X-axis epoch/window:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            self.txt_visualize_x_axis_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_visualize_x_axis_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
+            tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
+            self.txt_visualize_x_axis_epoch_end = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_visualize_x_axis_epoch_end.place(x=350, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+            tk.Label(self.root, text="Blank stimulus epoch/window:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            self.txt_visualize_blank_stim_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_blank_stim_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_visualize_blank_stim_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
+            tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
+            self.txt_visualize_blank_stim_epoch_end = ttk.Entry(self.root, textvariable=self.visualize_blank_stim_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_visualize_blank_stim_epoch_end.place(x=350, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 42
+
+            tk.Label(self.root, text="Generate electrode images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_electrode_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 30
+            tk.Label(self.root, text="Generate stimulus-pair images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_stimpair_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
+            pd_y_pos += 30
+            tk.Label(self.root, text="Generate matrix images:", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Checkbutton(self.root, text='', anchor="w", variable=self.generate_matrix_images, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
+
+
+            #
+            tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
+            tk.Button(self.root, text="Defaults", command=self.defaults).place(x=(pd_window_width - 100) / 2, y=pd_window_height - 35, width=100, height=25)
+            tk.Button(self.root, text="Cancel", command=self.cancel).place(x=pd_window_width - 130, y=pd_window_height - 40, width=120, height=30)
+
+            # modal window
+            self.root.wait_visibility()
+            self.root.grab_set()
+            self.root.transient(parent)
+            self.parent = parent
+            self.root.focus()
+
+        def ok(self):
+
+            # check input values
+            if self.visualize_x_axis_epoch_end.get() <= self.visualize_x_axis_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the x-axis epoch setting. '
+                                                                    'The given end-point (' + str(self.visualize_x_axis_epoch_end.get()) + ') lies on or before the start-point (' + str(self.visualize_x_axis_epoch_start.get()) + ')')
+                self.txt_visualize_x_axis_epoch_start.focus()
+                self.txt_visualize_x_axis_epoch_start.select_range(0, tk.END)
+                return
+            if self.visualize_blank_stim_epoch_end.get() <= self.visualize_blank_stim_epoch_start.get():
+                messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the blank stimulus epoch setting. '
+                                                                    'The given end-point (' + str(self.visualize_blank_stim_epoch_end.get()) + ') lies on or before the start-point (' + str(self.visualize_blank_stim_epoch_start.get()) + ')')
+                self.txt_visualize_blank_stim_epoch_start.focus()
+                self.txt_visualize_blank_stim_epoch_start.select_range(0, tk.END)
+                return
+            # TODO: check inside of trial epoch
+
+            # update config
+            cfg_set(self.visualize_neg.get(), 'visualization', 'negative')
+            cfg_set(self.visualize_pos.get(), 'visualization', 'positive')
+            cfg_set((self.visualize_x_axis_epoch_start.get(), self.visualize_x_axis_epoch_end.get()), 'visualization', 'x_axis_epoch')
+            cfg_set((self.visualize_blank_stim_epoch_start.get(), self.visualize_blank_stim_epoch_end.get()), 'visualization', 'blank_stim_epoch')
+            cfg_set(self.generate_electrode_images.get(), 'visualization', 'generate_electrode_images')
+            cfg_set(self.generate_stimpair_images.get(), 'visualization', 'generate_stimpair_images')
+            cfg_set(self.generate_matrix_images.get(), 'visualization', 'generate_matrix_images')
+
+            #
+            self.root.grab_release()
+            self.root.destroy()
+
+        def cancel(self):
+            self.root.grab_release()
+            self.root.destroy()
+
+        def defaults(self):
+            config_defaults = create_default_config()
+            self.visualize_neg.set(config_defaults['visualization']['negative'])
+            self.visualize_pos.set(config_defaults['visualization']['positive'])
+            self.visualize_x_axis_epoch_start.set(config_defaults['visualization']['x_axis_epoch'][0])
+            self.visualize_x_axis_epoch_end.set(config_defaults['visualization']['x_axis_epoch'][1])
+            self.visualize_blank_stim_epoch_start.set(config_defaults['visualization']['blank_stim_epoch'][0])
+            self.visualize_blank_stim_epoch_end.set(config_defaults['visualization']['blank_stim_epoch'][1])
+            self.generate_electrode_images.set(config_defaults['visualization']['generate_electrode_images'])
+            self.generate_stimpair_images.set(config_defaults['visualization']['generate_stimpair_images'])
+            self.generate_matrix_images.set(config_defaults['visualization']['generate_matrix_images'])
+
 
     #
     # the main window
@@ -639,6 +763,11 @@ def open_gui():
         dialog = TrialsAndChannelTypesDialog(win)
         win.wait_window(dialog.root)
 
+
+    def config_visualization_callback():
+        dialog = VisualizationDialog(win)
+        win.wait_window(dialog.root)
+
     def btn_process_start_onclick():
         nonlocal processing_thread, processing_thread_lock
 
@@ -669,7 +798,7 @@ def open_gui():
         btn_cfg_preproc.config(state='disabled')
         btn_cfg_trials_channel_types.config(state='disabled')
         #btn_cfg_detect_metrics.config(state='disabled')
-        #btn_cfg_visualization.config(state='disabled')
+        btn_cfg_visualization.config(state='disabled')
 
         btn_output_browse.config(state='disabled')
 
@@ -753,7 +882,7 @@ def open_gui():
         btn_cfg_preproc.config(state='normal')
         btn_cfg_trials_channel_types.config(state='normal')
         #btn_cfg_detect_metrics.config(state='normal')
-        #btn_cfg_visualization.config(state='normal')
+        btn_cfg_visualization.config(state='normal')
 
         btn_output_browse.config(state='normal')
         btn_process.config(state='normal')
@@ -809,8 +938,8 @@ def open_gui():
     y_pos += 28
     #btn_cfg_detect_metrics = tk.Button(win, text="Detection & Metrics")
     #btn_cfg_detect_metrics.place(x=10, y=y_pos, width=config_btn_width, height=28)
-    #btn_cfg_visualization = tk.Button(win, text="Visualizations")
-    #btn_cfg_visualization.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
+    btn_cfg_visualization = tk.Button(win, text="Visualization", command=config_visualization_callback)
+    btn_cfg_visualization.place(x=10 + config_btn_width + 10, y=y_pos, width=config_btn_width, height=28)
     # TODO: speed vs memory processing
 
     y_pos += 45 + 2

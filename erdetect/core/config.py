@@ -88,7 +88,7 @@ def create_default_config():
     config['visualization'] = dict()
     config['visualization']['negative']                             = True                      # whether to output negative responses
     config['visualization']['positive']                             = False                     # whether to output positive responses
-    config['visualization']['x_axis_epoch']                         = (-0.2, 1)                 # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
+    config['visualization']['x_axis_epoch']                         = (-0.2, 1.0)                 # the range for the x-axis in display, (in seconds) relative to the stimulus onset that will be used as the range
     config['visualization']['blank_stim_epoch']                     = (-0.015, 0.0025)          # the range
     config['visualization']['generate_electrode_images']            = True
     config['visualization']['generate_stimpair_images']             = True
