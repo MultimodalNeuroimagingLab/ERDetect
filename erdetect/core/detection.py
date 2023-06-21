@@ -2,7 +2,7 @@
 Module that contains the function(s) to detect evoked response peaks
 
 
-Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2023, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 Baseline standard deviation based detection method is adapted from:
     Original author: Dorien van Blooijs (2018)
@@ -60,7 +60,6 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
 
     #
     method = config('detection', 'method')
-
     if method == 'std_base':
 
         # (tuple) The time-span on which the baseline is calculated, expressed as a tuple with the start- and end-point in
@@ -132,10 +131,10 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
 
     elif method == 'cross_proj':
 
-        if waveform_metrics is None:
+        if cross_proj_metrics is None:
             logging.error('Method is set to \'cross_proj\' but no cross-projection metrics were passed to the detection function')
             raise ValueError('No cross-projection were passed')
-        elif not waveform_metrics.shape == er_peak_indices.shape:
+        elif not cross_proj_metrics.shape == er_peak_indices.shape:
             logging.error('Size of the cross-projection metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
             raise ValueError('Cross-projection and output buffer size mismatch')
 
