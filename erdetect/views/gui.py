@@ -188,7 +188,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.cmb_early_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_early_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
-            self.lbl_early_reref_excl_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
+            self.lbl_early_reref_excl_epoch = tk.Label(self.root, text="Stim. channel exclusion window", anchor='e', state=early_reref_state)
             self.lbl_early_reref_excl_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_early_reref_excl_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_excl_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_early_reref_excl_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -236,7 +236,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.cmb_late_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_late_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
-            self.lbl_late_reref_excl_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
+            self.lbl_late_reref_excl_epoch = tk.Label(self.root, text="Stim. channel exclusion window", anchor='e', state=late_reref_state)
             self.lbl_late_reref_excl_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_late_reref_excl_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_excl_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_late_reref_excl_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -424,7 +424,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
 
             #
             pd_y_pos = 15
-            self.lbl_trial_epoch = tk.Label(self.root, text="Trial epoch/window", anchor='e')
+            self.lbl_trial_epoch = tk.Label(self.root, text="Trial window", anchor='e')
             self.lbl_trial_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_trial_epoch_start = ttk.Entry(self.root, textvariable=self.trial_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_trial_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -449,7 +449,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.cmb_baseline_norm.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_baseline_norm.place(x=260, y=pd_y_pos, width=250, height=25)
             pd_y_pos += 32
-            self.lbl_baseline_epoch = tk.Label(self.root, text="Baseline epoch/window", anchor='e')
+            self.lbl_baseline_epoch = tk.Label(self.root, text="Baseline window", anchor='e')
             self.lbl_baseline_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_baseline_epoch_start = ttk.Entry(self.root, textvariable=self.baseline_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_baseline_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -633,7 +633,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.chk_metrics_cross_proj.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 32
             metrics_cross_proj_state = 'normal' if self.metrics_cross_proj_enabled.get() else 'disabled'
-            self.lbl_metrics_cross_proj_epoch = tk.Label(self.root, text="Epoch/window", anchor='e', state=metrics_cross_proj_state)
+            self.lbl_metrics_cross_proj_epoch = tk.Label(self.root, text="Window", anchor='e', state=metrics_cross_proj_state)
             self.lbl_metrics_cross_proj_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_metrics_cross_proj_epoch_start = ttk.Entry(self.root, textvariable=self.metrics_cross_proj_epoch_start, state=metrics_cross_proj_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_metrics_cross_proj_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -646,7 +646,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.chk_metrics_waveform.place(x=10, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 32
             metrics_waveform_state = 'normal' if self.metrics_waveform_enabled.get() else 'disabled'
-            self.lbl_metrics_waveform_epoch = tk.Label(self.root, text="Epoch/window", anchor='e', state=metrics_waveform_state)
+            self.lbl_metrics_waveform_epoch = tk.Label(self.root, text="Window", anchor='e', state=metrics_waveform_state)
             self.lbl_metrics_waveform_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_metrics_waveform_epoch_start = ttk.Entry(self.root, textvariable=self.metrics_waveform_epoch_start, state=metrics_waveform_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_metrics_waveform_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
@@ -674,14 +674,14 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             tk.Label(self.root, text="Positive deflections", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.detect_pos, onvalue=1, offvalue=0).place(x=256, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 38
-            tk.Label(self.root, text="Peak search epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            tk.Label(self.root, text="Peak search window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_detect_peak_search_epoch_start = ttk.Entry(self.root, textvariable=self.detect_peak_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_detect_peak_search_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_detect_peak_search_epoch_end = ttk.Entry(self.root, textvariable=self.detect_peak_search_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_detect_peak_search_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
-            tk.Label(self.root, text="Response search epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            tk.Label(self.root, text="Response search window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_detect_response_search_epoch_start = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_detect_response_search_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
@@ -697,7 +697,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             self.cmb_detect_method_handling.place(x=260, y=pd_y_pos, width=300, height=25)
             #pd_y_pos += 32
             #
-            #self.lbl_detect_stdbase_epoch = tk.Label(self.root, text="Baseline epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            #self.lbl_detect_stdbase_epoch = tk.Label(self.root, text="Baseline window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
             #self.txt_detect_stdbase_epoch_start = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             #self.txt_detect_stdbase_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
             #self.lbl_detect_stdbase_epoch_range = tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
@@ -840,14 +840,14 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             tk.Checkbutton(self.root, text='', anchor="w", variable=self.visualize_pos, onvalue=1, offvalue=0).place(x=236, y=pd_y_pos, width=pd_window_width, height=30)
             pd_y_pos += 42
 
-            tk.Label(self.root, text="X-axis epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="X-axis window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             self.txt_visualize_x_axis_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_x_axis_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
             self.txt_visualize_x_axis_epoch_end = ttk.Entry(self.root, textvariable=self.visualize_x_axis_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_x_axis_epoch_end.place(x=350, y=pd_y_pos, width=70, height=25)
             pd_y_pos += 32
-            tk.Label(self.root, text="Blank stimulus epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
+            tk.Label(self.root, text="Blank stimulus window", anchor='e').place(x=5, y=pd_y_pos + 2, width=225, height=20)
             self.txt_visualize_blank_stim_epoch_start = ttk.Entry(self.root, textvariable=self.visualize_blank_stim_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_visualize_blank_stim_epoch_start.place(x=240, y=pd_y_pos, width=70, height=25)
             tk.Label(self.root, text="-").place(x=315, y=pd_y_pos, width=30, height=25)
