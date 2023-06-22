@@ -291,8 +291,7 @@ def execute():
     if args.gui:
 
         # open and run on theGUI
-        open_gui()
-        # TODO: transfer CLI input/output arguments to GUI
+        open_gui(init_input_directory=args.bids_dir, init_output_directory=args.output_dir)
 
     else:
 
