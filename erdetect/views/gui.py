@@ -33,6 +33,8 @@ def open_gui():
     import tkinter.ttk as ttk
     from tkinter import filedialog, messagebox
 
+    BTN_TOGGLE_ON_BACKGROUND = "#8296FD"
+
     # custom callbacks
     def _txt_double_input_validate(char, entry_value):
         return is_number(entry_value) or entry_value in ('-', '-.', '.', ',', '')
@@ -50,8 +52,33 @@ def open_gui():
     def _update_combo_losefocus(self):
         self.widget.master.focus()
 
+    def _btn_toggle(button):
+        if button.config('relief')[-1] == 'sunken':
+            _btn_set_state(button, False, False)
+        else:
+            _btn_set_state(button, False, True)
+
+    def _btn_set_state(button, disabled, on):
+        button.config(relief='sunken' if on else 'raised')
+        if not disabled and on:
+            button.config(background=BTN_TOGGLE_ON_BACKGROUND, foreground='white')
+        else:
+            button.config(background=win['background'], foreground='black')
+        button.configure(state='disabled' if disabled else 'normal')
+
+    def _create_channel_types_lst(btn_ecog, btn_seeg, btn_dbs):
+        lst_channel_types = []
+        if btn_ecog.config('relief')[-1] == 'sunken':
+            lst_channel_types.append('ECOG')
+        if btn_seeg.config('relief')[-1] == 'sunken':
+            lst_channel_types.append('SEEG')
+        if btn_dbs.config('relief')[-1] == 'sunken':
+            lst_channel_types.append('DBS')
+        return lst_channel_types
+
+
     #
-    # the pre-process configuration dialog
+    # pre-process configuration dialog
     #
     class PreprocessDialog(object):
 
@@ -65,10 +92,14 @@ def open_gui():
             new_state = 'normal' if self.early_reref.get() else 'disabled'
             self.lbl_early_reref_method.configure(state=new_state)
             self.cmb_early_reref_method.configure(state=new_state)
-            self.lbl_early_reref_epoch.configure(state=new_state)
-            self.txt_early_reref_epoch_start.configure(state=new_state)
-            self.lbl_early_reref_epoch_range.configure(state=new_state)
-            self.txt_early_reref_epoch_end.configure(state=new_state)
+            self.lbl_early_reref_excl_epoch.configure(state=new_state)
+            self.txt_early_reref_excl_epoch_start.configure(state=new_state)
+            self.lbl_early_reref_excl_epoch_range.configure(state=new_state)
+            self.txt_early_reref_excl_epoch_end.configure(state=new_state)
+            self.lbl_early_reref_channel_types.configure(state=new_state)
+            _btn_set_state(self.btn_early_reref_channel_types_ecog, new_state == 'disabled', self.btn_early_reref_channel_types_ecog.config('relief')[-1] == 'sunken')
+            _btn_set_state(self.btn_early_reref_channel_types_seeg, new_state == 'disabled', self.btn_early_reref_channel_types_seeg.config('relief')[-1] == 'sunken')
+            _btn_set_state(self.btn_early_reref_channel_types_dbs, new_state == 'disabled', self.btn_early_reref_channel_types_dbs.config('relief')[-1] == 'sunken')
 
         def _update_line_noise_controls(self):
             new_state = 'normal' if self.line_noise_removal.get() else 'disabled'
@@ -79,10 +110,14 @@ def open_gui():
             new_state = 'normal' if self.late_reref.get() else 'disabled'
             self.lbl_late_reref_method.configure(state=new_state)
             self.cmb_late_reref_method.configure(state=new_state)
-            self.lbl_late_reref_epoch.configure(state=new_state)
-            self.txt_late_reref_epoch_start.configure(state=new_state)
-            self.lbl_late_reref_epoch_range.configure(state=new_state)
-            self.txt_late_reref_epoch_end.configure(state=new_state)
+            self.lbl_late_reref_excl_epoch.configure(state=new_state)
+            self.txt_late_reref_excl_epoch_start.configure(state=new_state)
+            self.lbl_late_reref_excl_epoch_range.configure(state=new_state)
+            self.txt_late_reref_excl_epoch_end.configure(state=new_state)
+            self.lbl_late_reref_channel_types.configure(state=new_state)
+            _btn_set_state(self.btn_late_reref_channel_types_ecog, new_state == 'disabled', self.btn_late_reref_channel_types_ecog.config('relief')[-1] == 'sunken')
+            _btn_set_state(self.btn_late_reref_channel_types_seeg, new_state == 'disabled', self.btn_late_reref_channel_types_seeg.config('relief')[-1] == 'sunken')
+            _btn_set_state(self.btn_late_reref_channel_types_dbs, new_state == 'disabled', self.btn_late_reref_channel_types_dbs.config('relief')[-1] == 'sunken')
 
             new_CAR_state = 'normal' if self.late_reref.get() and self.reref_options_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
             self.lbl_late_reref_CAR_variance.configure(state=new_CAR_state)
@@ -94,15 +129,15 @@ def open_gui():
             self.lbl_late_reref_CAR_variance_quantile2.configure(state=new_CAR_variance_state)
 
         def __init__(self, parent):
-            pd_window_height = 450
+            pd_window_height = 520
             pd_window_width = 630
 
             # retrieve values from config
             self.highpass = tk.IntVar(value=cfg('preprocess', 'high_pass'))
             self.early_reref = tk.IntVar(value=cfg('preprocess', 'early_re_referencing', 'enabled'))
             self.early_reref_method = tk.StringVar(value=self.reref_options[str(cfg('preprocess', 'early_re_referencing', 'method'))])
-            self.early_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0])
-            self.early_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1])
+            self.early_reref_excl_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0])
+            self.early_reref_excl_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1])
 
             if cfg('preprocess', 'line_noise_removal').lower() == 'off':
                 self.line_noise_removal = tk.IntVar(value=0)
@@ -116,8 +151,8 @@ def open_gui():
 
             self.late_reref = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'enabled'))
             self.late_reref_method = tk.StringVar(value=self.reref_options[str(cfg('preprocess', 'late_re_referencing', 'method'))])
-            self.late_reref_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0])
-            self.late_reref_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1])
+            self.late_reref_excl_epoch_start = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0])
+            self.late_reref_excl_epoch_end = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1])
             self.late_reref_CAR_variance_enabled = tk.IntVar(value=cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') != -1)
             if self.late_reref_CAR_variance_enabled.get():
                 self.late_reref_CAR_variance_quantile = tk.DoubleVar(value=cfg('preprocess', 'late_re_referencing', 'CAR_by_variance'))
@@ -153,14 +188,27 @@ def open_gui():
             self.cmb_early_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_early_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
-            self.lbl_early_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
-            self.lbl_early_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_early_reref_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
-            self.txt_early_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
-            self.lbl_early_reref_epoch_range = tk.Label(self.root, text="-", state=early_reref_state)
-            self.lbl_early_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_early_reref_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_epoch_end, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
-            self.txt_early_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            self.lbl_early_reref_excl_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=early_reref_state)
+            self.lbl_early_reref_excl_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_early_reref_excl_epoch_start = ttk.Entry(self.root, textvariable=self.early_reref_excl_epoch_start, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_early_reref_excl_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_early_reref_excl_epoch_range = tk.Label(self.root, text="-", state=early_reref_state)
+            self.lbl_early_reref_excl_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_early_reref_excl_epoch_end = ttk.Entry(self.root, textvariable=self.early_reref_excl_epoch_end, state=early_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_early_reref_excl_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+            self.lbl_early_reref_channel_types = tk.Label(self.root, text="Included channel-types", anchor='e', state=early_reref_state)
+            self.lbl_early_reref_channel_types.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.btn_early_reref_channel_types_ecog = tk.Button(self.root, text="ECoG", command=lambda:_btn_toggle(self.btn_early_reref_channel_types_ecog), state=early_reref_state)
+            self.btn_early_reref_channel_types_ecog.place(x=260, y=pd_y_pos, width=65, height=25)
+            self.btn_early_reref_channel_types_seeg = tk.Button(self.root, text="SEEG", command=lambda:_btn_toggle(self.btn_early_reref_channel_types_seeg), state=early_reref_state)
+            self.btn_early_reref_channel_types_seeg.place(x=326, y=pd_y_pos, width=65, height=25)
+            self.btn_early_reref_channel_types_dbs = tk.Button(self.root, text="DBS", command=lambda:_btn_toggle(self.btn_early_reref_channel_types_dbs), state=early_reref_state)
+            self.btn_early_reref_channel_types_dbs.place(x=392, y=pd_y_pos, width=65, height=25)
+            early_reref_channel_types = [x.lower() for x in cfg('preprocess', 'early_re_referencing', 'channel_types')]
+            _btn_set_state(self.btn_early_reref_channel_types_ecog, early_reref_state == 'disabled', 'ecog' in early_reref_channel_types)
+            _btn_set_state(self.btn_early_reref_channel_types_seeg, early_reref_state == 'disabled', 'seeg' in early_reref_channel_types)
+            _btn_set_state(self.btn_early_reref_channel_types_dbs, early_reref_state == 'disabled', 'dbs' in early_reref_channel_types)
             pd_y_pos += 42
 
             self.chk_line_noise = tk.Checkbutton(self.root, text='Line-noise removal:', anchor="w", variable=self.line_noise_removal, onvalue=1, offvalue=0, command=self._update_line_noise_controls)
@@ -188,14 +236,27 @@ def open_gui():
             self.cmb_late_reref_method.bind("<FocusIn>", _update_combo_losefocus)
             self.cmb_late_reref_method.place(x=260, y=pd_y_pos, width=350, height=25)
             pd_y_pos += 32
-            self.lbl_late_reref_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
-            self.lbl_late_reref_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
-            self.txt_late_reref_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
-            self.txt_late_reref_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
-            self.lbl_late_reref_epoch_range = tk.Label(self.root, text="-", state=late_reref_state)
-            self.lbl_late_reref_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
-            self.txt_late_reref_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_epoch_end, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
-            self.txt_late_reref_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            self.lbl_late_reref_excl_epoch = tk.Label(self.root, text="Stim exclusion window", anchor='e', state=late_reref_state)
+            self.lbl_late_reref_excl_epoch.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.txt_late_reref_excl_epoch_start = ttk.Entry(self.root, textvariable=self.late_reref_excl_epoch_start, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_late_reref_excl_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            self.lbl_late_reref_excl_epoch_range = tk.Label(self.root, text="-", state=late_reref_state)
+            self.lbl_late_reref_excl_epoch_range.place(x=335, y=pd_y_pos, width=30, height=25)
+            self.txt_late_reref_excl_epoch_end = ttk.Entry(self.root, textvariable=self.late_reref_excl_epoch_end, state=late_reref_state, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            self.txt_late_reref_excl_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
+            pd_y_pos += 32
+            self.lbl_late_reref_channel_types = tk.Label(self.root, text="Included channel-types", anchor='e', state=late_reref_state)
+            self.lbl_late_reref_channel_types.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.btn_late_reref_channel_types_ecog = tk.Button(self.root, text="ECoG", command=lambda:_btn_toggle(self.btn_late_reref_channel_types_ecog), state=late_reref_state)
+            self.btn_late_reref_channel_types_ecog.place(x=260, y=pd_y_pos, width=65, height=25)
+            self.btn_late_reref_channel_types_seeg = tk.Button(self.root, text="SEEG", command=lambda:_btn_toggle(self.btn_late_reref_channel_types_seeg), state=late_reref_state)
+            self.btn_late_reref_channel_types_seeg.place(x=326, y=pd_y_pos, width=65, height=25)
+            self.btn_late_reref_channel_types_dbs = tk.Button(self.root, text="DBS", command=lambda:_btn_toggle(self.btn_late_reref_channel_types_dbs), state=late_reref_state)
+            self.btn_late_reref_channel_types_dbs.place(x=392, y=pd_y_pos, width=65, height=25)
+            late_reref_channel_types = [x.lower() for x in cfg('preprocess', 'late_re_referencing', 'channel_types')]
+            _btn_set_state(self.btn_late_reref_channel_types_ecog, late_reref_state == 'disabled', 'ecog' in late_reref_channel_types)
+            _btn_set_state(self.btn_late_reref_channel_types_seeg, late_reref_state == 'disabled', 'seeg' in late_reref_channel_types)
+            _btn_set_state(self.btn_late_reref_channel_types_dbs, late_reref_state == 'disabled', 'dbs' in late_reref_channel_types)
             pd_y_pos += 32
 
             late_reref_CAR_state = 'normal' if self.late_reref.get() and self.reref_options_values[self.late_reref_method.get()] in ('CAR', 'CAR_headbox') else 'disabled'
@@ -224,22 +285,31 @@ def open_gui():
             self.parent = parent
             self.root.focus()
 
+
         def ok(self):
+            lst_early_reref_channel_types = tuple(_create_channel_types_lst(self.btn_early_reref_channel_types_ecog, self.btn_early_reref_channel_types_seeg, self.btn_early_reref_channel_types_dbs))
+            lst_late_reref_channel_types = tuple(_create_channel_types_lst(self.btn_late_reref_channel_types_ecog, self.btn_late_reref_channel_types_seeg, self.btn_late_reref_channel_types_dbs))
 
             # check input values
             if self.early_reref.get():
-                if self.early_reref_epoch_end.get() < self.early_reref_epoch_start.get():
+                if self.early_reref_excl_epoch_end.get() < self.early_reref_excl_epoch_start.get():
                     messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the early re-referencing stim exclusion setting. '
-                                                                        'The given end-point (' + str(self.early_reref_epoch_end.get()) + ') lies before the start-point (' + str(self.early_reref_epoch_start.get()) + ')')
-                    self.txt_early_reref_epoch_start.focus()
-                    self.txt_early_reref_epoch_start.select_range(0, tk.END)
+                                                                        'The given end-point (' + str(self.early_reref_excl_epoch_end.get()) + ') lies before the start-point (' + str(self.early_reref_excl_epoch_start.get()) + ')')
+                    self.txt_early_reref_excl_epoch_start.focus()
+                    self.txt_early_reref_excl_epoch_start.select_range(0, tk.END)
+                    return
+                if len(lst_early_reref_channel_types) == 0:
+                    messagebox.showerror(title='Invalid input', message='At least one channel type should be enabled for the early re-referencing included channel-types setting.')
                     return
             if self.late_reref.get():
-                if self.late_reref_epoch_end.get() < self.late_reref_epoch_start.get():
+                if self.late_reref_excl_epoch_end.get() < self.late_reref_excl_epoch_start.get():
                     messagebox.showerror(title='Invalid input', message='Invalid window (start and end values) for the late re-referencing stim exclusion setting. '
-                                                                        'The given end-point (' + str(self.late_reref_epoch_end.get()) + ') lies before the start-point (' + str(self.late_reref_epoch_start.get()) + ')')
-                    self.txt_late_reref_epoch_start.focus()
-                    self.txt_late_reref_epoch_start.select_range(0, tk.END)
+                                                                        'The given end-point (' + str(self.late_reref_excl_epoch_end.get()) + ') lies before the start-point (' + str(self.late_reref_excl_epoch_start.get()) + ')')
+                    self.txt_late_reref_excl_epoch_start.focus()
+                    self.txt_late_reref_excl_epoch_start.select_range(0, tk.END)
+                    return
+                if len(lst_late_reref_channel_types) == 0:
+                    messagebox.showerror(title='Invalid input', message='At least one channel type should be enabled for the late re-referencing included channel-types setting.')
                     return
                 if self.late_reref_CAR_variance_enabled.get():
                     if self.late_reref_CAR_variance_quantile.get() < 0 or self.late_reref_CAR_variance_quantile.get() > 1:
@@ -253,15 +323,19 @@ def open_gui():
             cfg_set(self.early_reref.get(), 'preprocess', 'early_re_referencing', 'enabled')
             cfg_set(self.reref_options_values[self.early_reref_method.get()], 'preprocess', 'early_re_referencing', 'method')
             if self.early_reref.get():
-                cfg_set((self.early_reref_epoch_start.get(), self.early_reref_epoch_end.get()), 'preprocess', 'early_re_referencing', 'stim_excl_epoch')
+                cfg_set((self.early_reref_excl_epoch_start.get(), self.early_reref_excl_epoch_end.get()), 'preprocess', 'early_re_referencing', 'stim_excl_epoch')
+            cfg_set(lst_early_reref_channel_types, 'preprocess', 'early_re_referencing', 'channel_types')
+
             if self.line_noise_removal.get():
                 cfg_set(self.line_noise_removal_options_values[self.line_noise_frequency.get()], 'preprocess', 'line_noise_removal')
             else:
                 cfg_set('off', 'preprocess', 'line_noise_removal')
+
             cfg_set(self.late_reref.get(), 'preprocess', 'late_re_referencing', 'enabled')
             cfg_set(self.reref_options_values[self.late_reref_method.get()], 'preprocess', 'late_re_referencing', 'method')
+            cfg_set(lst_late_reref_channel_types, 'preprocess', 'late_re_referencing', 'channel_types')
             if self.late_reref.get():
-                cfg_set((self.late_reref_epoch_start.get(), self.late_reref_epoch_end.get()), 'preprocess', 'late_re_referencing', 'stim_excl_epoch')
+                cfg_set((self.late_reref_excl_epoch_start.get(), self.late_reref_excl_epoch_end.get()), 'preprocess', 'late_re_referencing', 'stim_excl_epoch')
                 if self.late_reref_CAR_variance_enabled.get():
                     cfg_set(self.late_reref_CAR_variance_quantile.get(), 'preprocess', 'late_re_referencing', 'CAR_by_variance')
                 else:
@@ -280,18 +354,28 @@ def open_gui():
             self.highpass.set(config_defaults['preprocess']['high_pass'])
             self.early_reref.set(config_defaults['preprocess']['early_re_referencing']['enabled'])
             self.early_reref_method.set(self.reref_options[config_defaults['preprocess']['early_re_referencing']['method']])
-            self.early_reref_epoch_start.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][0])
-            self.early_reref_epoch_end.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][1])
+            self.early_reref_excl_epoch_start.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][0])
+            self.early_reref_excl_epoch_end.set(config_defaults['preprocess']['early_re_referencing']['stim_excl_epoch'][1])
+            early_reref_channel_types = [x.lower() for x in config_defaults['preprocess']['early_re_referencing']['channel_types']]
+            _btn_set_state(self.btn_early_reref_channel_types_ecog, self.early_reref.get() == 0, 'ecog' in early_reref_channel_types)
+            _btn_set_state(self.btn_early_reref_channel_types_seeg, self.early_reref.get() == 0, 'seeg' in early_reref_channel_types)
+            _btn_set_state(self.btn_early_reref_channel_types_dbs, self.early_reref.get() == 0, 'dbs' in early_reref_channel_types)
+
             if config_defaults['preprocess']['line_noise_removal'].lower() == 'off':
                 self.line_noise_removal.set(0)
                 self.line_noise_frequency.set(self.line_noise_removal_options['JSON'])
             else:
                 self.line_noise_removal.set(1)
                 self.line_noise_frequency.set(self.line_noise_removal_options[config_defaults['preprocess']['line_noise_removal']])
+
             self.late_reref.set(config_defaults['preprocess']['late_re_referencing']['enabled'])
             self.late_reref_method.set(self.reref_options[config_defaults['preprocess']['late_re_referencing']['method']])
-            self.late_reref_epoch_start.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][0])
-            self.late_reref_epoch_end.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][1])
+            self.late_reref_excl_epoch_start.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][0])
+            self.late_reref_excl_epoch_end.set(config_defaults['preprocess']['late_re_referencing']['stim_excl_epoch'][1])
+            late_reref_channel_types = [x.lower() for x in config_defaults['preprocess']['late_re_referencing']['channel_types']]
+            _btn_set_state(self.btn_late_reref_channel_types_ecog, self.late_reref.get() == 0, 'ecog' in late_reref_channel_types)
+            _btn_set_state(self.btn_late_reref_channel_types_seeg, self.late_reref.get() == 0, 'seeg' in late_reref_channel_types)
+            _btn_set_state(self.btn_late_reref_channel_types_dbs, self.late_reref.get() == 0, 'dbs' in late_reref_channel_types)
             self.late_reref_CAR_variance_enabled.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1)
             if config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'] != -1:
                 self.late_reref_CAR_variance_quantile.set(config_defaults['preprocess']['late_re_referencing']['CAR_by_variance'])
@@ -304,7 +388,7 @@ def open_gui():
 
 
     #
-    # the trials & channel-types configuration dialog
+    # trials & channel-types configuration dialog
     #
     class TrialsAndChannelTypesDialog(object):
 
@@ -383,6 +467,32 @@ def open_gui():
             self.lbl_min_stimpair_trials.place(x=5, y=pd_y_pos + 2, width=245, height=20)
             self.txt_min_stimpair_trials = ttk.Entry(self.root, textvariable=self.min_stimpair_trials, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_integer_pos_input_validate), '%S', '%P'))
             self.txt_min_stimpair_trials.place(x=260, y=pd_y_pos, width=40, height=25)
+            pd_y_pos += 50
+            self.lbl_measured_channel_types = tk.Label(self.root, text="Include types as measured electrodes:", anchor='e')
+            self.lbl_measured_channel_types.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.btn_measured_channel_types_ecog = tk.Button(self.root, text="ECoG", command=lambda:_btn_toggle(self.btn_measured_channel_types_ecog))
+            self.btn_measured_channel_types_ecog.place(x=260, y=pd_y_pos, width=65, height=25)
+            self.btn_measured_channel_types_seeg = tk.Button(self.root, text="SEEG", command=lambda:_btn_toggle(self.btn_measured_channel_types_seeg))
+            self.btn_measured_channel_types_seeg.place(x=326, y=pd_y_pos, width=65, height=25)
+            self.btn_measured_channel_types_dbs = tk.Button(self.root, text="DBS", command=lambda:_btn_toggle(self.btn_measured_channel_types_dbs))
+            self.btn_measured_channel_types_dbs.place(x=392, y=pd_y_pos, width=65, height=25)
+            measured_channel_types = [x.lower() for x in cfg('channels', 'measured_types')]
+            _btn_set_state(self.btn_measured_channel_types_ecog, False, 'ecog' in measured_channel_types)
+            _btn_set_state(self.btn_measured_channel_types_seeg, False, 'seeg' in measured_channel_types)
+            _btn_set_state(self.btn_measured_channel_types_dbs, False, 'dbs' in measured_channel_types)
+            pd_y_pos += 32
+            self.lbl_stim_channel_types = tk.Label(self.root, text="Include types for stimulation:", anchor='e')
+            self.lbl_stim_channel_types.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.btn_stim_channel_types_ecog = tk.Button(self.root, text="ECoG", command=lambda:_btn_toggle(self.btn_stim_channel_types_ecog))
+            self.btn_stim_channel_types_ecog.place(x=260, y=pd_y_pos, width=65, height=25)
+            self.btn_stim_channel_types_seeg = tk.Button(self.root, text="SEEG", command=lambda:_btn_toggle(self.btn_stim_channel_types_seeg))
+            self.btn_stim_channel_types_seeg.place(x=326, y=pd_y_pos, width=65, height=25)
+            self.btn_stim_channel_types_dbs = tk.Button(self.root, text="DBS", command=lambda:_btn_toggle(self.btn_stim_channel_types_dbs))
+            self.btn_stim_channel_types_dbs.place(x=392, y=pd_y_pos, width=65, height=25)
+            stim_channel_types = [x.lower() for x in cfg('channels', 'stim_types')]
+            _btn_set_state(self.btn_stim_channel_types_ecog, False, 'ecog' in stim_channel_types)
+            _btn_set_state(self.btn_stim_channel_types_seeg, False, 'seeg' in stim_channel_types)
+            _btn_set_state(self.btn_stim_channel_types_dbs, False, 'dbs' in stim_channel_types)
 
             #
             tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
@@ -397,6 +507,8 @@ def open_gui():
             self.root.focus()
 
         def ok(self):
+            lst_measured_channel_types = tuple(_create_channel_types_lst(self.btn_measured_channel_types_ecog, self.btn_measured_channel_types_seeg, self.btn_measured_channel_types_dbs))
+            lst_stim_channel_types = tuple(_create_channel_types_lst(self.btn_stim_channel_types_ecog, self.btn_stim_channel_types_seeg, self.btn_stim_channel_types_dbs))
 
             # check input values
             if self.trial_epoch_end.get() <= self.trial_epoch_start.get():
@@ -411,6 +523,12 @@ def open_gui():
                 self.txt_baseline_epoch_start.focus()
                 self.txt_baseline_epoch_start.select_range(0, tk.END)
                 return
+            if len(lst_measured_channel_types) == 0:
+                messagebox.showerror(title='Invalid input', message='At least one channel type should be enabled for type of channels included for measurements setting.')
+                return
+            if len(lst_stim_channel_types) == 0:
+                messagebox.showerror(title='Invalid input', message='At least one channel type should be enabled for type of channels included for stimulation setting.')
+                return
 
             # update config
             cfg_set((self.trial_epoch_start.get(), self.trial_epoch_end.get()), 'trials', 'trial_epoch')
@@ -419,6 +537,8 @@ def open_gui():
             cfg_set((self.baseline_epoch_start.get(), self.baseline_epoch_end.get()), 'trials', 'baseline_epoch')
             cfg_set(self.concat_bidir_stimpairs.get(), 'trials', 'concat_bidirectional_pairs')
             cfg_set(self.min_stimpair_trials.get(), 'trials', 'minimum_stimpair_trials')
+            cfg_set(lst_measured_channel_types, 'channels', 'measured_types')
+            cfg_set(lst_stim_channel_types, 'channels', 'stim_types')
 
             #
             self.root.grab_release()
@@ -439,9 +559,18 @@ def open_gui():
             self.concat_bidir_stimpairs.set(config_defaults['trials']['concat_bidirectional_pairs'])
             self.min_stimpair_trials.set(config_defaults['trials']['minimum_stimpair_trials'])
 
+            measured_channel_types = [x.lower() for x in config_defaults['channels']['measured_types']]
+            _btn_set_state(self.btn_measured_channel_types_ecog, False, 'ecog' in measured_channel_types)
+            _btn_set_state(self.btn_measured_channel_types_seeg, False, 'seeg' in measured_channel_types)
+            _btn_set_state(self.btn_measured_channel_types_dbs, False, 'dbs' in measured_channel_types)
+            stim_channel_types = [x.lower() for x in config_defaults['channels']['stim_types']]
+            _btn_set_state(self.btn_stim_channel_types_ecog, False, 'ecog' in stim_channel_types)
+            _btn_set_state(self.btn_stim_channel_types_seeg, False, 'seeg' in stim_channel_types)
+            _btn_set_state(self.btn_stim_channel_types_dbs, False, 'dbs' in stim_channel_types)
+
 
     #
-    # the metrics & detection configuration dialog
+    # metrics & detection configuration dialog
     #
     class MetricsAndDetectionDialog(object):
 
@@ -655,7 +784,7 @@ def open_gui():
 
 
     #
-    # the visualization configuration dialog
+    # visualization configuration dialog
     #
     class VisualizationDialog(object):
 
@@ -779,7 +908,7 @@ def open_gui():
 
 
     #
-    # the main window
+    # main window
     #
     window_width = 640
     window_height = 800
@@ -847,8 +976,8 @@ def open_gui():
             # search for datasets
             try:
                 datasets_found = list_bids_datasets(  folder_selected, VALID_FORMAT_EXTENSIONS,
-                                                    strict_search=False,
-                                                    only_subjects_with_subsets=True)
+                                                      strict_search=False,
+                                                      only_subjects_with_subsets=True)
 
                 # place the dataset list in a long format structure
                 if len(datasets_found) > 0:
