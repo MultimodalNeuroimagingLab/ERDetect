@@ -22,7 +22,7 @@ from ieegprep.utils.misc import is_number
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem, create_default_config
 from erdetect._erdetect import process_subset, print_config
 
-def open_gui():
+def open_gui(init_input_directory=None, init_output_directory=None):
     """
 
     """
@@ -968,9 +968,64 @@ def open_gui():
     processing_thread = None
     processing_thread_lock = threading.Lock()
 
-    # callbacks
-    def btn_input_browse_onclick():
+    #
+    def update_datasets(dataset_directory):
         nonlocal datasets, datasets_filtered_keys
+
+        # reset datasets and filters
+        datasets = None
+        datasets_filtered_keys = None
+        subset_filter.set('')
+
+        # search for datasets
+        try:
+            datasets_found = list_bids_datasets(  dataset_directory, VALID_FORMAT_EXTENSIONS,
+                                                  strict_search=False,
+                                                  only_subjects_with_subsets=True)
+
+            # place the dataset list in a long format structure
+            if len(datasets_found) > 0:
+                datasets = dict()
+                for subject in sorted(datasets_found.keys()):
+                    for dataset in sorted(datasets_found[subject]):
+                        datasets[dataset] = dict()
+
+                        #
+                        short_label = os.path.splitext(os.path.basename(os.path.normpath(dataset)))[0]
+                        if short_label.endswith('_ieeg'):
+                            short_label = short_label[0:-5]
+                        if short_label.endswith('_eeg'):
+                            short_label = short_label[0:-4]
+
+                        #
+                        datasets[dataset]['label'] = short_label
+                        datasets[dataset]['selected'] = 0
+
+        except (NotADirectoryError, ValueError):
+            pass
+
+        # if no datasets, set text and disable list
+        if not datasets:
+            subset_items.set(value=('  - Could not find datasets in the selected BIDS directory -',))
+            lst_subsets.configure(background=win['background'], state='disabled')
+            btn_subsets_all.config(state='disabled')
+            btn_subsets_none.config(state='disabled')
+            lbl_subsets_filter.config(state='disabled')
+            txt_subsets_filter.config(state='disabled')
+            btn_process.config(state='disabled', text='Process')
+
+        # initially no selection, so disable process button
+        btn_process.config(state='disabled', text='Start')
+
+        #
+        txt_input_browse.config(state='readonly')
+        txt_output_browse.config(state='readonly')
+        btn_output_browse.config(state='normal')
+
+        #
+        update_subset_list('')
+
+    def btn_input_browse_onclick():
 
         initial_dir = input_directory.get()
         if not initial_dir:
@@ -985,58 +1040,8 @@ def open_gui():
             if not output_dir:
                 output_directory.set(os.path.join(input_directory.get(), 'derivatives', 'erdetect_out'))
 
-            # reset datasets and filters
-            datasets = None
-            datasets_filtered_keys = None
-            subset_filter.set('')
-
-            # search for datasets
-            try:
-                datasets_found = list_bids_datasets(  folder_selected, VALID_FORMAT_EXTENSIONS,
-                                                      strict_search=False,
-                                                      only_subjects_with_subsets=True)
-
-                # place the dataset list in a long format structure
-                if len(datasets_found) > 0:
-                    datasets = dict()
-                    for subject in sorted(datasets_found.keys()):
-                        for dataset in sorted(datasets_found[subject]):
-                            datasets[dataset] = dict()
-
-                            #
-                            short_label = os.path.splitext(os.path.basename(os.path.normpath(dataset)))[0]
-                            if short_label.endswith('_ieeg'):
-                                short_label = short_label[0:-5]
-                            if short_label.endswith('_eeg'):
-                                short_label = short_label[0:-4]
-
-                            #
-                            datasets[dataset]['label'] = short_label
-                            datasets[dataset]['selected'] = 0
-
-            except (NotADirectoryError, ValueError):
-                pass
-
-            # if no datasets, set text and disable list
-            if not datasets:
-                subset_items.set(value=('  - Could not find datasets in the selected BIDS directory -',))
-                lst_subsets.configure(background=win['background'], state='disabled')
-                btn_subsets_all.config(state='disabled')
-                btn_subsets_none.config(state='disabled')
-                lbl_subsets_filter.config(state='disabled')
-                txt_subsets_filter.config(state='disabled')
-                btn_process.config(state='disabled', text='Process')
-
-            # initially no selection, so disable process button
-            btn_process.config(state='disabled', text='Start')
-
-            #
-            txt_input_browse.config(state='readonly')
-            txt_output_browse.config(state='readonly')
-            btn_output_browse.config(state='normal')
-
-            #
-            update_subset_list('')
+            # update the dataset list with the selected folder
+            update_datasets(folder_selected)
 
     def btn_output_browse_onclick():
 
@@ -1333,7 +1338,26 @@ def open_gui():
     subject_pb.place(x=15, y=y_pos, width=window_width - 30, height=30)
     """
 
+    #
+    # apply input/output directories
+    #
+    if init_input_directory is not None:
+        input_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(init_input_directory))))
+
+        # provide an initial output directory
+        output_dir = output_directory.get()
+        if not output_dir:
+            output_directory.set(os.path.join(input_directory.get(), 'derivatives', 'erdetect_out'))
+
+        # update the dataset list with the selected folder
+        update_datasets(input_directory.get())
+
+    if init_output_directory is not None:
+        output_directory.set(os.path.abspath(os.path.expanduser(os.path.expandvars(init_output_directory))))
+
+    #
     # open window
+    #
     win.mainloop()
     exit()
 
