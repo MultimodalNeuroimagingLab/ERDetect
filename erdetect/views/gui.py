@@ -574,6 +574,9 @@ def open_gui():
     #
     class MetricsAndDetectionDialog(object):
 
+        detect_method_options = {'std_base': 'Deviation from baseline', 'cross_proj': 'Cross-projection metric', 'waveform': 'Waveform metric'}
+        detect_method_options_values = {v: k for k, v in detect_method_options.items()}
+
         def _update_metrics_cross_proj_controls(self):
             new_state = 'normal' if self.metrics_cross_proj_enabled.get() else 'disabled'
             self.lbl_metrics_cross_proj_epoch.configure(state=new_state)
@@ -597,14 +600,6 @@ def open_gui():
             pd_window_width = 630
 
             # retrieve values from config
-            self.detect_neg = tk.IntVar(value=cfg('detection', 'negative'))
-            self.detect_pos = tk.IntVar(value=cfg('detection', 'positive'))
-            self.detect_peak_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[0])
-            self.detect_peak_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[1])
-            self.detect_response_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[0])
-            self.detect_response_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[1])
-
-
             self.metrics_cross_proj_enabled = tk.IntVar(value=cfg('metrics', 'cross_proj', 'enabled'))
             self.metrics_cross_proj_epoch_start = tk.DoubleVar(value=cfg('metrics', 'cross_proj', 'epoch')[0])
             self.metrics_cross_proj_epoch_end = tk.DoubleVar(value=cfg('metrics', 'cross_proj', 'epoch')[1])
@@ -613,6 +608,14 @@ def open_gui():
             self.metrics_waveform_epoch_end = tk.DoubleVar(value=cfg('metrics', 'waveform', 'epoch')[1])
             self.metrics_waveform_bandpass_start = tk.IntVar(value=cfg('metrics', 'waveform', 'bandpass')[0])
             self.metrics_waveform_bandpass_end = tk.IntVar(value=cfg('metrics', 'waveform', 'bandpass')[1])
+
+            self.detect_neg = tk.IntVar(value=cfg('detection', 'negative'))
+            self.detect_pos = tk.IntVar(value=cfg('detection', 'positive'))
+            self.detect_peak_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[0])
+            self.detect_peak_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'peak_search_epoch')[1])
+            self.detect_response_search_epoch_start = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[0])
+            self.detect_response_search_epoch_end = tk.DoubleVar(value=cfg('detection', 'response_search_epoch')[1])
+            self.detect_method = tk.StringVar(value=self.detect_method_options[str(cfg('detection', 'method'))])
 
             #
             # elements
@@ -684,8 +687,22 @@ def open_gui():
             tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
             self.txt_detect_response_search_epoch_end = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
             self.txt_detect_response_search_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
-            pd_y_pos += 38
-
+            pd_y_pos += 42
+            self.lbl_detect_method_handling = tk.Label(self.root, text="Method", anchor='e', state='disabled')
+            self.lbl_detect_method_handling.place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            self.cmb_detect_method_handling = ttk.Combobox(self.root, textvariable=self.detect_method, values=list(self.detect_method_options_values.keys()), state='disabled')
+            self.cmb_detect_method_handling.bind("<Key>", lambda e: "break")
+            self.cmb_detect_method_handling.bind("<<ComboboxSelected>>", _update_combo_losefocus)
+            self.cmb_detect_method_handling.bind("<FocusIn>", _update_combo_losefocus)
+            self.cmb_detect_method_handling.place(x=260, y=pd_y_pos, width=300, height=25)
+            #pd_y_pos += 32
+            #
+            #self.lbl_detect_stdbase_epoch = tk.Label(self.root, text="Baseline epoch/window", anchor='e').place(x=5, y=pd_y_pos + 2, width=245, height=20)
+            #self.txt_detect_stdbase_epoch_start = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_start, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            #self.txt_detect_stdbase_epoch_start.place(x=260, y=pd_y_pos, width=70, height=25)
+            #self.lbl_detect_stdbase_epoch_range = tk.Label(self.root, text="-").place(x=335, y=pd_y_pos, width=30, height=25)
+            #self.txt_detect_stdbase_epoch_end = ttk.Entry(self.root, textvariable=self.detect_response_search_epoch_end, justify='center', validate = 'key', validatecommand=(self.root.register(_txt_double_input_validate), '%S', '%P'))
+            #self.txt_detect_stdbase_epoch_end.place(x=370, y=pd_y_pos, width=70, height=25)
 
             #
             tk.Button(self.root, text="OK", command=self.ok).place(x=10, y=pd_window_height - 40, width=120, height=30)
