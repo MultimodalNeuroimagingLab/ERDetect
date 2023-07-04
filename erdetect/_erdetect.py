@@ -18,7 +18,7 @@ import numpy as np
 import scipy.io as sio
 from os.path import exists
 
-from ieegprep.bids import load_channel_info, load_event_info, load_ieeg_sidecar
+from ieegprep.bids import load_channel_info, load_stim_event_info, load_ieeg_sidecar
 from ieegprep.bids.data_epoch import load_data_epochs_averages
 from ieegprep.bids.rereferencing import RerefStruct
 from ieegprep.utils.console import multi_line_list, print_progressbar
@@ -72,7 +72,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
     # print subset information
     logging.info('------------------------ Processing subset ------------------------')
-    log_indented_line('Subset input:', bids_subset_root + '.*')
+    log_indented_line('Subset input:', bids_subset_root + '*.*')
     log_indented_line('Subset output path:', output_root + os.path.sep)
     logging.info('')
 
@@ -302,41 +302,16 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     logging.info('')
 
 
-
     #
     # retrieve trials
     #
 
     # retrieve the stimulation events (onsets and pairs) from the events.tsv file
     try:
-        events_tsv = load_event_info(bids_subset_root + '_events.tsv', ('trial_type', 'electrical_stimulation_site'))
-    except (FileNotFoundError, LookupError):
+        trial_onsets, trial_pairs, trials_bad_onsets = load_stim_event_info(bids_subset_root + '_events.tsv')
+    except (RuntimeError):
         logging.error('Could not load the stimulation event metadata (\'' + bids_subset_root + '_events.tsv\'), exiting...')
         raise RuntimeError('Could not load the stimulation event metadata')
-
-    # acquire the onset and electrode-pair for each stimulation
-    trial_onsets = []
-    trial_pairs = []
-    trials_bad_onsets = []
-    trials_have_status = 'status' in events_tsv.columns
-    for index, row in events_tsv.iterrows():
-        if row['trial_type'].lower() == 'electrical_stimulation':
-            if not is_number(row['onset']) or isnan(float(row['onset'])) or float(row['onset']) < 0:
-                logging.warning('Invalid onset \'' + row['onset'] + '\' in events, should be a numeric value >= 0. Discarding trial...')
-                continue
-
-            if trials_have_status:
-                if not row['status'].lower() == 'good':
-                    trials_bad_onsets.append(row['onset'])
-                    continue
-
-            pair = row['electrical_stimulation_site'].split('-')
-            if not len(pair) == 2 or len(pair[0]) == 0 or len(pair[1]) == 0:
-                logging.error('Electrical stimulation site \'' + row['electrical_stimulation_site'] + '\' invalid, should be two values separated by a dash (e.g. CH01-CH02), exiting...')
-                raise RuntimeError('Electrical stimulation site invalid')
-
-            trial_onsets.append(float(row['onset']))
-            trial_pairs.append(pair)
 
     if len(trials_bad_onsets) > 0:
         log_indented_line('Number of trials marked as bad (excluded):', str(len(trials_bad_onsets)))
