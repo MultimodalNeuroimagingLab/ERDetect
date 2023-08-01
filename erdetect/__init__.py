@@ -13,6 +13,7 @@ if sys.version_info < (3, 8, 0):
 # Note 1: added since, despite the (minimum) requirements during install, packages can be downgraded or removed later
 # Note 2: deliberately not in a separate module, since this is the entry point of the package and dependencies already be used after
 #
+from os.path import join, dirname, abspath
 from configparser import ConfigParser
 from importlib.metadata import version, PackageNotFoundError
 from re import sub as re_sub, split as re_split
@@ -20,7 +21,7 @@ def normalize_version(v):
     return [int(x) for x in re_sub(r'(\.0+)*$','', v).split(".")]
 
 cf = ConfigParser()
-cf.read('setup.cfg')
+cf.read(join(dirname(abspath(__file__)), '..', 'setup.cfg'))
 require_lines = [x for x in cf.get('options', 'install_requires').strip().splitlines()]
 
 for req_line in require_lines:
