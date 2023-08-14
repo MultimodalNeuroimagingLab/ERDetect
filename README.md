@@ -1,23 +1,6 @@
 # Evoked Response Detection
 A python package and docker application for the automatic detection of evoked responses in SPES/CCEP data
 
-## Docker Usage
-
-To launch an instance of the container and analyse data in BIDS format, in the command-line interface/terminal:
-
-```
-docker run multimodalneuro/erdetect <bids_dir>:/data <output_dir>:/output [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
-```
-For example, to run an analysis, type:
-
-```
-docker run -ti --rm \
--v /local_bids_data_root/:/data \
--v /local_output_path/:/output \
-multimodalneuro/erdetect /data /output --participant_label 01
-```
-
-
 ## Python Usage
 
 1. First install ERdetect, in the command-line run:
@@ -40,6 +23,22 @@ python -m erdetect ~/bids_data ~/output/ [--participant_label PARTICIPANT_LABEL 
 ```
 import erdetect
 erdetect.process_subset('/bids_data_root/subj-01/ieeg/sub-01_run-06.edf', '/output_path/')
+```
+
+## Docker Usage
+
+To launch an instance of the container and analyse data in BIDS format, in the command-line interface/terminal:
+
+```
+docker run multimodalneuro/erdetect <bids_dir>:/data <output_dir>:/output [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL ...]]
+```
+For example, to run an analysis, type:
+
+```
+docker run -ti --rm \
+-v /local_bids_data_root/:/data \
+-v /local_output_path/:/output \
+multimodalneuro/erdetect /data /output --participant_label 01
 ```
 
 
