@@ -16,8 +16,8 @@ import os
 import logging
 import threading
 
-from ieegprep import VALID_FORMAT_EXTENSIONS
-from ieegprep.bids import list_bids_datasets
+from ieegprep.fileio.IeegDataReader import VALID_FORMAT_EXTENSIONS
+from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.misc import is_number
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem, create_default_config
 from erdetect._erdetect import process_subset, print_config
