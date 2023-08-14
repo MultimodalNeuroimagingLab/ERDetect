@@ -18,7 +18,7 @@ import numpy as np
 import scipy.io as sio
 from os.path import exists
 
-from ieegprep.bids import load_channel_info, load_stim_event_info, load_ieeg_sidecar
+from ieegprep.bids.sidecars import load_channel_info, load_elec_stim_events, load_ieeg_sidecar
 from ieegprep.bids.data_epoch import load_data_epochs_averages
 from ieegprep.bids.rereferencing import RerefStruct
 from ieegprep.utils.console import multi_line_list, print_progressbar
@@ -303,79 +303,45 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
 
     #
-    # retrieve trials
+    # retrieve trials (onsets) and stim-pairs conditions
     #
 
-    # retrieve the stimulation events (onsets and pairs) from the events.tsv file
+    # retrieve the electrical stimulation events (onsets and stim-pairs) from the events.tsv file
+    # only retrieve the stim-pairs for the channels that are included
     try:
-        trial_onsets, trial_pairs, trials_bad_onsets = load_stim_event_info(bids_subset_root + '_events.tsv')
+        trial_onsets, trial_pairs, stim_pairs_onsets, bad_trial_onsets = load_elec_stim_events(bids_subset_root + '_events.tsv',
+                                                                                             exclude_bad_events=True,
+                                                                                             concat_bidirectional_stimpairs=cfg('trials', 'concat_bidirectional_pairs'),
+                                                                                             only_stimpairs_between_channels=channels_stim_incl)
     except (RuntimeError):
-        logging.error('Could not load the stimulation event metadata (\'' + bids_subset_root + '_events.tsv\'), exiting...')
-        raise RuntimeError('Could not load the stimulation event metadata')
+        logging.error('Could not load the electrical stimulation event metadata (\'' + bids_subset_root + '_events.tsv\'), exiting...')
+        raise RuntimeError('Could not load the electrical stimulation event metadata')
 
-    if len(trials_bad_onsets) > 0:
-        log_indented_line('Number of trials marked as bad (excluded):', str(len(trials_bad_onsets)))
+    if len(bad_trial_onsets) > 0:
+        log_indented_line('Number of trials marked as bad (excluded):', str(len(bad_trial_onsets)))
 
     # check if there are trials
     if len(trial_onsets) == 0:
         logging.error('No trials were found, exiting...')
         raise RuntimeError('No trials found')
 
-
-    #
-    # retrieve stimulus-pairs
-    #
-
-    # determine the stimulation-pairs conditions (and the trial and electrodes that belong to them)
-    # (note that the 'concat_bidirectional_pairs' configuration setting is taken into account here)
-    #
-    stim_pairs_onsets = dict()              # for each pair, the onsets of the trials that were involved
-    stim_pairs_electrode_names = dict()     # for each pair, the names of the electrodes that were stimulated
-
-    # TODO: there might be a difference in the type of channels included for stimulation and those for recording
-
-    # loop over all the combinations of channels
-    # Note:     only the combinations of stim-pairs that actually have events/trials end up in the output
-    for iChannel0 in range(len(channels_stim_incl)):
-        for iChannel1 in range(len(channels_stim_incl)):
-
-            # retrieve the indices of all the trials that concern this stim-pair
-            indices = []
-            if cfg('trials', 'concat_bidirectional_pairs'):
-                # allow concatenation of bidirectional pairs, pair order does not matter
-                if not iChannel1 < iChannel0:
-                    # unique pairs while ignoring pair order
-                    indices = [i for i, x in enumerate(trial_pairs) if
-                               (x[0] == channels_stim_incl[iChannel0] and x[1] == channels_stim_incl[iChannel1]) or (x[0] == channels_stim_incl[iChannel1] and x[1] == channels_stim_incl[iChannel0])]
-
-            else:
-                # do not concatenate bidirectional pairs, pair order matters
-                indices = [i for i, x in enumerate(trial_pairs) if
-                           x[0] == channels_stim_incl[iChannel0] and x[1] == channels_stim_incl[iChannel1]]
-
-            # add the pair if there are trials for it
-            if len(indices) > 0:
-                stim_pairs_onsets[channels_stim_incl[iChannel0] + '-' + channels_stim_incl[iChannel1]] = [trial_onsets[i] for i in indices]
-                stim_pairs_electrode_names[channels_stim_incl[iChannel0] + '-' + channels_stim_incl[iChannel1]] = (channels_stim_incl[iChannel0], channels_stim_incl[iChannel1])
-
-    # search for stimulus-pairs with too little trials
-    stimpair_remove_indices = []
+    # determine the stimulus-pairs conditions that have too little trials
+    stimpair_remove_keys = []
     for stim_pair, onsets in stim_pairs_onsets.items():
         if len(onsets) < cfg('trials', 'minimum_stimpair_trials'):
-            stimpair_remove_indices.append(stim_pair)
+            stimpair_remove_keys.append(stim_pair)
 
     # remove the stimulus-pairs with too little trials
-    if len(stimpair_remove_indices) > 0:
+    if len(stimpair_remove_keys) > 0:
 
         # message
-        stimpair_print = [stim_pair + ' (' + str(len(stim_pairs_onsets[stim_pair])) + ' trials)' for stim_pair in stimpair_remove_indices]
+        stimpair_print = [stim_pair + ' (' + str(len(stim_pairs_onsets[stim_pair])) + ' trials)' for stim_pair in stimpair_remove_keys]
         stimpair_print = [str_print.ljust(len(max(stimpair_print, key=len)), ' ') for str_print in stimpair_print]
         logging.info(multi_line_list(stimpair_print, LOGGING_CAPTION_INDENT_LENGTH, 'Stim-pairs excluded by number of trials:', 3, '   '))
 
         # remove those stimulation-pairs
-        for stim_pair in stimpair_remove_indices:
+        for stim_pair in stimpair_remove_keys:
             del stim_pairs_onsets[stim_pair]
-            del stim_pairs_electrode_names[stim_pair]
 
     # display stimulation-pair/trial information
     stimpair_print = [stim_pair + ' (' + str(len(onsets)) + ' trials)' for stim_pair, onsets in stim_pairs_onsets.items()]
@@ -391,11 +357,11 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     if early_reref is not None:
         early_reref.set_exclude_reref_epochs(stim_pairs_onsets,
                                              (cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]),
-                                             '-')
+                                             channel_key_seperator='-')
     if late_reref is not None:
         late_reref.set_exclude_reref_epochs(stim_pairs_onsets,
                                              (cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]),
-                                             '-')
+                                             channel_key_seperator='-')
     logging.info('')
 
 
@@ -421,7 +387,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # TODO: normalize to raw or to Z-values (return both raw and z?)
     #       z-might be needed for detection
     try:
-        sampling_rate, averages, metrics = load_data_epochs_averages(bids_subset_data_path, channels_measured_incl, list(stim_pairs_onsets.values()),
+        sampling_rate, averages, metrics = load_data_epochs_averages(bids_subset_data_path, channels_measured_incl, stim_pairs_onsets,
                                                                      trial_epoch=cfg('trials', 'trial_epoch'),
                                                                      baseline_norm=cfg('trials', 'baseline_norm'),
                                                                      baseline_epoch=cfg('trials', 'baseline_epoch'),
@@ -437,23 +403,20 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         raise RuntimeError('Could not load data')
 
     # for each stimulation pair condition, NaN out the values of the measured electrodes that were stimulated
-    iPair = 0
-    for stim_pair in stim_pairs_onsets.keys():
+    for stim_pair_index, stim_pair in enumerate(stim_pairs_onsets):
+        stim_pair_electrode_names = stim_pair.split('-')
 
         # find and clear the first electrode
         try:
-            averages[channels_measured_incl.index(stim_pairs_electrode_names[stim_pair][0]), iPair, :] = np.nan
+            averages[channels_measured_incl.index(stim_pair_electrode_names[0]), stim_pair_index, :] = np.nan
         except ValueError:
             pass
 
         # find and clear the second electrode
         try:
-            averages[channels_measured_incl.index(stim_pairs_electrode_names[stim_pair][1]), iPair, :] = np.nan
+            averages[channels_measured_incl.index(stim_pair_electrode_names[1]), stim_pair_index, :] = np.nan
         except ValueError:
             pass
-
-        # next stim-pair index
-        iPair += 1
 
     # determine the sample of stimulus onset (counting from the epoch start)
     onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
@@ -468,6 +431,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         metric_counter += 1
     if cfg('metrics', 'waveform', 'enabled'):
         waveform_metrics = metrics[:, :, metric_counter]
+        metric_counter += 1
 
 
     #
