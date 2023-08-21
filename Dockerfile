@@ -18,7 +18,7 @@ RUN pip3 install --upgrade pip \
 	&& pip3 install numpy==1.24.3 \
 	&& pip3 install scipy==1.10.1 \
 	&& pip3 install matplotlib==3.7.1 \
-	&& pip3 install ieegprep==1.4.1 \
+	&& pip3 install ieegprep==1.5.0 \
 	&& pip3 install bids_validator==1.11.0 \
 	&& rm -r /root/.cache
 

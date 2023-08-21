@@ -1,7 +1,7 @@
 # define directory as package
 
 #
-# ensure minimum version
+# ensure minimum version of python
 #
 import sys
 if sys.version_info < (3, 8, 0):
