@@ -58,9 +58,17 @@ def metric_cross_proj(sampling_rate, data, baseline):
     # calculate internal projections
     proj = np.matmul(norm_metric_data, np.transpose(metric_data))
 
-    # perform a one-sample t-test on the values in the upper triangle of the matrix (above the diagonal)
-    test_values = proj[np.triu_indices(proj.shape[0], 1)]
-    test_result = stats.ttest_1samp(test_values, 0)
+    # For the t-test each trial is represented half of the time as the normalized projected and half as un-normalized projected
+    # Ref: Miller, K. J., Müller, K. R., & Hermes, D. (2021). Basis profile curve identification to understand electrical stimulation effects in human brain networks. PLoS computational biology, 17(9)
+    test_values = np.array([])
+    for diag_index in range(2, proj.shape[0], 2):
+        test_values = np.append(test_values, np.diag(proj, diag_index))
+
+    for diag_index in range(1, proj.shape[0], 2):
+        test_values = np.append(test_values, np.diag(proj, -diag_index))
+
+    # perform a one-sample t-test
+    test_result = stats.ttest_1samp(test_values, 0, alternative='greater')
 
     # return the t-statistic as the metric
     return test_result.statistic
