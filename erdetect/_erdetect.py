@@ -420,12 +420,22 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         # find and clear the first electrode
         try:
             averages[channels_measured_incl.index(stim_pair_electrode_names[0]), stim_pair_index, :] = np.nan
+            if cfg('metrics', 'cross_proj', 'enabled'):
+                cross_proj_metrics[channels_measured_incl.index(stim_pair_electrode_names[0]), stim_pair_index, :] = np.nan
+            if cfg('metrics', 'waveform', 'enabled'):
+                waveform_metrics[channels_measured_incl.index(stim_pair_electrode_names[0]), stim_pair_index] = np.nan
+
         except ValueError:
             pass
 
         # find and clear the second electrode
         try:
             averages[channels_measured_incl.index(stim_pair_electrode_names[1]), stim_pair_index, :] = np.nan
+            if cfg('metrics', 'cross_proj', 'enabled'):
+                cross_proj_metrics[channels_measured_incl.index(stim_pair_electrode_names[1]), stim_pair_index, :] = np.nan
+            if cfg('metrics', 'waveform', 'enabled'):
+                waveform_metrics[channels_measured_incl.index(stim_pair_electrode_names[1]), stim_pair_index] = np.nan
+
         except ValueError:
             pass
 
