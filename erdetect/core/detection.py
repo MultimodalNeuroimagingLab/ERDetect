@@ -20,7 +20,7 @@ from .config import get as config
 from .peak_finder import peak_finder
 
 
-def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=None, waveform_metrics=None, detect_positive=False):
+def ieeg_detect_er(data, stim_onset_index, sampling_rate, evaluation_callback=None, detect_positive=False):
     """
     Detect the evoked responses in CCEP data (a matrix of multiple electrodes and stimulation-pairs)
 
@@ -30,8 +30,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
         stim_onset_index (int):             the time-point on the input data's time-dimension of stimulation onset (as a
                                             0-based sample-index, all indices before this value are considered pre-stim)
         sampling_rate (int or double):      The sampling rate at which the data was acquired
-        cross_proj_metrics (ndarray):
-        waveform_metrics (ndarray):
+        evaluation_callback (callback):     None to detect using standard baseline; Pass callback for metric evaluation
         detect_positive (bool):             Whether to search for positive rather than negative evoked responses
 
 
@@ -59,8 +58,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
     er_search_epoch = config('detection', 'response_search_epoch')
 
     #
-    method = config('detection', 'method')
-    if method == 'std_base':
+    if evaluation_callback is None:
 
         # (tuple) The time-span on which the baseline is calculated, expressed as a tuple with the start- and end-point in
         # seconds relative to stimulation onset (e.g. the standard tuple of '-1, -.1' will use the period from 1s before
@@ -71,16 +69,6 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
         # threshold which needs to be exceeded to detect a peak (the minimum std is considered 50uV; therefore a factor
         # of 3.4 is recommended to end up with a conservative threshold of 170 uV)
         baseline_threshold_factor = config('detection', 'std_base', 'baseline_threshold_factor')
-
-    elif method == 'cross_proj':
-
-        # (double) The threshold which needs to be exceeded to detect a peak
-        cross_proj_threshold = config('detection', 'cross_proj', 'threshold')
-
-    elif method == 'waveform':
-
-        # (double) The threshold which needs to be exceeded to detect a peak
-        waveform_threshold = config('detection', 'waveform', 'threshold')
 
 
     #
@@ -113,30 +101,12 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
     er_peak_amplitudes = np.empty((data.shape[0], data.shape[1]))
     er_peak_amplitudes.fill(np.nan)
 
-    # check method and corresponding input
-    if method == 'std_base':
+    if evaluation_callback is None:
 
         # determine the std baseline range in samples
         baseline_start_sample = int(round(baseline_epoch[0] * sampling_rate)) + stim_onset_index
         baseline_end_sample = int(round(baseline_epoch[1] * sampling_rate)) + stim_onset_index
 
-    elif method == 'waveform':
-
-        if waveform_metrics is None:
-            logging.error('Method is set to \'waveform\' but no waveform-metrics were passed to the detection function')
-            raise ValueError('No waveform-metrics were passed')
-        elif not waveform_metrics.shape == er_peak_indices.shape:
-            logging.error('Size of the waveform-metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
-            raise ValueError('Waveform-metrics and output buffer size mismatch')
-
-    elif method == 'cross_proj':
-
-        if cross_proj_metrics is None:
-            logging.error('Method is set to \'cross_proj\' but no cross-projection metrics were passed to the detection function')
-            raise ValueError('No cross-projection were passed')
-        elif not cross_proj_metrics.shape == er_peak_indices.shape:
-            logging.error('Size of the cross-projection metrics matrix does not match the size of the output buffer (the number of electrodes and stim-pairs do not match)')
-            raise ValueError('Cross-projection and output buffer size mismatch')
 
     # for every electrode
     for iElec in range(data.shape[0]):
@@ -202,21 +172,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
             # Determine whether peak can be considered an evoked response (by the peak or by other metrics)
             #
 
-            if method == 'cross_proj':
-
-                # classify as an evoked response on threshold, store the peak (index and amplitude)
-                if cross_proj_metrics[iElec, iPair] > cross_proj_threshold:
-                    er_peak_indices[iElec, iPair] = neg_inds[max_ind]
-                    er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
-
-            elif method == 'waveform':
-
-                # classify as an evoked response on threshold, store the peak (index and amplitude)
-                if waveform_metrics[iElec, iPair] > waveform_threshold:
-                    er_peak_indices[iElec, iPair] = neg_inds[max_ind]
-                    er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
-
-            else:
+            if evaluation_callback is None:
                 # Detection by baseline std
 
                 # retrieve the baseline
@@ -239,6 +195,13 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, cross_proj_metrics=Non
                     # classify as an evoked response, store the peak (index and amplitude)
                     er_peak_indices[iElec, iPair] = neg_inds[max_ind]
                     er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
+
+            else:
+                # evaluation by metric
+                if evaluation_callback(iElec, iPair):
+                    er_peak_indices[iElec, iPair] = neg_inds[max_ind]
+                    er_peak_amplitudes[iElec, iPair] = neg_mags[max_ind]
+
 
     # pass results back
     if detect_positive:
