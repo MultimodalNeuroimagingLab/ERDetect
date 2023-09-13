@@ -28,8 +28,8 @@ from erdetect.core.config import write_config, get as cfg, get_config_dict, OUTP
 from erdetect.core.detection import ieeg_detect_er
 from erdetect.views.output_images import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
 from erdetect.utils.misc import create_figure
-from erdetect.core.metrics.metric_cross_proj import metric_cross_proj
-from erdetect.core.metrics.metric_waveform import metric_waveform
+from erdetect.core.metrics.metric_cross_proj import MetricCrossProj
+from erdetect.core.metrics.metric_waveform import MetricWaveform
 
 
 def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=False):
@@ -372,9 +372,9 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # determine the metrics that should be produced
     metric_callbacks = tuple()
     if cfg('metrics', 'cross_proj', 'enabled'):
-        metric_callbacks += tuple([metric_cross_proj])
+        metric_callbacks += tuple([MetricCrossProj.process_callback])
     if cfg('metrics', 'waveform', 'enabled'):
-        metric_callbacks += tuple([metric_waveform])
+        metric_callbacks += tuple([MetricWaveform.process_callback])
 
     # read, normalize, epoch and average the trials within the condition
     # Note: 'load_data_epochs_averages' is used instead of 'load_data_epochs' here because it is more memory
@@ -402,6 +402,17 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         logging.error('Could not load data (' + bids_subset_data_path + '), exiting...')
         raise RuntimeError('Could not load data')
 
+    # split out the metric results
+    cross_proj_metrics = None
+    waveform_metrics = None
+    metric_counter = 0
+    if cfg('metrics', 'cross_proj', 'enabled'):
+        cross_proj_metrics = np.array(metrics[:, :, metric_counter].tolist())
+        metric_counter += 1
+    if cfg('metrics', 'waveform', 'enabled'):
+        waveform_metrics = np.array(metrics[:, :, metric_counter].tolist())
+        metric_counter += 1
+
     # for each stimulation pair condition, NaN out the values of the measured electrodes that were stimulated
     for stim_pair_index, stim_pair in enumerate(stim_pairs_onsets):
         stim_pair_electrode_names = stim_pair.split('-')
@@ -421,17 +432,6 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # determine the sample of stimulus onset (counting from the epoch start)
     onset_sample = int(round(abs(cfg('trials', 'trial_epoch')[0] * sampling_rate)))
     # todo: handle trial epochs which start after the trial onset, currently disallowed by config
-
-    # split out the metric results
-    cross_proj_metrics = None
-    waveform_metrics = None
-    metric_counter = 0
-    if cfg('metrics', 'cross_proj', 'enabled'):
-        cross_proj_metrics = metrics[:, :, metric_counter]
-        metric_counter += 1
-    if cfg('metrics', 'waveform', 'enabled'):
-        waveform_metrics = metrics[:, :, metric_counter]
-        metric_counter += 1
 
 
     #
@@ -456,9 +456,11 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     output_dict['epoch_time_s'] = (np.arange(averages.shape[2]) - onset_sample) / sampling_rate
     output_dict['config'] = get_config_dict()
     if cfg('metrics', 'cross_proj', 'enabled'):
-        output_dict['cross_proj_metrics'] = cross_proj_metrics
+        MetricCrossProj.append_output_dict_callback(output_dict, cross_proj_metrics)
     if cfg('metrics', 'waveform', 'enabled'):
-        output_dict['waveform_metrics'] = waveform_metrics
+        MetricWaveform.append_output_dict_callback(output_dict, waveform_metrics)
+
+
     sio.savemat(os.path.join(output_root, 'ccep_data.mat'), output_dict)
 
     # write the configuration
@@ -472,16 +474,20 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # detect evoked responses
     logging.info('- Detecting evoked responses...')
     try:
+        method = cfg('detection', 'method')
+        evaluate_method = None
+        if method == 'cross_proj':
+            evaluate_method = lambda c_i, sp_i, m=cross_proj_metrics : MetricCrossProj.evaluate_callback(c_i, sp_i, metric_values=m)
+        elif method == 'waveform':
+            evaluate_method = lambda c_i, sp_i, m=waveform_metrics : MetricWaveform.evaluate_callback(c_i, sp_i, metric_values=m)
+
         if cfg('detection', 'negative'):
             neg_peak_latency, er_neg_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
-                                                                         cross_proj_metrics=cross_proj_metrics,
-                                                                         waveform_metrics=waveform_metrics)
+                                                                      evaluation_callback=evaluate_method)
         if cfg('detection', 'positive'):
-            pos_peak_latency, er_pos_peak_amplitudes = ieeg_detect_er(averages, onset_sample,
-                                                                         int(sampling_rate),
-                                                                         cross_proj_metrics=cross_proj_metrics,
-                                                                         waveform_metrics=waveform_metrics,
-                                                                         detect_positive=True)
+            pos_peak_latency, er_pos_peak_amplitudes = ieeg_detect_er(averages, onset_sample, int(sampling_rate),
+                                                                      evaluation_callback=evaluate_method,
+                                                                      detect_positive=True)
     except (ValueError, RuntimeError):
         logging.error('Evoked response detection failed, exiting...')
         raise RuntimeError('Evoked response detection failed')
