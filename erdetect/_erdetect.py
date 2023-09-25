@@ -12,6 +12,7 @@ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Ge
 You should have received a copy of the GNU General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 import os
+import datetime
 import logging
 from math import isnan, ceil
 import numpy as np
@@ -24,6 +25,7 @@ from ieegprep.bids.rereferencing import RerefStruct
 from ieegprep.utils.console import multi_line_list, print_progressbar
 from ieegprep.utils.misc import is_number
 
+from erdetect.version import __version__
 from erdetect.core.config import write_config, get as cfg, get_config_dict, OUTPUT_IMAGE_SIZE, LOGGING_CAPTION_INDENT_LENGTH
 from erdetect.core.detection import ieeg_detect_er
 from erdetect.views.output_images import calc_sizes_and_fonts, calc_matrix_image_size, gen_amplitude_matrix, gen_latency_matrix
@@ -70,10 +72,40 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     # determine a subset specific output path
     output_root = os.path.join(output_dir, os.path.basename(os.path.normpath(bids_subset_root)))
 
+    # make sure the subject output directory exists
+    if not os.path.exists(output_root):
+        try:
+            os.makedirs(output_root)
+        except OSError as e:
+            logging.error("Could not create subset output directory (\'" + output_root + "\'), exiting...")
+            raise RuntimeError('Could not create subset output directory')
+
+    #
+    # logging
+    #
+
+    #
+    subset_log_filepath = os.path.join(output_root, 'subset__' + datetime.datetime.now().strftime("%Y%m%d__%H%M%S") + '.log')
+
+    # write the application header and configuration information to a subset specific logfile
+    set_text = []
+    set_text.append('------------------------ Evoked Response Detection - v' + __version__ + ' ------------------------')
+    set_text.append('')
+    log_config(preproc_prioritize_speed, set_text)
+    with open(subset_log_filepath, 'w') as f:
+        for line in set_text:
+            f.write(line + '\n')
+
+    #
+    root_logger = logging.getLogger()
+    subset_logger_file = logging.FileHandler(subset_log_filepath, mode='a')
+    subset_logger_file.setFormatter(logging.Formatter("%(message)s"))
+    root_logger.addHandler(subset_logger_file)
+
     # print subset information
     logging.info('------------------------ Processing subset ------------------------')
-    log_indented_line('Subset input:', bids_subset_root + '*.*')
-    log_indented_line('Subset output path:', output_root + os.path.sep)
+    log_single_line('Subset input:', bids_subset_root + '*.*')
+    log_single_line('Subset output path:', output_root + os.path.sep)
     logging.info('')
 
 
@@ -97,7 +129,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
             # use the PowerLineFrequency value
             line_noise_removal = float(ieeg_json['PowerLineFrequency'])
-            log_indented_line('Powerline frequency from IEEG JSON sidecar:', str(line_noise_removal))
+            log_single_line('Powerline frequency from IEEG JSON sidecar:', str(line_noise_removal))
 
         except (IOError, RuntimeError):
             logging.error('Could not load the IEEG JSON sidecar (\'' + bids_subset_root + '_ieeg.json\') that is required to perform line-noise removal, exiting...')
@@ -239,7 +271,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
             # print CAR headbox info
             logging.info('')
-            log_indented_line('Early re-referencing groups:', '')
+            log_single_line('Early re-referencing groups:', '')
             for ind, group in enumerate(early_reref.groups):
                 logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 14, ' '))
 
@@ -283,7 +315,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
             # print CAR headbox info
             logging.info('')
-            log_indented_line('Late re-referencing groups:', '')
+            log_single_line('Late re-referencing groups:', '')
             for ind, group in enumerate(late_reref.groups):
                 logging.info(multi_line_list(group, LOGGING_CAPTION_INDENT_LENGTH, '      CAR group ' + str(ind) + ':', 14, ' '))
 
@@ -318,7 +350,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         raise RuntimeError('Could not load the electrical stimulation event metadata')
 
     if len(bad_trial_onsets) > 0:
-        log_indented_line('Number of trials marked as bad (excluded):', str(len(bad_trial_onsets)))
+        log_single_line('Number of trials marked as bad (excluded):', str(len(bad_trial_onsets)))
 
     # check if there are trials
     if len(trial_onsets) == 0:
@@ -445,18 +477,9 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
 
 
     #
-    # prepare an output directory
+    # intermediate saving of the CCEP data as .mat
     #
 
-    # make sure a subject directory exists
-    if not os.path.exists(output_root):
-        try:
-            os.makedirs(output_root)
-        except OSError as e:
-            logging.error("Could not create subset output directory (\'" + output_root + "\'), exiting...")
-            raise RuntimeError('Could not create subset output directory')
-
-    # intermediate saving of the CCEP data as .mat
     output_dict = dict()
     output_dict['sampling_rate'] = sampling_rate
     output_dict['onset_sample'] = onset_sample
@@ -781,74 +804,108 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     #
     logging.info('- Finished subset')
 
+    # remove the subset log handler and close the log file
+    root_logger.removeHandler(subset_logger_file)
+    subset_logger_file.close()
+
     # on success, return output
     return output_dict
 
 
-def log_indented_line(caption, text):
-    logging.info(caption.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+def log_single_line(header, text, output=None):
+    """
+    Log a single line with header, spacing and text
+
+    Args:
+        header (str):                         Line header
+        text (str):                           Line text
+        output (None or list):                Where to output the line to. None to write to Logger.
+                                              Pass list object to append the line to that list
+    """
+    if output is None:
+        logging.info(header.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
+    else:
+        output.append(header.ljust(LOGGING_CAPTION_INDENT_LENGTH, ' ') + text)
 
 
-def print_config(preproc_prioritize_speed):
-    '''
+def log_text(text, output=None):
+    """
+    Log a text
+
+    Args:
+        text (str):                           Text to print
+        output (None or list):                Where to output the line to. None to write to Logger.
+                                              Pass list object to append the line to that list
+    """
+    if output is None:
+        logging.info(text)
+    else:
+        output.append(text)
+
+
+def log_config(preproc_prioritize_speed, output=None):
+    """
     Print configuration information
-    '''
+    """
 
-    log_indented_line('Preprocessing priority:', ('Speed' if preproc_prioritize_speed else 'Memory'))
-    log_indented_line('High-pass filtering:', ('Yes' if cfg('preprocess', 'high_pass') else 'No'))
-    log_indented_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re_referencing', 'enabled') else 'No'))
+    log_single_line('Preprocessing priority:', ('Speed' if preproc_prioritize_speed else 'Memory'), output)
+    log_single_line('High-pass filtering:', ('Yes' if cfg('preprocess', 'high_pass') else 'No'), output)
+    log_single_line('Early re-referencing:', ('Yes' if cfg('preprocess', 'early_re_referencing', 'enabled') else 'No'), output)
     if cfg('preprocess', 'early_re_referencing', 'enabled'):
-        log_indented_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')))
-        log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
-    log_indented_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''))
-    log_indented_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'))
+        log_single_line('    Method:', str(cfg('preprocess', 'early_re_referencing', 'method')), output)
+        log_single_line('    Stim exclude epoch:', str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'early_re_referencing', 'stim_excl_epoch')[1]) + 's', output)
+        log_text(multi_line_list(cfg('preprocess', 'early_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '), output)
+    log_single_line('Line-noise removal:', cfg('preprocess', 'line_noise_removal') + (' Hz' if is_number(cfg('preprocess', 'line_noise_removal')) else ''), output)
+    log_single_line('Late re-referencing:', ('Yes' if cfg('preprocess', 'late_re_referencing', 'enabled') else 'No'), output)
     if cfg('preprocess', 'late_re_referencing', 'enabled'):
-        log_indented_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')))
+        log_single_line('    Method:', str(cfg('preprocess', 'late_re_referencing', 'method')), output)
         if cfg('preprocess', 'late_re_referencing', 'method') in ('CAR', 'CAR_headbox'):
-            log_indented_line('    CAR by variance:', ('Off' if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') == -1 else 'Channels with lowest (' + str(cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')) + ' quantile) trial variance'))
-        log_indented_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's')
-        logging.info(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '))
-    logging.info('')
-    log_indented_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)')
-    log_indented_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')))
-    log_indented_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's')
-    log_indented_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')))
-    log_indented_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'))
-    log_indented_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')))
-    logging.info(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 14, ' '))
-    logging.info(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types for stimulation:', 14, ' '))
-    logging.info('')
-    log_indented_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'))
+            log_single_line('    CAR by variance:', ('Off' if cfg('preprocess', 'late_re_referencing', 'CAR_by_variance') == -1 else 'Channels with lowest (' + str(cfg('preprocess', 'late_re_referencing', 'CAR_by_variance')) + ' quantile) trial variance'), output)
+        log_single_line('    Stim exclude epoch:', str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0]) + 's : ' + str(cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]) + 's', output)
+        log_text(multi_line_list(cfg('preprocess', 'late_re_referencing', 'channel_types'), LOGGING_CAPTION_INDENT_LENGTH, '    Included channels types:', 14, ' '), output)
+    log_text('')
+    
+    log_single_line('Trial epoch window:', str(cfg('trials', 'trial_epoch')[0]) + 's < stim onset < ' + str(cfg('trials', 'trial_epoch')[1]) + 's  (window size ' + str(abs(cfg('trials', 'trial_epoch')[1] - cfg('trials', 'trial_epoch')[0])) + 's)', output)
+    log_single_line('Trial out-of-bounds handling:', str(cfg('trials', 'out_of_bounds_handling')), output)
+    log_single_line('Trial baseline window:', str(cfg('trials', 'baseline_epoch')[0]) + 's : ' + str(cfg('trials', 'baseline_epoch')[1]) + 's', output)
+    log_single_line('Trial baseline normalization:', str(cfg('trials', 'baseline_norm')), output)
+    log_single_line('Concatenate bidirectional stimulated pairs:', ('Yes' if cfg('trials', 'concat_bidirectional_pairs') else 'No'), output)
+    log_single_line('Minimum # of required stimulus-pair trials:', str(cfg('trials', 'minimum_stimpair_trials')), output)
+    log_text(multi_line_list(cfg('channels', 'measured_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types as measured:', 14, ' '), output)
+    log_text(multi_line_list(cfg('channels', 'stim_types'), LOGGING_CAPTION_INDENT_LENGTH, 'Include channel types for stimulation:', 14, ' '), output)
+    log_text('', output)
+
+    log_single_line('Cross-projection metric:', ('Enabled' if cfg('metrics', 'cross_proj', 'enabled') else 'Disabled'), output)
     if cfg('metrics', 'cross_proj', 'enabled'):
-        log_indented_line('    Cross-projection epoch:', str(cfg('metrics', 'cross_proj', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'cross_proj', 'epoch')[1]) + 's')
-    log_indented_line('Waveform metric:', ('Enabled' if cfg('metrics', 'waveform', 'enabled') else 'Disabled'))
+        log_single_line('    Cross-projection epoch:', str(cfg('metrics', 'cross_proj', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'cross_proj', 'epoch')[1]) + 's', output)
+    log_single_line('Waveform metric:', ('Enabled' if cfg('metrics', 'waveform', 'enabled') else 'Disabled'), output)
     if cfg('metrics', 'waveform', 'enabled'):
-        log_indented_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's')
-        log_indented_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz')
-    logging.info('')
-    logging.info('Detection')
-    log_indented_line('    Negative responses:', ('Yes' if cfg('detection', 'negative') else 'No'))
-    log_indented_line('    Positive responses:', ('Yes' if cfg('detection', 'positive') else 'No'))
-    log_indented_line('    Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's')
-    log_indented_line('    Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's')
-    log_indented_line('    Evoked response detection method:', str(cfg('detection', 'method')))
+        log_single_line('    Waveform epoch:', str(cfg('metrics', 'waveform', 'epoch')[0]) + 's : ' + str(cfg('metrics', 'waveform', 'epoch')[1]) + 's', output)
+        log_single_line('    Waveform bandpass:', str(cfg('metrics', 'waveform', 'bandpass')[0]) + 'Hz - ' + str(cfg('metrics', 'waveform', 'bandpass')[1]) + 'Hz', output)
+    log_text('', output)
+
+    log_text('Detection', output)
+    log_single_line('    Negative responses:', ('Yes' if cfg('detection', 'negative') else 'No'), output)
+    log_single_line('    Positive responses:', ('Yes' if cfg('detection', 'positive') else 'No'), output)
+    log_single_line('    Peak search window:', str(cfg('detection', 'peak_search_epoch')[0]) + 's : ' + str(cfg('detection', 'peak_search_epoch')[1]) + 's', output)
+    log_single_line('    Evoked response search window:', str(cfg('detection', 'response_search_epoch')[0]) + 's : ' + str(cfg('detection', 'response_search_epoch')[1]) + 's', output)
+    log_single_line('    Evoked response detection method:', str(cfg('detection', 'method')), output)
     if cfg('detection', 'method') == 'std_base':
-        log_indented_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's')
-        log_indented_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')))
+        log_single_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's', output)
+        log_single_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')), output)
     elif cfg('detection', 'method') == 'cross_proj':
-        log_indented_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')))
+        log_single_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')), output)
     elif cfg('detection', 'method') == 'waveform':
-        log_indented_line('        Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')))
-    logging.info('')
-    logging.info('Visualization')
-    log_indented_line('    Negative responses:', ('Yes' if cfg('visualization', 'negative') else 'No'))
-    log_indented_line('    Positive responses:', ('Yes' if cfg('visualization', 'positive') else 'No'))
-    log_indented_line('    X-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's')
-    log_indented_line('    Blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's')
-    log_indented_line('    Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'))
-    log_indented_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'))
-    log_indented_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'))
-    logging.info('')
-    logging.info('')
-    logging.info('')
+        log_single_line('        Waveform detection threshold:', str(cfg('detection', 'waveform', 'threshold')), output)
+    log_text('', output)
+    log_text('Visualization', output)
+    log_single_line('    Negative responses:', ('Yes' if cfg('visualization', 'negative') else 'No'), output)
+    log_single_line('    Positive responses:', ('Yes' if cfg('visualization', 'positive') else 'No'), output)
+    log_single_line('    X-axis epoch:', str(cfg('visualization', 'x_axis_epoch')[0]) + 's : ' + str(cfg('visualization', 'x_axis_epoch')[1]) + 's', output)
+    log_single_line('    Blank stimulation epoch:', str(cfg('visualization', 'blank_stim_epoch')[0]) + 's : ' + str(cfg('visualization', 'blank_stim_epoch')[1]) + 's', output)
+    log_single_line('    Generate electrode images:', ('Yes' if cfg('visualization', 'generate_electrode_images') else 'No'), output)
+    log_single_line('    Generate stimulation-pair images:', ('Yes' if cfg('visualization', 'generate_stimpair_images') else 'No'), output)
+    log_single_line('    Generate matrix images:', ('Yes' if cfg('visualization', 'generate_matrix_images') else 'No'), output)
+    log_text('', output)
+    log_text('', output)
+    log_text('', output)

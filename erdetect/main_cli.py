@@ -5,7 +5,7 @@ Evoked response detection - command-line entry-point
 Command-line entry-point script for the automatic detection of evoked responses in CCEP data.
 
 
-Copyright 2022, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
+Copyright 2023, Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
@@ -17,6 +17,7 @@ import argparse
 import logging
 import os
 import sys
+import datetime
 from bids_validator import BIDSValidator
 
 # add a system path to ensure the absolute imports can be used
@@ -36,7 +37,7 @@ from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.console import multi_line_list
 from ieegprep.utils.misc import is_number
-from erdetect._erdetect import log_indented_line, print_config
+from erdetect._erdetect import log_single_line, log_config
 from erdetect.views.gui import open_gui
 
 
@@ -168,6 +169,12 @@ def execute():
             logging.error('Could not create output directory (\'' + args.output_dir + '\'), exiting...')
             return 1
 
+    # start general log in output directory
+    logger = logging.getLogger()
+    logger_file = logging.FileHandler(os.path.join(args.output_dir, 'erdetect__' + datetime.datetime.now().strftime("%Y%m%d__%H%M%S") + '.log'))
+    logger_file.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(logger_file)
+
 
     #
     # display application information
@@ -180,7 +187,7 @@ def execute():
     # configure
     #
     if args.config_filepath:
-        log_indented_line('Input configuration file:', args.config_filepath)
+        log_single_line('Input configuration file:', args.config_filepath)
         logging.info('')
 
     #  read the configuration file (if passed)
@@ -296,7 +303,7 @@ def execute():
     else:
 
         # print configuration
-        print_config(preproc_prioritize_speed)
+        log_config(preproc_prioritize_speed)
 
 
         #
@@ -307,20 +314,20 @@ def execute():
         args.output_dir = os.path.abspath(os.path.expanduser(os.path.expandvars(args.output_dir)))
 
         logging.info('--------------------------------- Participants and data subsets ----------------------------------')
-        log_indented_line('BIDS input path:', args.bids_dir)
-        log_indented_line('Output path:', args.output_dir)
+        log_single_line('BIDS input path:', args.bids_dir)
+        log_single_line('Output path:', args.output_dir)
         logging.info('')
 
         # print optional search arguments
         optional_search_argument = False
         if args.participant_label:
-            log_indented_line('Participant(s) to include:', ", ".join(args.participant_label))
+            log_single_line('Participant(s) to include:', ", ".join(args.participant_label))
             optional_search_argument = True
         if args.subset_search_pattern:
-            log_indented_line('Subset search pattern(s):', ", ".join(args.subset_search_pattern))
+            log_single_line('Subset search pattern(s):', ", ".join(args.subset_search_pattern))
             optional_search_argument = True
         if args.format_extension:
-            log_indented_line('Only include subsets with data extension(s):', ", ".join(args.format_extension))
+            log_single_line('Only include subsets with data extension(s):', ", ".join(args.format_extension))
             optional_search_argument = True
         if optional_search_argument:
             logging.info('')
