@@ -494,10 +494,10 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         MetricWaveform.append_output_dict_callback(output_dict, waveform_metrics)
 
 
-    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), output_dict)
+    sio.savemat(os.path.join(output_root, 'erdetect_data.mat'), output_dict)
 
     # write the configuration
-    write_config(os.path.join(output_root, 'ccep_config.json'))
+    write_config(os.path.join(output_root, 'erdetect_config.json'))
 
 
     #
@@ -534,7 +534,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         output_dict['pos_peak_latency_samples'] = pos_peak_latency
         output_dict['pos_peak_latency_ms'] = (pos_peak_latency - onset_sample) / sampling_rate * 1000
         output_dict['pos_peak_amplitudes'] = er_pos_peak_amplitudes
-    sio.savemat(os.path.join(output_root, 'ccep_data.mat'), output_dict)
+    sio.savemat(os.path.join(output_root, 'erdetect_data.mat'), output_dict)
 
 
     #
