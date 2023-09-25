@@ -20,7 +20,7 @@ from ieegprep.fileio.IeegDataReader import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids.data_structure import list_bids_datasets
 from ieegprep.utils.misc import is_number
 from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem, create_default_config
-from erdetect._erdetect import process_subset, print_config
+from erdetect._erdetect import process_subset, log_config
 
 def open_gui(init_input_directory=None, init_output_directory=None):
     """
@@ -1177,7 +1177,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
         preproc_prioritize_speed = True
 
         #
-        print_config(preproc_prioritize_speed)
+        log_config(preproc_prioritize_speed)
 
         # display subject/subset information
         txt_console.insert(tk.END, 'Participant(s) and subset(s) to process:\n')
