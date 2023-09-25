@@ -12,7 +12,7 @@ readme = "README.md"
 license = { text="GPLv3" }
 requires-python = ">=3.8"
 dependencies = [
-    "ieegprep >= 1.5.0",
+    "ieegprep >= 1.6.0",
     "numpy >= 1.22.3",
     "scipy >= 1.8.0",
     "matplotlib >= 3.5.1",
