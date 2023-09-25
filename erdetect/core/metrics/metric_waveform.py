@@ -98,6 +98,9 @@ class MetricWaveform(MetricInterface):
         # (double) The threshold which needs to be exceeded to detect a peak
         waveform_threshold = config('detection', 'waveform', 'threshold')
 
+        # evaluate
+        if metric_values[channel_index, stimpair_index] == np.nan:
+            return False
         return metric_values[channel_index, stimpair_index] > waveform_threshold
 
     @staticmethod

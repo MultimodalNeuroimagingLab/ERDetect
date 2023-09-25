@@ -85,6 +85,8 @@ class MetricCrossProj(MetricInterface):
         # (double) The threshold which needs to be exceeded to detect a peak
         cross_proj_threshold = config('detection', 'cross_proj', 'threshold')
 
+        if metric_values[channel_index, stimpair_index, 0] == np.nan:
+            return False
         return metric_values[channel_index, stimpair_index, 0] > cross_proj_threshold
 
     @staticmethod
