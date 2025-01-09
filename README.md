@@ -56,7 +56,8 @@ The tool can be configured by three means:
 ## Acknowledgements
 
 - Written by Max van den Boom (Multimodal Neuroimaging Lab, Mayo Clinic, Rochester MN)
-- Local extremum detection method by Dorien van Blooijs & Dora Hermes (2018), with optimized parameters by Jaap van der Aar
+- Deviation from baseline method by Dorien van Blooijs & Dora Hermes (2018), with optimized parameters by Jaap van der Aar
+- Adapted the peak-finder algorithm by Nathanael Yoder, see [Matlab version](http://www.mathworks.com/matlabcentral/fileexchange/25500).
 - Dependencies:
   - IeegPrep (https://github.com/MultimodalNeuroimagingLab/ieegprep)
   - BIDS-validator (https://github.com/bids-standard/bids-validator)
