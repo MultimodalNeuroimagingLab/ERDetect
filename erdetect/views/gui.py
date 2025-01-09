@@ -1070,7 +1070,7 @@ def open_gui(init_input_directory=None, init_output_directory=None):
             subset_items.set(value=lst_values)
 
             # enable controls
-            lst_subsets.configure(background='white', state='normal')
+            lst_subsets.configure(background='white', foreground='black', state='normal')
             btn_subsets_all.config(state='normal')
             btn_subsets_none.config(state='normal')
             lbl_subsets_filter.config(state='normal')
