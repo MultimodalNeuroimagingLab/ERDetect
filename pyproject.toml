@@ -10,13 +10,13 @@ name = "erdetect"
 description = "A package for the automatic detection of evoked responses in SPES/CCEP data"
 readme = "README.md"
 license = { text="GPLv3" }
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 dependencies = [
-    "ieegprep >= 1.6.0",
-    "numpy >= 1.22.3",
-    "scipy >= 1.8.0",
-    "matplotlib >= 3.5.1",
-    "bids_validator >= 1.9.3",
+    "ieegprep >= 1.6.1",
+    "numpy >= 2.2.1",
+    "scipy >= 1.15.0",
+    "matplotlib >= 3.10.0",
+    "bids_validator >= 1.14.6",
 ]
 keywords = ["evoked response", "detection", "ieeg", "n1", "SPES", "CCEP"]
 authors = [{ name="Max van den Boom", email="m.a.vandenboom84@gmail.com" }]
@@ -26,10 +26,11 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.8",
     "Topic :: Scientific/Engineering",
 ]
 dynamic = ["version"]
