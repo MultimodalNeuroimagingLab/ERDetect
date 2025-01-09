@@ -392,8 +392,8 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                                              channel_key_seperator='-')
     if late_reref is not None:
         late_reref.set_exclude_reref_epochs(stim_pairs_onsets,
-                                             (cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]),
-                                             channel_key_seperator='-')
+                                            (cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[0], cfg('preprocess', 'late_re_referencing', 'stim_excl_epoch')[1]),
+                                            channel_key_seperator='-')
     logging.info('')
 
 
@@ -493,7 +493,6 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
     if cfg('metrics', 'waveform', 'enabled'):
         MetricWaveform.append_output_dict_callback(output_dict, waveform_metrics)
 
-
     sio.savemat(os.path.join(output_root, 'erdetect_data.mat'), output_dict)
 
     # write the configuration
@@ -554,7 +553,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
         x = np.arange(averages.shape[2])
         x = x / sampling_rate + cfg('trials', 'trial_epoch')[0]
 
-        # determine the range on the x axis where the stimulus was in samples
+        # determine the range on the x-axis where the stimulus was in samples
         # Note: TRIAL_EPOCH_START is not expected to start after the stimulus onset, currently disallowed by config
         stim_start_x = int(round(abs(cfg('trials', 'trial_epoch')[0] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
         stim_end_x = stim_start_x + int(ceil(abs(cfg('visualization', 'blank_stim_epoch')[1] - cfg('visualization', 'blank_stim_epoch')[0]) * sampling_rate)) - 1
@@ -634,7 +633,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                             ax.plot(x_pos, y_pos, marker='^', markersize=7, color=(0, 0, .6))
 
                 # set the x-axis
-                ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
+                ax.set_xlabel('\nTime (s)', fontsize=plot_props['axis_label_font_size'])
                 ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                 for label in ax.get_xticklabels():
                     label.set_fontsize(plot_props['axis_ticks_font_size'])
@@ -652,7 +651,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                 ax.plot([legend_x, legend_x], [legend_y + .05, legend_y + .95], linewidth=plot_props['legend_line_thickness'], color=(0, 0, 0))
                 ax.text(legend_x + .01, legend_y + .3, '500 \u03bcV', fontsize=plot_props['legend_font_size'])
 
-                # Hide the right and top spines
+                # hide the right and top spines
                 ax.spines['right'].set_visible(False)
                 ax.spines['top'].set_visible(False)
 
@@ -727,7 +726,7 @@ def process_subset(bids_subset_data_path, output_dir, preproc_prioritize_speed=F
                         ax.plot(x_pos, y_pos, marker='^', markersize=7, color=(0, 0, .6))
 
                 # set the x-axis
-                ax.set_xlabel('\ntime (s)', fontsize=plot_props['axis_label_font_size'])
+                ax.set_xlabel('\nTime (s)', fontsize=plot_props['axis_label_font_size'])
                 ax.set_xlim(cfg('visualization', 'x_axis_epoch'))
                 for label in ax.get_xticklabels():
                     label.set_fontsize(plot_props['axis_ticks_font_size'])
