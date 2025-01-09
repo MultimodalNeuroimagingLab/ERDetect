@@ -29,9 +29,12 @@ if not __package__:
 
 # package imports
 from erdetect.version import __version__
-from erdetect.core.config import load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
+from erdetect.core.config import (
+    load_config, get as cfg, set as cfg_set, rem as cfg_rem,\
     LOGGING_CAPTION_INDENT_LENGTH, CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, \
-    CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
+    CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, CONFIG_DETECTION_STD_BASE_BASELINE_MIN_STD,
+    CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD
+)
 from erdetect._erdetect import process_subset
 from ieegprep import VALID_FORMAT_EXTENSIONS
 from ieegprep.bids.data_structure import list_bids_datasets
@@ -68,7 +71,7 @@ def execute():
                              'sub-<participant_label> as described in the BIDS specification. Label matching is\n'
                              'case-insensitive and \'sub-\' prefixes in any of the labels will be ignored.\n'
                              'If this parameter is not provided then all subjects will be analyzed. Multiple\n'
-                             'participant can be specified with a space separated list.\n\n',
+                             'participants can be specified with a space separated list.\n\n',
                         nargs="+")
     parser.add_argument('--subset_search_pattern',
                         help='This argument can be used to ensure that a specific text has to occur in the\n'
@@ -129,8 +132,8 @@ def execute():
                              '      late re-referencing setting in the configuration file\n\n',
                         nargs=1)
     parser.add_argument('--late_reref_CAR_by_variance',
-                        help='Perform late re-referencing by calculating a common average for each stim-pair condition\n'
-                             '(per group) over only the channels with the lowest trial signal variance.\n'
+                        help='Perform late re-referencing by applying a common average for each stim-pair condition\n'
+                             '(per group) where it''s average is based on only the channels with the lowest trial signal variance.\n'
                              'Note: If a configuration file is provided, then this command-line argument will overrule the\n'
                              '      late re-referencing by variance setting in the configuration file\n\n',
                         nargs='?', const='0.2')
@@ -272,6 +275,7 @@ def execute():
             cfg_set('std_base', 'detection', 'method')
             cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT, 'detection', 'std_base', 'baseline_epoch')
             cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR, 'detection', 'std_base', 'baseline_threshold_factor')
+            cfg_set(CONFIG_DETECTION_STD_BASE_BASELINE_MIN_STD, 'detection', 'std_base', 'baseline_minimum_std')
         elif args.method == "cross_proj":
             cfg_set('cross_proj', 'detection', 'method')
             cfg_set(CONFIG_DETECTION_CROSS_PROJ_THRESHOLD, 'detection', 'cross_proj', 'threshold')

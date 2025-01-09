@@ -23,10 +23,12 @@ OUTPUT_IMAGE_SIZE               = 2000                                          
 LOGGING_CAPTION_INDENT_LENGTH   = 50                                            # the indent length of the caption in a logging output string
 VALID_CHANNEL_TYPES             = ('EEG', 'ECOG', 'SEEG', 'DBS', 'VEOG', 'HEOG', 'EOG', 'ECG', 'EMG', 'TRIG', 'AUDIO', 'PD', 'EYEGAZE', 'PUPIL', 'MISC', 'SYSCLOCK', 'ADC', 'DAC', 'REF', 'OTHER')
 
-CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT = (-1, -0.1)
-CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR = 3.4
-CONFIG_DETECTION_CROSS_PROJ_THRESHOLD = 3.5
-CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD = 1000
+CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT        = (-1, -0.1)
+CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR     = 3.4
+CONFIG_DETECTION_STD_BASE_BASELINE_MIN_STD              = 50
+
+CONFIG_DETECTION_CROSS_PROJ_THRESHOLD                   = 3.5
+CONFIG_DETECTION_WAVEFORM_PROJ_THRESHOLD                = 1000
 
 
 def create_default_config():
@@ -84,6 +86,7 @@ def create_default_config():
     config['detection']['std_base'] = dict()
     config['detection']['std_base']['baseline_epoch']               = CONFIG_DETECTION_STD_BASE_BASELINE_EPOCH_DEFAULT
     config['detection']['std_base']['baseline_threshold_factor']    = CONFIG_DETECTION_STD_BASE_BASELINE_THRESHOLD_FACTOR
+    config['detection']['std_base']['baseline_minimum_std']         = CONFIG_DETECTION_STD_BASE_BASELINE_MIN_STD
 
     config['visualization'] = dict()
     config['visualization']['negative']                             = True                      # whether to output negative responses

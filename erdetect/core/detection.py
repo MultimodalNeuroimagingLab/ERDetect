@@ -30,7 +30,7 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, evaluation_callback=No
         stim_onset_index (int):             the time-point on the input data's time-dimension of stimulation onset (as a
                                             0-based sample-index, all indices before this value are considered pre-stim)
         sampling_rate (int or double):      The sampling rate at which the data was acquired
-        evaluation_callback (callback):     None to detect using standard baseline; Pass callback for metric evaluation
+        evaluation_callback (callback):     Callback for metric evaluation; None to detect using standard baseline;
         detect_positive (bool):             Whether to search for positive rather than negative evoked responses
 
 
@@ -69,6 +69,10 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, evaluation_callback=No
         # threshold which needs to be exceeded to detect a peak (the minimum std is considered 50uV; therefore a factor
         # of 3.4 is recommended to end up with a conservative threshold of 170 uV)
         baseline_threshold_factor = config('detection', 'std_base', 'baseline_threshold_factor')
+
+        # (int) The minimum baseline standard deviation (default: 50uV).
+        # A baseline value below this minimum will be corrected to this minimum
+        baseline_minimum_std = config('detection', 'std_base', 'baseline_minimum_std')
 
 
     #
@@ -185,9 +189,9 @@ def ieeg_detect_er(data, stim_onset_index, sampling_rate, evaluation_callback=No
                 # calculate the std of the baseline samples
                 baseline_std = np.nanstd(baseline_signal)
 
-                # make sure the baseline_std is not smaller than 50uV (this value was validated by Jaap)
-                if baseline_std < 50:
-                    baseline_std = 50
+                # make sure the baseline_std is not smaller than a minimum baseline value (default: 50uV)
+                if baseline_std < baseline_minimum_std:
+                    baseline_std = baseline_minimum_std
 
                 # check if the peak value does not exceed the baseline standard deviation time a factor
                 if abs(neg_mags[max_ind]) >= baseline_threshold_factor * abs(baseline_std):
