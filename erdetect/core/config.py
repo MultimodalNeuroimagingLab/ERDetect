@@ -473,6 +473,8 @@ def load_config(filepath):
             return False
         if not retrieve_config_number(json_config, config, 'detection', 'std_base', 'baseline_threshold_factor'):
             return False
+        if not retrieve_config_number(json_config, config, 'detection', 'std_base', 'baseline_minimum_std'):
+            return False
     elif config['detection']['method'] == 'cross_proj':
         config['detection']['cross_proj'] = dict()
         if not retrieve_config_number(json_config, config, 'detection', 'cross_proj', 'threshold'):
@@ -575,7 +577,8 @@ def write_config(filepath):
     if _config['detection']['method'] == 'std_base':
         config_str += '        "std_base": {\n' \
                       '            "baseline_epoch":               [' + numbers_to_padded_string(_config['detection']['std_base']['baseline_epoch'], 16) + '],\n' \
-                      '            "baseline_threshold_factor":    ' + str(_config['detection']['std_base']['baseline_threshold_factor']) + '\n' \
+                      '            "baseline_threshold_factor":    ' + str(_config['detection']['std_base']['baseline_threshold_factor']) + ',\n' \
+                      '            "baseline_minimum_std":         ' + str(_config['detection']['std_base']['baseline_minimum_std']) + '\n' \
                       '        }\n'
     elif _config['detection']['method'] == 'cross_proj':
         config_str += '        "cross_proj": {\n' \
@@ -738,9 +741,11 @@ def __check_config(config):
     if not check_epoch_start_after_onset(config, 'detection', 'response_search_epoch'):
         return False
 
-    # the baseline threshold factor should be a positive number
+    # the thresholds and minimum should be a positive number
     if config['detection']['method'] == 'std_base':
         if not check_number_positive(config, 'detection', 'std_base', 'baseline_threshold_factor'):
+            return False
+        if not check_number_positive(config, 'detection', 'std_base', 'baseline_minimum_std'):
             return False
     elif config['detection']['method'] == 'cross_proj':
         if not check_number_positive(config, 'detection', 'cross_proj', 'threshold'):

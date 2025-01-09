@@ -892,6 +892,7 @@ def log_config(preproc_prioritize_speed, output=None):
     if cfg('detection', 'method') == 'std_base':
         log_single_line('        Std baseline window:', str(cfg('detection', 'std_base', 'baseline_epoch')[0]) + 's : ' + str(cfg('detection', 'std_base', 'baseline_epoch')[1]) + 's', output)
         log_single_line('        Std baseline threshold factor:', str(cfg('detection', 'std_base', 'baseline_threshold_factor')), output)
+        log_single_line('        Std baseline minimum:', str(cfg('detection', 'std_base', 'baseline_minimum_std')), output)
     elif cfg('detection', 'method') == 'cross_proj':
         log_single_line('        Cross-projection detection threshold:', str(cfg('detection', 'cross_proj', 'threshold')), output)
     elif cfg('detection', 'method') == 'waveform':
