@@ -43,58 +43,14 @@ multimodalneuro/erdetect /data /output --participant_label 01
 
 
 
-## Configure detection
-From the command-line, a JSON file can be passed using the ```--config_filepath [JSON_FILEPATH]``` parameter to adjust the preprocessing, the evoked response detection and the visualization settings.
-An example JSON containing the standard settings looks as follows:
-```
-{
-    "preprocess": {
-        "high_pass":                        false,
-        "line_noise_removal":               "off",
-        "early_re_referencing": {
-            "enabled":                      false,
-            "method":                       "CAR",
-            "stim_excl_epoch":              [-1.0,        2.0]
-        }
-    },
-	
-    "trials": {
-        "trial_epoch":                      [-1.0,        2.0],
-        "out_of_bounds_handling":           "first_last_only",
-        "baseline_epoch":                   [-0.5,      -0.02],
-        "baseline_norm":                    "median",
-        "concat_bidirectional_pairs":       true,
-        "minimum_stimpair_trials":          5
-    },
+## Configuration & Documentation
 
-    "channels": {
-        "measured_types":                   ["ECOG", "SEEG", "DBS"],
-        "stim_types":                       ["ECOG", "SEEG", "DBS"]
-    },
+General documentation can be found [here](https://github.com/MultimodalNeuroimagingLab/erdetect/wiki/).
 
-    "detection": {
-        "negative":                         true,
-        "positive":                         false,
-        "peak_search_epoch":                [ 0,          0.5],
-        "response_search_epoch":            [ 0.009,     0.09],
-        "method":                           "std_base",
-        "std_base": {
-            "baseline_epoch":               [-1,         -0.1],
-            "baseline_threshold_factor":    3.4
-        }
-    },
-
-    "visualization": {
-        "negative":                         true,
-        "positive":                         false,
-        "x_axis_epoch":                     [-0.2,          1],
-        "blank_stim_epoch":                 [-0.015,   0.0025],
-        "generate_electrode_images":        true,
-        "generate_stimpair_images":         true,
-        "generate_matrix_images":           true
-    }
-}
-```
+The tool can be configured by three means:
+- Graphical User Interface (GUI)
+- Command-line, arguments and options can be found [here](https://github.com/MultimodalNeuroimagingLab/erdetect/wiki/Configuration#command-line-arguments)
+- JSON input configuration file, usage documentation can be found [here](https://github.com/MultimodalNeuroimagingLab/erdetect/wiki/Configuration#json-input-configuration-file)
 
 
 ## Acknowledgements
