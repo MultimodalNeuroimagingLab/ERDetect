@@ -16,7 +16,8 @@ if sys.version_info < (3, 9, 0):
 from importlib.metadata import version, PackageNotFoundError, requires
 from re import sub as re_sub, split as re_split
 def normalize_version(v):
-    return [int(x) for x in re_sub(r'(\.0+)*$','', v).split(".")]
+    v = '.'.join(re_sub(r'(\.0+)*$', '', v).split('.')[0:3])
+    return [int(x) for x in v.split(".")]
 
 try:
     require_lines = [p for p in requires('erdetect')]
@@ -34,6 +35,8 @@ try:
                 except PackageNotFoundError as err:
                     sys.exit('Dependency \'' + req_args[0] + '\' is required but not installed.\n'
                              'Execute \'pip install ' + req_args[0] + '\' in the command-line prompt/terminal to install the package\n')
+                except Exception as e:
+                    print('Warning: Dependency \'' + req_args[0] + '\' could not be checked')
 except PackageNotFoundError as err:
     # not running a distribution, skip checks
     pass
